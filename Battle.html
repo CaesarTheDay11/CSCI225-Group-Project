@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mini Pokémon RPG</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="battle">
+    <div id="enemy">
+      <h2 id="enemy-name"></h2>
+      <div class="hp-bar"><div id="enemy-hp" class="hp-fill"></div></div>
+    </div>
+
+    <div id="player">
+      <h2 id="player-name">Hero</h2>
+      <div class="hp-bar"><div id="player-hp" class="hp-fill"></div></div>
+    </div>
+
+    <div id="menu">
+      <button onclick="chooseMove('attack')">Attack</button>
+      <button onclick="chooseMove('heal')">Heal</button>
+    </div>
+
+    <div id="message"></div>
+  </div>
+
+  <script src="js/battle.js"></script>
+</body>
+</html>
