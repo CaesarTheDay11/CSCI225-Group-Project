@@ -41,7 +41,9 @@ function chooseMove(move) {
     enemy.fainted = true;
     return;
   }
-
+  if (turnCounter % 3 === 0 && turnCounter !== 0) {
+      player.attackBoost = 0;
+  }
   playerTurn = false;
   enemy.defense = 0; 
   setTimeout(enemyTurn, 1000);
@@ -63,7 +65,7 @@ function enemyTurn() {
   } else if (choice === 1) {
     logMessage(`${enemy.name} is defending!`);
     enemy.defense += 5; 
-  } else {
+  } else if (choice === 0) {
     logMessage(`${enemy.name} is sizing you up!`);
     enemy.attackBoost += 5; 
   }
@@ -75,6 +77,9 @@ function enemyTurn() {
     player.fainted = true;
     playerTurn = false;
     return;
+  }
+  if (turnCounter % 3 === 0 && turnCounter !== 0) {
+    enemy.attackBoost = 0;
   }
   player.defense = 0;
   playerTurn = true;
