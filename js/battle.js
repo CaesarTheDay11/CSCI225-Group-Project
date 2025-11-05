@@ -1,89 +1,376 @@
-let player = { name: "Hero", hp: 100, maxHp: 100, defense: 0, attackBoost: 0, fainted: false };
-let enemy = { name: "Gladiator", hp: 80, maxHp: 80, defense: 0, attackBoost: 0, fainted: false };
-let playerTurn = true; // when true the player can act; when false input is ignored
-turnCounter = 0;
+const CLASS_STATS = {
+    warrior: { name: 'Warrior', hp: 120, maxHp: 120, baseAtk: 12, defense: 4, attackBoost: 0, fainted: false, abilities: ['warrior_rend'] },
+    mage: { name: 'Mage', hp: 80, maxHp: 80, baseAtk: 16, defense: 1, attackBoost: 0, fainted: false, abilities: ['mage_fireball'] },
+    archer: { name: 'Archer', hp: 95, maxHp: 95, baseAtk: 14, defense: 2, attackBoost: 0, fainted: false, abilities: ['archer_volley'] }
+};
+
+const ENEMY_STATS = {
+    slime: { name: 'Slime', hp: 40, maxHp: 40, baseAtk: 6, defense: 0, attackBoost: 0, fainted: false, abilities: ['slime_splatter'] },
+    gladiator: { name: 'Gladiator', hp: 80, maxHp: 80, baseAtk: 11, defense: 2, attackBoost: 0, fainted: false, abilities: ['gladiator_charge'] },
+    boss: { name: 'Boss', hp: 200, maxHp: 200, baseAtk: 18, defense: 4, attackBoost: 0, fainted: false, abilities: ['boss_earthquake'] }
+};
+
+const ABILITIES = {
+    mage_fireball: { id: 'mage_fireball', name: 'Fireball', cost: 10, cooldown: 3, desc: 'Deal strong magic damage and apply burn (DOT for 3 turns).' },
+    warrior_rend: { id: 'warrior_rend', name: 'Rend', cost: 0, cooldown: 3, desc: 'Powerful physical strike that ignores some defense.' },
+    archer_volley: { id: 'archer_volley', name: 'Volley', cost: 0, cooldown: 3, desc: 'Hits multiple shots; chance to reduce enemy attack.' },
+    slime_splatter: { id: 'slime_splatter', name: 'Splatter', cost: 0, cooldown: 4, desc: 'Deals damage and applies slime (reduces healing/attack).' },
+    gladiator_charge: { id: 'gladiator_charge', name: 'Charge', cost: 0, cooldown: 4, desc: 'Heavy single-target hit with chance to stun.' },
+    boss_earthquake: { id: 'boss_earthquake', name: 'Earthquake', cost: 0, cooldown: 5, desc: 'Massive damage and stuns the player for 1 turn.' }
+};
+
+const abilityHandlers = {
+  mage_fireball(user, target) {
+    const base = user.baseAtk || 10;
+    const dmg = Math.floor(Math.random()*8) + base + 8;
+    target.hp = Math.max(0, target.hp + target.defense - dmg);
+    target.status = target.status || {};
+    target.status.burn = { turns: 3, dmg: Math.max(2, Math.floor(base/3)) };
+    return `${user.name} casts Fireball for ${dmg} damage and inflicts burn!`;
+  },
+
+  warrior_rend(user, target) {
+    const base = user.baseAtk || 12;
+    const dmg = Math.floor(Math.random()*10) + base + 6;
+    const effectiveDefense = (target.defense || 0) / 2;
+    const final = Math.max(0, dmg - effectiveDefense);
+    target.hp = Math.max(0, target.hp - final);
+    return `${user.name} rends ${target.name} for ${Math.round(final)} damage!`;
+  },
+
+  archer_volley(user, target) {
+    const base = user.baseAtk || 14;
+    let total = 0;
+    for (let i=0;i<3;i++) total += Math.floor(Math.random()*6) + Math.floor(base/2);
+    target.hp = Math.max(0, target.hp + target.defense - total);
+    if (Math.random() < 0.35) {
+      target.status = target.status || {};
+      target.status.weaken = { turns:2, amount:2 };
+    }
+    return `${user.name} fires a volley for ${total} total damage!`;
+  },
+
+  slime_splatter(user, target) {
+    const base = user.baseAtk || 6;
+    const dmg = Math.floor(Math.random()*6) + base;
+    target.hp = Math.max(0, target.hp + target.defense - dmg);
+    target.status = target.status || {};
+    target.status.slimed = { turns:3, effect:'reduce-heal' };
+    return `Slime splatters for ${dmg} and leaves a sticky slime!`;
+  },
+
+  gladiator_charge(user, target) {
+    const base = user.baseAtk || 11;
+    const dmg = Math.floor(Math.random()*12) + base + 4;
+    target.hp = Math.max(0, target.hp + target.defense - dmg);
+    if (Math.random() < 0.3) {
+      target.status = target.status || {};
+      target.status.stun = { turns:1 };
+      return `${user.name} charges with a heavy blow for ${dmg} — ${target.name} is stunned!`;
+    }
+    return `${user.name} charges for ${dmg} damage!`;
+  },
+
+  boss_earthquake(user, target) {
+    const base = user.baseAtk || 18;
+    const dmg = Math.floor(Math.random()*18) + base + 8;
+    target.hp = Math.max(0, target.hp + target.defense - dmg);
+    target.status = target.status || {};
+    target.status.stun = { turns:1 };
+    return `${user.name} slams the ground for ${dmg} — ${target.name} is stunned!`;
+  }
+};
+
+const selectedClass = localStorage.getItem('selectedClass') || 'warrior';
+const selectedEnemy = localStorage.getItem('selectedEnemy') || 'gladiator';
+
+let player = Object.assign({}, CLASS_STATS[selectedClass]);
+let enemy  = Object.assign({}, ENEMY_STATS[selectedEnemy]);
+
+player.hp = player.hp ?? CLASS_STATS[selectedClass].hp;
+player.maxHp = player.maxHp ?? CLASS_STATS[selectedClass].maxHp;
+enemy.hp = enemy.hp ?? ENEMY_STATS[selectedEnemy].hp;
+enemy.maxHp = enemy.maxHp ?? ENEMY_STATS[selectedEnemy].maxHp;
+
+player.name = CLASS_STATS[selectedClass].name;
+enemy.name  = ENEMY_STATS[selectedEnemy].name;
+
+player.baseAtk = CLASS_STATS[selectedClass].baseAtk;
+enemy.baseAtk  = ENEMY_STATS[selectedEnemy].baseAtk;
+
+player.abilityCooldowns = {};
+enemy.abilityCooldowns = {};
+player.mana = (selectedClass === 'mage') ? 30 : 0;
+player.maxMana = player.mana;
+
+let playerTurn = true;
+let turnCounter = 0;
+
 function updateUI() {
-  document.getElementById("player-hp").style.width = (player.hp / player.maxHp * 100) + "%";
-  document.getElementById("enemy-hp").style.width = (enemy.hp / enemy.maxHp * 100) + "%";
+  const pBar = document.getElementById('player-hp');
+  const eBar = document.getElementById('enemy-hp');
+  if (pBar) pBar.style.width = (player.hp / player.maxHp * 100) + '%';
+  if (eBar) eBar.style.width = (enemy.hp / enemy.maxHp * 100) + '%';
+
+  const pHpText = document.getElementById('player-hp-text');
+  const eHpText = document.getElementById('enemy-hp-text');
+  if (pHpText) pHpText.textContent = `HP: ${player.hp}/${player.maxHp}`;
+  if (eHpText) eHpText.textContent = `HP: ${enemy.hp}/${enemy.maxHp}`;
+
+  const pAtkText = document.getElementById('player-atk-text');
+  const eAtkText = document.getElementById('enemy-atk-text');
+  if (pAtkText) pAtkText.textContent = `ATK: +${player.attackBoost || 0}`;
+  if (eAtkText) eAtkText.textContent = `ATK: +${enemy.attackBoost || 0}`;
+
+  const pDefText = document.getElementById('player-def-text');
+  const eDefText = document.getElementById('enemy-def-text');
+  if (pDefText) pDefText.textContent = `DEF: +${player.defense || 0}`;
+  if (eDefText) eDefText.textContent = `DEF: +${enemy.defense || 0}`;
+
+  const pManaText = document.getElementById('player-mana-text');
+  if (pManaText) pManaText.textContent = player.maxMana ? `MANA: ${player.mana}/${player.maxMana}` : '';
+
+  const pCdText = document.getElementById('player-cd-text');
+  const firstAbility = (player.abilities && player.abilities[0]) || null;
+  const cd = firstAbility ? (player.abilityCooldowns[firstAbility] || 0) : 0;
+  if (pCdText) pCdText.textContent = firstAbility ? (cd>0 ? `CD: ${cd}` : 'Ready') : '';
+
+  const pSprite = document.getElementById('player-sprite');
+  const eSprite = document.getElementById('enemy-sprite');
+  try {
+    if (pSprite) {
+      const src = `img/${selectedClass}.jpg`;
+      pSprite.src = src;
+      pSprite.alt = player.name;
+      pSprite.onerror = function(){ this.style.opacity = '0.7'; };
+    }
+    if (eSprite) {
+      const src2 = `img/${selectedEnemy}.jpg`;
+      eSprite.src = src2;
+      eSprite.alt = enemy.name;
+      eSprite.onerror = function(){ this.style.opacity = '0.7'; };
+    }
+  } catch (e) {
+  }
+
+  renderStatusIcons(player, 'player-status');
+  renderStatusIcons(enemy, 'enemy-status');
+}
+
+function renderStatusIcons(actor, containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  container.innerHTML = '';
+  if (!actor || !actor.status) return;
+
+  const mapping = {
+    burn: { file: 'img/status_burn.svg', emoji: '🔥' },
+    stun: { file: 'img/status_stun.svg', emoji: '⛔' },
+    slimed: { file: 'img/status_slime.svg', emoji: '🟢' },
+    weaken: { file: 'img/status_weaken.svg', emoji: '⚠️' }
+  };
+
+  for (const key in actor.status) {
+    if (!Object.prototype.hasOwnProperty.call(actor.status, key)) continue;
+    const info = mapping[key];
+    if (info && info.file) {
+      const img = document.createElement('img');
+      img.className = 'status-icon';
+      img.alt = key;
+      img.src = info.file;
+      img.onerror = function() {
+        const span = document.createElement('span');
+        span.className = 'status-badge';
+        span.textContent = info.emoji || key.slice(0,2).toUpperCase();
+        this.replaceWith(span);
+      };
+      container.appendChild(img);
+    } else {
+      const span = document.createElement('span');
+      span.className = 'status-badge';
+      span.textContent = (mapping[key] && mapping[key].emoji) || key.slice(0,2).toUpperCase();
+      container.appendChild(span);
+    }
+  }
 }
 
 function logMessage(msg) {
-  document.getElementById("message").textContent = msg;
+  const el = document.getElementById('message');
+  if (el) el.textContent = msg;
+}
+
+function processStatusEffects(actor) {
+  if (!actor.status) return [];
+  const messages = [];
+
+  if (actor.status.burn) {
+    const b = actor.status.burn;
+    actor.hp = Math.max(0, actor.hp - b.dmg);
+    messages.push(`${actor.name} suffers ${b.dmg} burn damage.`);
+    b.turns--;
+    if (b.turns <= 0) delete actor.status.burn;
+  }
+
+  if (actor.status.slimed) {
+    actor.status.slimed.turns--;
+    if (actor.status.slimed.turns <= 0) delete actor.status.slimed;
+  }
+
+  if (actor.status.weaken) {
+    actor.status.weaken.turns--;
+    if (actor.status.weaken.turns <= 0) delete actor.status.weaken;
+  }
+
+  return messages;
+}
+
+function tickCooldowns(actor) {
+  if (!actor.abilityCooldowns) return;
+  for (const id in actor.abilityCooldowns) {
+    if (actor.abilityCooldowns[id] > 0) actor.abilityCooldowns[id]--;
+  }
+}
+
+function canUseAbility(actor, abilityId) {
+  const abil = ABILITIES[abilityId];
+  if (!abil) return false;
+  const cd = actor.abilityCooldowns[abilityId] || 0;
+  if (cd > 0) return false;
+  if (abil.cost && (actor.mana || 0) < abil.cost) return false;
+  return true;
+}
+
+function startAbilityCooldown(actor, abilityId) {
+  const abil = ABILITIES[abilityId];
+  if (!abil) return;
+  actor.abilityCooldowns[abilityId] = abil.cooldown;
+}
+
+function useSpecial() {
+  if (!playerTurn) { logMessage("It's not your turn!"); return; }
+  const abilityId = (player.abilities && player.abilities[0]) || null;
+  if (!abilityId) { logMessage("No special available."); return; }
+  if (!canUseAbility(player, abilityId)) { logMessage("Special unavailable (cooldown or not enough mana)."); return; }
+
+  const abil = ABILITIES[abilityId];
+  if (abil.cost) player.mana = Math.max(0, player.mana - abil.cost);
+
+  const result = (abilityHandlers[abilityId] && abilityHandlers[abilityId](player, enemy)) || `${player.name} uses ${abil.name}`;
+  startAbilityCooldown(player, abilityId);
+
+  updateUI();
+  logMessage(result);
+
+  playerTurn = false;
+  setTimeout(enemyTurn, 800);
 }
 
 function chooseMove(move) {
-  if (!playerTurn) {
-    logMessage("It's not your turn!");
+  if (!playerTurn) { logMessage("It's not your turn!"); return; }
+
+  const pmsgs = processStatusEffects(player);
+  if (pmsgs.length) pmsgs.forEach(m => logMessage(m));
+  if (player.hp <= 0) { player.fainted = true; logMessage('You fainted!'); updateUI(); return; }
+
+  if (player.status && player.status.stun) {
+    logMessage("You are stunned and cannot act!");
+    player.status.stun.turns--;
+    if (player.status.stun.turns <= 0) delete player.status.stun;
+    playerTurn = false;
+    setTimeout(enemyTurn, 900);
     return;
   }
 
-  if (move === "attack" && player.fainted === false) {
-    let damage = Math.floor(Math.random() * 10) + 10 + player.attackBoost;
-    enemy.hp = Math.max(0, enemy.hp - damage);
+  if (move === 'attack' && !player.fainted) {
+    const damage = Math.floor(Math.random()*8) + player.baseAtk + player.attackBoost;
+    enemy.hp = Math.max(0, enemy.hp + enemy.defense - damage);
     logMessage(`You hit ${enemy.name} for ${damage} damage!`);
-  } else if (move === "heal" && player.fainted === false) {
-    let heal = Math.floor(Math.random() * 15) + 5;
+  } else if (move === 'heal' && !player.fainted) {
+    let heal = Math.floor(Math.random()*15) + 5;
+    if (player.status && player.status.slimed) heal = Math.max(0, Math.floor(heal/2));
     player.hp = Math.min(player.maxHp, player.hp + heal);
     logMessage(`You healed yourself for ${heal} HP!`);
-  } else if (move === "defend" && player.fainted === false) {
-    logMessage("You brace yourself for the next attack!");
+  } else if (move === 'defend' && !player.fainted) {
     player.defense += 5;
-  } else if (move === "prepare" && player.fainted === false) {
-    logMessage("You prepare for your next move.");
+    logMessage('You brace yourself for the next attack!');
+  } else if (move === 'prepare' && !player.fainted) {
     player.attackBoost += 5;
+    logMessage('You prepare for your next move.');
   } else {
-    logMessage("You cannot move, you have fainted!");
+    logMessage('You cannot move, you have fainted!');
   }
+
   updateUI();
 
-  if (enemy.hp <= 0) {
-    logMessage(`You defeated the ${enemy.name}!`);
-    enemy.fainted = true;
-    return;
-  }
-  if (turnCounter % 3 === 0 && turnCounter !== 0) {
-      player.attackBoost = 0;
-  }
+  if (enemy.hp <= 0) { logMessage(`You defeated the ${enemy.name}!`); enemy.fainted = true; return; }
+
+  if (turnCounter % 3 === 0 && turnCounter !== 0) player.attackBoost = 0;
+  turnCounter++;
   playerTurn = false;
-  enemy.defense = 0; 
+  enemy.defense = ENEMY_STATS[selectedEnemy].defense;
+  tickCooldowns(player);
+
   setTimeout(enemyTurn, 1000);
 }
 
 function enemyTurn() {
-    if (enemy.fainted) {
+  const msgs = processStatusEffects(enemy);
+  if (msgs.length) msgs.forEach(m => logMessage(m));
+  if (enemy.hp <= 0) { enemy.fainted = true; logMessage(`${enemy.name} fainted!`); updateUI(); return; }
+
+  if (enemy.status && enemy.status.stun) {
+    logMessage(`${enemy.name} is stunned and can't move!`);
+    enemy.status.stun.turns--;
+    if (enemy.status.stun.turns <= 0) delete enemy.status.stun;
+    tickCooldowns(enemy);
+    playerTurn = true;
+    updateUI();
     return;
   }
-  let choice = Math.floor(Math.random() * 6);
+
+  const available = (enemy.abilities || []).filter(id => canUseAbility(enemy, id));
+  if (available.length && Math.random() < 0.4) {
+    const pick = available[Math.floor(Math.random()*available.length)];
+    const result = (abilityHandlers[pick] && abilityHandlers[pick](enemy, player)) || `${enemy.name} used ${pick}`;
+    startAbilityCooldown(enemy, pick);
+    logMessage(result);
+    tickCooldowns(enemy);
+    updateUI();
+    playerTurn = true;
+    return;
+  }
+
+  if (enemy.fainted) return;
+  let choice = Math.floor(Math.random()*6);
   if (choice > 2) {
-    let damage = Math.floor(Math.random() * 10) + 10 + enemy.attackBoost;
+    const damage = Math.floor(Math.random()*8) + enemy.baseAtk + enemy.attackBoost;
     player.hp = Math.max(0, player.hp + player.defense - damage);
     logMessage(`${enemy.name} attacks for ${damage} damage!`);
-  } else if (choice === 2) { 
-    let heal = Math.floor(Math.random() * 10) + 5;
+  } else if (choice === 2) {
+    const heal = Math.floor(Math.random()*10) + 5;
     enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
     logMessage(`${enemy.name} healed for ${heal} HP!`);
   } else if (choice === 1) {
+    enemy.defense += 5;
     logMessage(`${enemy.name} is defending!`);
-    enemy.defense += 5; 
-  } else if (choice === 0) {
+  } else {
+    enemy.attackBoost += 5;
     logMessage(`${enemy.name} is sizing you up!`);
-    enemy.attackBoost += 5; 
   }
 
-  updateUI();
-
-  if (player.hp <= 0) {
-    logMessage("You fainted!");
-    player.fainted = true;
-    playerTurn = false;
-    return;
-  }
-  if (turnCounter % 3 === 0 && turnCounter !== 0) {
-    enemy.attackBoost = 0;
-  }
-  player.defense = 0;
+  tickCooldowns(enemy);
+  if (player.hp <= 0) { logMessage('You fainted!'); player.fainted = true; playerTurn = false; updateUI(); return; }
+  if (turnCounter % 3 === 0 && turnCounter !== 0) enemy.attackBoost = 0;
+  player.defense = CLASS_STATS[selectedClass].defense;
   playerTurn = true;
+  updateUI();
 }
 
-updateUI();
-logMessage(`A ${enemy.name} appeared!`);
+window.addEventListener('DOMContentLoaded', () => {
+  const pName = document.getElementById('player-name');
+  const eName = document.getElementById('enemy-name');
+  if (pName) pName.textContent = player.name;
+  if (eName) eName.textContent = enemy.name;
+  updateUI();
+  logMessage(`A ${enemy.name} appeared!`);
+});

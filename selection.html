@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Select Class & Enemy</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="select-wrap">
+    <h1 style="text-align:center">Choose your class & enemy</h1>
+
+    <h2 style="font-size:1rem; margin-top:0.6rem">Pick a class</h2>
+    <div class="row" id="class-row">
+      <label class="card" data-value="warrior">
+        <input type="radio" name="class" value="warrior">
+        <h3>Warrior</h3>
+        <p>High HP, good defense. Starter attack moderate.</p>
+      </label>
+
+      <label class="card" data-value="mage">
+        <input type="radio" name="class" value="mage">
+        <h3>Mage</h3>
+        <p>Lower HP, higher attack and special power.</p>
+      </label>
+
+      <label class="card" data-value="archer">
+        <input type="radio" name="class" value="archer">
+        <h3>Archer</h3>
+        <p>Balanced HP, higher critical/precision attacks.</p>
+      </label>
+    </div>
+
+    <h2 style="font-size:1rem; margin-top:0.6rem">Pick an enemy</h2>
+    <div class="row" id="enemy-row">
+      <label class="card" data-value="slime">
+        <input type="radio" name="enemy" value="slime">
+        <h3>Slime</h3>
+        <p>Weak enemy - easy match.</p>
+      </label>
+
+      <label class="card" data-value="gladiator">
+        <input type="radio" name="enemy" value="gladiator">
+        <h3>Gladiator</h3>
+        <p>Standard fighter - balanced stats.</p>
+      </label>
+
+      <label class="card" data-value="boss">
+        <input type="radio" name="enemy" value="boss">
+        <h3>Boss</h3>
+        <p>High HP and damage. Tough fight.</p>
+      </label>
+    </div>
+
+    <div class="actions">
+      <button id="startBtn">Start Battle</button>
+      <button id="backBtn" onclick="location.href='TitleScreen.html'">Back</button>
+    </div>
+  </div>
+
+  <script>
+    function setupSelection(rowId, inputName) {
+      const row = document.getElementById(rowId);
+      if (!row) return;
+      row.querySelectorAll('.card').forEach(card => {
+        card.addEventListener('click', () => {
+          row.querySelectorAll('.card').forEach(c=>c.classList.remove('selected'));
+          card.classList.add('selected');
+          const val = card.getAttribute('data-value');
+          const input = card.querySelector('input[type=radio]');
+          if (input) input.checked = true;
+        });
+      });
+    }
+    setupSelection('class-row', 'class');
+    setupSelection('enemy-row', 'enemy');
+
+    document.getElementById('startBtn').addEventListener('click', () => {
+      const chosenClass = document.querySelector('input[name="class"]:checked')?.value;
+      const chosenEnemy = document.querySelector('input[name="enemy"]:checked')?.value;
+      if (!chosenClass || !chosenEnemy) {
+        alert('Please pick both a class and an enemy.');
+        return;
+      }
+      localStorage.setItem('selectedClass', chosenClass);
+      localStorage.setItem('selectedEnemy', chosenEnemy);
+      localStorage.removeItem('battleState');
+      location.href = 'Battle.html';
+    });
+
+    document.querySelector('input[name="class"][value="warrior"]').checked = true;
+    document.querySelector('[data-value="warrior"]').classList.add('selected');
+    document.querySelector('input[name="enemy"][value="gladiator"]').checked = true;
+    document.querySelector('[data-value="gladiator"]').classList.add('selected');
+  </script>
+</body>
+</html>
