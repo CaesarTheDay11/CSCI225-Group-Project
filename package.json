@@ -1,0 +1,20 @@
+{
+  "name": "csci225-group-project",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CaesarTheDay11/CSCI225-Group-Project.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/CaesarTheDay11/CSCI225-Group-Project/issues"
+  },
+  "homepage": "https://github.com/CaesarTheDay11/CSCI225-Group-Project#readme"
+}
