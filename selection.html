@@ -37,20 +37,74 @@
         <input type="radio" name="enemy" value="slime">
         <h3>Slime</h3>
         <p>Weak enemy - easy match.</p>
+        <div class="card-actions">
+          <button type="button" class="small" data-add-enemy="slime">Add to Wave</button>
+        </div>
       </label>
 
       <label class="card" data-value="gladiator">
         <input type="radio" name="enemy" value="gladiator">
         <h3>Gladiator</h3>
         <p>Standard fighter - balanced stats.</p>
+        <div class="card-actions">
+          <button type="button" class="small" data-add-enemy="gladiator">Add to Wave</button>
+        </div>
       </label>
 
       <label class="card" data-value="boss">
         <input type="radio" name="enemy" value="boss">
         <h3>Boss</h3>
         <p>High HP and damage. Tough fight.</p>
+        <div class="card-actions">
+          <button type="button" class="small" data-add-enemy="boss">Add to Wave</button>
+        </div>
       </label>
     </div>
+    
+    <div style="text-align:center; margin-top:0.6rem">
+      <h3 style="margin-bottom:0.4rem">Wave Builder</h3>
+      <div id="wave-list" style="min-height:2.2rem; margin-bottom:0.6rem;"></div>
+      <button id="clearWaveBtn">Clear Wave</button>
+      <button id="removeLastBtn">Remove Last</button>
+    </div>
+
+    <h2 style="font-size:1rem; margin-top:0.6rem">Pick allies (optional)</h2>
+    <div class="row" id="ally-row">
+      <label class="card" data-value="warrior">
+        <input type="checkbox" name="ally" value="warrior">
+        <h3>Warrior Ally</h3>
+        <p>Sturdy frontline ally.</p>
+        <div class="card-actions">
+          <button type="button" class="small" data-add-ally="warrior">Add Ally</button>
+        </div>
+      </label>
+
+      <label class="card" data-value="mage">
+        <input type="checkbox" name="ally" value="mage">
+        <h3>Mage Ally</h3>
+        <p>Magic support ally.</p>
+        <div class="card-actions">
+          <button type="button" class="small" data-add-ally="mage">Add Ally</button>
+        </div>
+      </label>
+
+      <label class="card" data-value="archer">
+        <input type="checkbox" name="ally" value="archer">
+        <h3>Archer Ally</h3>
+        <p>Ranged damage ally.</p>
+        <div class="card-actions">
+          <button type="button" class="small" data-add-ally="archer">Add Ally</button>
+        </div>
+      </label>
+    </div>
+
+    <div style="text-align:center; margin-top:0.6rem">
+      <h3 style="margin-bottom:0.4rem">Ally Roster</h3>
+      <div id="ally-list" style="min-height:2.2rem; margin-bottom:0.6rem;"></div>
+      <button id="clearAllyBtn">Clear Allies</button>
+      <button id="removeLastAllyBtn">Remove Last Ally</button>
+    </div>
+
 
     <div class="actions">
       <button id="startBtn">Start Battle</button>
@@ -75,15 +129,112 @@
     setupSelection('class-row', 'class');
     setupSelection('enemy-row', 'enemy');
 
+    let enemyWave = JSON.parse(localStorage.getItem('enemyQueue') || '[]');
+
+    function renderWaveList() {
+      const el = document.getElementById('wave-list');
+      if (!el) return;
+      if (!enemyWave || enemyWave.length === 0) {
+        el.textContent = 'Wave empty — add enemies to build a sequence.';
+        return;
+      }
+      el.textContent = enemyWave.map((id, i) => `${i+1}. ${id}`).join('  —  ');
+    }
+
+    function addEnemyToWave(id) {
+      if (!enemyWave) enemyWave = [];
+      if (enemyWave.length >= 5) { alert('Enemy wave limit reached (max 5).'); return; }
+      enemyWave.push(id);
+      localStorage.setItem('enemyQueue', JSON.stringify(enemyWave));
+      renderWaveList();
+    }
+
+    function clearWave() {
+      enemyWave = [];
+      localStorage.removeItem('enemyQueue');
+      renderWaveList();
+    }
+
+    function removeLastFromWave() {
+      enemyWave.pop();
+      localStorage.setItem('enemyQueue', JSON.stringify(enemyWave));
+      renderWaveList();
+    }
+
+    // Allies (max 2 allies -> party size max 3 including main player)
+    let allyQueue = JSON.parse(localStorage.getItem('allyQueue') || '[]');
+
+    function renderAllyList() {
+      const el = document.getElementById('ally-list');
+      if (!el) return;
+      if (!allyQueue || allyQueue.length === 0) {
+        el.textContent = 'No allies added.';
+        return;
+      }
+      el.textContent = allyQueue.map((id, i) => `${i+1}. ${id}`).join('  —  ');
+    }
+
+    function addAllyToRoster(id) {
+      if (!allyQueue) allyQueue = [];
+      if (allyQueue.length >= 2) { alert('Ally limit reached (max 2 allies).'); return; }
+      allyQueue.push(id);
+      localStorage.setItem('allyQueue', JSON.stringify(allyQueue));
+      renderAllyList();
+    }
+
+    function clearAllies() {
+      allyQueue = [];
+      localStorage.removeItem('allyQueue');
+      renderAllyList();
+    }
+
+    function removeLastAlly() {
+      allyQueue.pop();
+      localStorage.setItem('allyQueue', JSON.stringify(allyQueue));
+      renderAllyList();
+    }
+
+    document.querySelectorAll('[data-add-enemy]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = btn.getAttribute('data-add-enemy');
+        addEnemyToWave(id);
+      });
+    });
+
+    document.querySelectorAll('[data-add-ally]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = btn.getAttribute('data-add-ally');
+        addAllyToRoster(id);
+      });
+    });
+
+  document.getElementById('clearWaveBtn').addEventListener('click', clearWave);
+  document.getElementById('removeLastBtn').addEventListener('click', removeLastFromWave);
+  document.getElementById('clearAllyBtn').addEventListener('click', clearAllies);
+  document.getElementById('removeLastAllyBtn').addEventListener('click', removeLastAlly);
+
+  renderWaveList();
+  renderAllyList();
+
     document.getElementById('startBtn').addEventListener('click', () => {
       const chosenClass = document.querySelector('input[name="class"]:checked')?.value;
       const chosenEnemy = document.querySelector('input[name="enemy"]:checked')?.value;
-      if (!chosenClass || !chosenEnemy) {
-        alert('Please pick both a class and an enemy.');
+      if (!chosenClass) {
+        alert('Please pick a class.');
         return;
       }
       localStorage.setItem('selectedClass', chosenClass);
-      localStorage.setItem('selectedEnemy', chosenEnemy);
+      if (enemyWave && enemyWave.length > 0) {
+        localStorage.setItem('enemyQueue', JSON.stringify(enemyWave));
+      } else if (chosenEnemy) {
+        localStorage.setItem('selectedEnemy', chosenEnemy);
+        localStorage.removeItem('enemyQueue');
+      }
+      if (allyQueue && allyQueue.length > 0) {
+        localStorage.setItem('allyQueue', JSON.stringify(allyQueue));
+      } else {
+        localStorage.removeItem('allyQueue');
+      }
       localStorage.removeItem('battleState');
       location.href = 'Battle.html';
     });
