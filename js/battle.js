@@ -22,6 +22,101 @@ const ABILITIES = {
     archer_poison: { id: 'archer_poison', name: 'Poison Arrow', cost: 0, cooldown: 4, desc: 'Deal damage and apply poison (DOT).' }
 };
 
+const ACTION_DESCS = {
+  attack: {
+    name: 'Attack',
+    desc: 'Deal physical damage equal to your base attack plus any temporary attack boost.',
+    detail: 'Good default move. No cooldown or mana.'
+  },
+  heal: {
+    name: 'Heal',
+    desc: 'Restore a moderate amount of HP to yourself.',
+    detail: 'Amount scales modestly; healing may be reduced by slime status.'
+  },
+  defend: {
+    name: 'Defend',
+    desc: 'Increase your defense for one turn to reduce incoming damage.',
+    detail: 'Stacks with base defense; useful before a big enemy attack.'
+  },
+  prepare: {
+    name: 'Prepare',
+    desc: 'Increase your attack boost for your next attack.',
+    detail: 'Small charge that increases next-hit damage.'
+  }
+};
+
+function _getAbilityTooltipNode() {
+  let node = document.getElementById('ability-tooltip');
+  if (!node) {
+    node = document.createElement('div');
+    node.id = 'ability-tooltip';
+    node.className = 'ability-tooltip';
+    node.innerHTML = '<div class="title"></div><div class="desc"></div><div class="meta"></div>';
+    document.body.appendChild(node);
+  }
+  return node;
+}
+
+function _showAbilityTooltip(evt, abilityKey) {
+  const node = _getAbilityTooltipNode();
+  const info = ACTION_DESCS[abilityKey] || ABILITIES[abilityKey] || { name: abilityKey, desc: '', detail: '' };
+  node.querySelector('.title').textContent = info.name || (ABILITIES[abilityKey] && ABILITIES[abilityKey].name) || abilityKey;
+  node.querySelector('.desc').textContent = info.desc || info.detail || '';
+  const metaParts = [];
+  if (ABILITIES[abilityKey]) {
+    const abil = ABILITIES[abilityKey];
+    if (abil.cost) metaParts.push(`Cost: ${abil.cost}M`);
+    if (abil.cooldown) metaParts.push(`CD: ${abil.cooldown}`);
+  } else if (info.detail) {
+    metaParts.push(info.detail);
+  }
+  node.querySelector('.meta').textContent = metaParts.join(' — ');
+  const x = Math.max(8, evt.pageX + 12);
+  const y = Math.max(8, evt.pageY + 12);
+  node.style.left = x + 'px';
+  node.style.top = y + 'px';
+  node.classList.add('visible');
+}
+
+function _hideAbilityTooltip() {
+  const node = document.getElementById('ability-tooltip');
+  if (node) node.classList.remove('visible');
+}
+
+function attachActionTooltips() {
+  const menu = document.getElementById('menu');
+  if (!menu) return;
+  const buttons = Array.from(menu.querySelectorAll('button, [data-ability]')).filter(b => {
+    return b.closest('#specials') === null;
+  });
+
+  buttons.forEach(btn => {
+  let abilityKey = btn.getAttribute('data-ability');
+  if (!abilityKey) {
+    const on = btn.getAttribute('onclick') || '';
+    const m = on.match(/chooseMove\(['"](\w+)['"]\)/);
+    if (m) abilityKey = m[1];
+  }
+  abilityKey = abilityKey || btn.textContent.trim().toLowerCase();
+
+  const moveHandler = (evt) => {
+    const abilObj = ABILITIES[abilityKey] || ACTION_DESCS[abilityKey] || { name: abilityKey, desc: ACTION_DESCS[abilityKey]?.desc || '', cost: 0 };
+    const cd = 0;
+    _showAbilityTooltip(evt, abilObj, cd);
+  };
+
+  btn.addEventListener('mouseenter', moveHandler);
+  btn.addEventListener('mousemove', moveHandler);
+  btn.addEventListener('mouseleave', _hideAbilityTooltip);
+  btn.addEventListener('focus', moveHandler);
+  btn.addEventListener('blur', _hideAbilityTooltip);
+});
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  setTimeout(attachActionTooltips, 20);
+});
+
 const abilityHandlers = {
     mage_fireball(user, target) {
         const base = user.baseAtk || 10;
@@ -51,11 +146,11 @@ const abilityHandlers = {
         target.status = target.status || {};
         if (!target.status.weaken) {
             target.status.weaken = { turns: 2, amount: amount, prevBoost: (target.attackBoost || 0) };
-            target.attackBoost = Math.max(0, (target.attackBoost || 0) - amount);
+            target.attackBoost = (target.attackBoost || 0) - amount;
         } else {
             target.status.weaken.amount = (target.status.weaken.amount || 0) + amount;
             target.status.weaken.turns = Math.max(target.status.weaken.turns, 2);
-            target.attackBoost = Math.max(0, (target.attackBoost || 0) - amount);
+            target.attackBoost = (target.attackBoost || 0) - amount;
         }
         return `${user.name} fires a volley for ${dealt} total damage!`;
     },
@@ -98,11 +193,11 @@ const abilityHandlers = {
         target.status = target.status || {};
         if (!target.status.weaken) {
             target.status.weaken = { turns: 2, amount: amount, prevBoost: (target.attackBoost || 0) };
-            target.attackBoost = Math.max(0, (target.attackBoost || 0) - amount);
+            target.attackBoost = (target.attackBoost || 0) - amount;
         } else {
             target.status.weaken.amount = (target.status.weaken.amount || 0) + amount;
             target.status.weaken.turns = Math.max(target.status.weaken.turns, 2);
-            target.attackBoost = Math.max(0, (target.attackBoost || 0) - amount);
+            target.attackBoost = (target.attackBoost || 0) - amount;
         }
         return `${user.name} blasts ${target.name} with ice for ${dealt} damage and lowers attack!`;
     },
@@ -196,13 +291,13 @@ function updateUI() {
 
     const pAtkText = document.getElementById('player-atk-text');
     const eAtkText = document.getElementById('enemy-atk-text');
-    if (pAtkText) pAtkText.textContent = `ATK: +${player.attackBoost || 0}`;
-    if (eAtkText) eAtkText.textContent = `ATK: +${enemy.attackBoost || 0}`;
+    if (pAtkText) pAtkText.textContent = `ATK: ${player.attackBoost >= 0 ? '+' + player.attackBoost : String(player.attackBoost)}`;
+    if (eAtkText) eAtkText.textContent = `ATK: ${enemy.attackBoost >= 0 ? '+' + enemy.attackBoost : String(enemy.attackBoost)}`;
 
     const pDefText = document.getElementById('player-def-text');
     const eDefText = document.getElementById('enemy-def-text');
-    if (pDefText) pDefText.textContent = `DEF: +${player.defense || 0}`;
-    if (eDefText) eDefText.textContent = `DEF: +${enemy.defense || 0}`;
+    if (pDefText) pDefText.textContent = `DEF: ${player.defense >= 0 ? '+' + player.defense : String(player.defense)}`;
+    if (eDefText) eDefText.textContent = `DEF: ${enemy.defense >= 0 ? '+' + enemy.defense : String(enemy.defense)}`;
 
     const pManaText = document.getElementById('player-mana-text');
     if (pManaText) pManaText.textContent = player.maxMana ? `MANA: ${player.mana}/${player.maxMana}` : '';
@@ -402,7 +497,6 @@ function handlePlayerDefeat() {
         const pNameEl = document.getElementById('player-name');
         if (pNameEl) pNameEl.textContent = player.name;
         logMessage(`${player.name} joins the fight!`);
-        // ensure player's UI and cooldowns shown
         updateUI();
         playerTurn = true;
     } else {
@@ -470,6 +564,17 @@ function tickCooldowns(actor) {
         if (actor.abilityCooldowns[id] > 0) actor.abilityCooldowns[id]--;
     }
 }
+function regenMana(actor, amount = 2) {
+  if (!actor || !(actor.maxMana > 0)) return;
+  actor.mana = Math.min(actor.maxMana, (actor.mana || 0) + amount);
+}
+
+function regenPartyMana(amount = 2, includeEnemy = false) {
+  if (Array.isArray(party)) {
+    for (const mem of party) regenMana(mem, amount);
+  }
+  if (includeEnemy && typeof enemy !== 'undefined') regenMana(enemy, amount);
+}
 
 function canUseAbility(actor, abilityId) {
     const abil = ABILITIES[abilityId];
@@ -530,7 +635,6 @@ function chooseMove(move) {
     playerTurn = false;
     enemy.defense = ENEMY_STATS[currentEnemyId].defense;
     tickCooldowns(player);
-
     setTimeout(enemyTurn, 1000);
 }
 
@@ -585,10 +689,11 @@ function enemyTurn() {
         logMessage(`${enemy.name} is sizing you up!`);
     }
 
-    tickCooldowns(enemy);
+     tickCooldowns(enemy);
     if (player.hp <= 0) { handlePlayerDefeat(); return; }
     if (turnCounter % 3 === 0 && turnCounter !== 0) enemy.attackBoost = 0;
     player.defense = CLASS_STATS[player.classId || selectedClass].defense;
+    regenPartyMana(2, false); 
     playerTurn = true;
     updateUI();
 }
