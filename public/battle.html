@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>Arena BattleGrounds</title>
   <link href="css/styles.css" rel="stylesheet">
 </head>
 
@@ -23,7 +23,47 @@
   <button class="queueBtn" id="queueBtn"> Find a Match </button>
   <p class="not-logged-in-vis"> You aren't currently logged in, please log in or sign up <a href="index.html"> here </a>
   </p>
+
+  <div id="battle">
+    <div id="enemy" class="player-card">
+      <div class="player-label">Opponent</div>
+      <h2 id="enemy-name">Gladiator</h2>
+      <div class="hp-bar">
+        <div id="enemy-hp" class="hp-fill"></div>
+      </div>
+      <div class="turn-indicator" id="enemy-turn-indicator">OPPONENT'S TURN</div>
+    </div>
+
+    <div id="player" class="player-card">
+      <div class="player-label">You</div>
+      <h2 id="player-name">Hero</h2>
+      <div class="hp-bar">
+        <div id="player-hp" class="hp-fill"></div>
+      </div>
+      <div class="turn-indicator" id="player-turn-indicator">YOUR TURN</div>
+    </div>
+
+    <div id="menu">
+      <button onclick="chooseMove('attack')">Attack</button>
+      <button onclick="chooseMove('heal')">Heal</button>
+      <button onclick="chooseMove('defend')">Defend</button>
+      <button onclick="chooseMove('prepare')">Prepare</button>
+    </div>
+
+    <div id="message"></div>
+    
+    <!-- End Game Overlay -->
+    <div id="end-game-overlay" class="end-game-overlay" style="display: none;">
+      <div class="end-game-content">
+        <h1 id="end-game-title">Game Over</h1>
+        <p id="end-game-message"></p>
+        <button id="return-to-queue-btn" class="return-btn" onclick="returnToQueue()">Return to Queue</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="js/app.js"> </script>
+  <script type="module" src="js/battle.js"></script>
 </body>
 
 </html>

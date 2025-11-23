@@ -43,15 +43,41 @@ exports.onQueueJoin = onValueCreated("/queue/{uid}", async (event) => {
 
   // create match
   const matchRef = db.ref("matches").push();
+  const matchId = matchRef.key;
 
+  // Initialize match with game state
   await matchRef.set({
     p1: joiningUid,
     p2: opponentUid,
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    currentTurn: joiningUid, // First player to join goes first
+    turnCounter: 0,
+    status: "active",
+    lastMove: null,
+    message: ""
+  });
+
+  // Initialize player states
+  await db.ref(`matches/${matchId}/players/${joiningUid}`).set({
+    hp: 100,
+    maxHp: 100,
+    defense: 0,
+    attackBoost: 0,
+    fainted: false,
+    name: null // Will be set by client
+  });
+
+  await db.ref(`matches/${matchId}/players/${opponentUid}`).set({
+    hp: 100,
+    maxHp: 100,
+    defense: 0,
+    attackBoost: 0,
+    fainted: false,
+    name: null // Will be set by client
   });
 
   // set match on both users
-  await db.ref(`users/${joiningUid}/currentMatch`).set(matchRef.key);
-  await db.ref(`users/${opponentUid}/currentMatch`).set(matchRef.key);
+  await db.ref(`users/${joiningUid}/currentMatch`).set(matchId);
+  await db.ref(`users/${opponentUid}/currentMatch`).set(matchId);
 });
 

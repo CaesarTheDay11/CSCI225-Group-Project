@@ -40,20 +40,37 @@ onAuthStateChanged(auth, (user) => {
     document.querySelectorAll('.not-logged-in-vis')
       .forEach(el => el.style.display = 'none');
 
+    // Ensure battle UI is hidden initially when user logs in
+    document.getElementById("battle").style.display = "none";
+
     console.log(user);
 
 
     onValue(matchRef, snap => {
       if (snap.exists()) {
-        document.getElementsByClassName("queueBtn")[0].textContent = "Match Found!";
-        console.log("Matched! Match ID:", snap.val());
-        // TODO: load match screen
+        const matchId = snap.val();
+        document.getElementById("queueBtn").style.display = "none"; // Hide match button when in match
+        document.getElementById("battle").style.display = "block";
+        console.log("Matched! Match ID:", matchId);
+        // Initialize battle when match is found
+        // Wait a bit for battle.js to load if it hasn't yet
+        setTimeout(() => {
+          if (typeof window.initializeBattle === 'function') {
+            window.initializeBattle(matchId, uid);
+          } else {
+            console.error("initializeBattle function not found!");
+          }
+        }, 100);
+      } else {
+        document.getElementById("queueBtn").style.display = "inline"; // Show match button when not in match
+        document.getElementById("battle").style.display = "none";
       }
     });
 
 
   } else {
     document.getElementById("user").textContent = "Not signed in";
+    document.getElementById("battle").style.display = "none";
   }
 });
 
@@ -66,6 +83,7 @@ function writeUserData(userId, name) {
 function updateQueueData() {
   // TODO: store rank value later for skill based matchmaking
   document.getElementsByClassName("queueBtn")[0].textContent = "Finding a Match...";
+  document.getElementById("battle").style.display = "none"; // Hide battle UI while searching
   set(queueRef, { "UserID:": uid });
 }
 
