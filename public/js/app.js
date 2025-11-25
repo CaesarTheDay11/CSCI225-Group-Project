@@ -1,4 +1,4 @@
-import { auth, db, } from "./firebase.js";
+import { auth, db } from "./firebase.js";
 
 /*
 import {
@@ -9,83 +9,149 @@ import {
 
 import {
   onValue,
-  ref, set,
+  ref,
+  set,
   onDisconnect,
+  update,
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js"
 
 import {
   onAuthStateChanged,
+  signOut,
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
+
+// Ensure login/signup handlers are loaded anywhere app.js runs
+import("./login.js").catch((err) => {
+  console.error("[app] failed to load login module", err);
+});
+
+const userDisplay = document.getElementById("user-display");
+const battleElement = document.getElementById("battle");
+const queueBtn = document.getElementById("queueBtn");
+const signOutBtn = document.getElementById("signOutBtn");
 
 // setup connection listener
 const connectedRef = ref(db, ".info/connected");
 onValue(connectedRef, (snap) => {
-  console.log("connected:", snap.val());
+  // no-op; listener keeps presence logic ready
 });
 
-var uid
-var queueRef;
+let uid;
+let queueRef;
+let detachMatchListener = null;
+let detachProfileListener = null;
 
-onAuthStateChanged(auth, (user) => {
+onAuthStateChanged(auth, async (user) => {
+  uid = user?.uid;
+
+  if (detachMatchListener) {
+    detachMatchListener();
+    detachMatchListener = null;
+  }
+  if (detachProfileListener) {
+    detachProfileListener();
+    detachProfileListener = null;
+  }
+
   if (user) {
-    document.getElementById("user").textContent =
-      `Signed in as ${user.displayName || user.email}`;
-    document.getElementById("queueBtn").style = "display: inline;";
-    writeUserData(user.uid, user.displayName);
-    uid = user.uid;
-    const matchRef = ref(db, "users/" + uid + "/currentMatch");
-    queueRef = ref(db, 'queue/' + uid);
+    await writeUserData(user.uid, user.displayName || user.email);
+    const userProfileRef = ref(db, `users/${uid}`);
+    detachProfileListener = onValue(userProfileRef, (snap) => {
+      const data = snap.val() || {};
+      const name = data.displayName || user.displayName || user.email;
+      const classLabel = data.class ? ` (${capitalize(data.class)})` : "";
+      if (userDisplay) {
+        userDisplay.textContent = `Signed in as ${name}${classLabel}`;
+      }
+    });
+    if (signOutBtn) signOutBtn.style.display = "inline-flex";
+
+    queueRef = ref(db, "queue/" + uid);
     onDisconnect(queueRef).remove();
 
-    document.querySelectorAll('.not-logged-in-vis')
-      .forEach(el => el.style.display = 'none');
+    const matchRef = ref(db, "users/" + uid + "/currentMatch");
 
-    // Ensure battle UI is hidden initially when user logs in
-    document.getElementById("battle").style.display = "none";
+    document.querySelectorAll(".not-logged-in-vis")
+      .forEach((el) => (el.style.display = "none"));
 
-    console.log(user);
+    if (battleElement) {
+      battleElement.style.display = "none";
+    }
 
+    if (queueBtn) {
+      queueBtn.style.display = "inline";
+    }
 
-    onValue(matchRef, snap => {
+    detachMatchListener = onValue(matchRef, (snap) => {
       if (snap.exists()) {
         const matchId = snap.val();
-        document.getElementById("queueBtn").style.display = "none"; // Hide match button when in match
-        document.getElementById("battle").style.display = "block";
+        if (queueBtn) queueBtn.style.display = "none";
+        if (battleElement) battleElement.style.display = "block";
         console.log("Matched! Match ID:", matchId);
-        // Initialize battle when match is found
-        // Wait a bit for battle.js to load if it hasn't yet
         setTimeout(() => {
-          if (typeof window.initializeBattle === 'function') {
+          if (typeof window.initializeBattle === "function") {
             window.initializeBattle(matchId, uid);
           } else {
             console.error("initializeBattle function not found!");
           }
         }, 100);
       } else {
-        document.getElementById("queueBtn").style.display = "inline"; // Show match button when not in match
-        document.getElementById("battle").style.display = "none";
+        if (queueBtn) queueBtn.style.display = "inline";
+        if (battleElement) battleElement.style.display = "none";
       }
     });
-
-
   } else {
-    document.getElementById("user").textContent = "Not signed in";
-    document.getElementById("battle").style.display = "none";
+    if (userDisplay) userDisplay.textContent = "Not signed in";
+    if (battleElement) battleElement.style.display = "none";
+    if (signOutBtn) signOutBtn.style.display = "none";
+
+    document.querySelectorAll(".not-logged-in-vis")
+      .forEach((el) => (el.style.display = ""));
   }
 });
 
-function writeUserData(userId, name) {
-  set(ref(db, 'users/' + userId), {
-    displayName: name,
-  });
+async function writeUserData(userId, name) {
+  if (!userId) return;
+
+  const profile = {};
+  if (name) profile.displayName = name;
+  if (Object.keys(profile).length === 0) return;
+
+  try {
+    await update(ref(db, "users/" + userId), profile);
+  } catch (err) {
+    console.error("Failed to write user profile", err);
+  }
+}
+
+function capitalize(text) {
+  if (!text) return "";
+  return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
 function updateQueueData() {
   // TODO: store rank value later for skill based matchmaking
-  document.getElementsByClassName("queueBtn")[0].textContent = "Finding a Match...";
-  document.getElementById("battle").style.display = "none"; // Hide battle UI while searching
-  set(queueRef, { "UserID:": uid });
+  if (queueBtn) {
+    queueBtn.textContent = "Finding a Match...";
+  }
+  if (battleElement) {
+    battleElement.style.display = "none";
+  }
+  if (queueRef && uid) {
+    set(queueRef, { "UserID:": uid });
+  }
 }
 
-document.getElementById("queueBtn").addEventListener("click", updateQueueData, false);
+if (queueBtn) {
+  queueBtn.addEventListener("click", updateQueueData, false);
+}
 
+if (signOutBtn) {
+  signOutBtn.addEventListener("click", async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.error("Failed to sign out", err);
+    }
+  });
+}

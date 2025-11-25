@@ -23,7 +23,7 @@ const firebaseConfig = {
   messagingSenderId: "772072071103",
   appId: "1:772072071103:web:0ecb0d98cdbe1d39708b0a",
   measurementId: "G-G1Q86QFQBP",
-  databaseURL: "https://arena-battlegrounds-2724e-default-rtdb.firebaseio.com/"
+  databaseURL: "https://arena-battlegrounds-2724e-default-rtdb.firebaseio.com/",
 };
 
 // Initialize Firebase and services
@@ -32,8 +32,16 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 const functions = getFunctions();
 
-connectFunctionsEmulator(functions, "localhost", 5001);
-connectAuthEmulator(auth, "http://127.0.0.1:9199");
-connectDatabaseEmulator(db, "127.0.0.1", 9009);
+// Only use emulators when running locally so hosted builds hit production.
+const isLocal =
+  typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1");
+
+if (isLocal) {
+  connectFunctionsEmulator(functions, "localhost", 5001);
+  connectAuthEmulator(auth, "http://127.0.0.1:9199");
+  connectDatabaseEmulator(db, "127.0.0.1", 9009);
+}
 
 export { app, auth, db, functions };
