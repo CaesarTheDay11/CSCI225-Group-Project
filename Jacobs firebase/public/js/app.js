@@ -58,6 +58,13 @@ onAuthStateChanged(auth, async (user) => {
 
     console.log(user);
 
+    // Ensure starter items exist for this user (do not overwrite existing items)
+    try {
+      await seedStarterItemsIfMissing(uid);
+    } catch (e) {
+      console.error('Error seeding starter items for user', e);
+    }
+
 
     onValue(matchRef, snap => {
       if (snap.exists()) {
@@ -214,4 +221,69 @@ async function updateClassStatusUI() {
     saved.style.color = 'red';
   }
 }
+
+// --------------------
+// Per-user items (inventory) helpers
+// Schema: users/<uid>/items/{ itemId: { id, name, qty } }
+// --------------------
+async function seedStarterItemsIfMissing(uid) {
+  if (!uid) return;
+  try {
+    const snap = await get(ref(db, `users/${uid}/items`));
+    if (!snap.exists()) {
+      const starter = {
+        potion_small: { id: 'potion_small', name: 'Small Potion', qty: 3 },
+        bomb: { id: 'bomb', name: 'Bomb', qty: 1 }
+      };
+      // Use update so we don't overwrite other user fields
+      await update(ref(db, `users/${uid}`), { items: starter });
+      console.log('Seeded starter items for user', uid);
+    }
+  } catch (e) {
+    console.error('seedStarterItemsIfMissing error', e);
+  }
+}
+
+async function getUserItems(uid) {
+  if (!uid) return {};
+  const snap = await get(ref(db, `users/${uid}/items`));
+  return snap.exists() ? snap.val() : {};
+}
+
+async function addItemToUser(uid, item) {
+  // item: { id, name, qty }
+  if (!uid || !item || !item.id) throw new Error('Invalid args to addItemToUser');
+  const itemRef = ref(db, `users/${uid}/items/${item.id}`);
+  const snap = await get(itemRef);
+  if (snap.exists()) {
+    const existing = snap.val();
+    const newQty = (existing.qty || 0) + (item.qty || 1);
+    await update(itemRef, { qty: newQty, name: item.name || existing.name });
+  } else {
+    await update(itemRef, { id: item.id, name: item.name || item.id, qty: item.qty || 1 });
+  }
+}
+
+async function useItemForUser(uid, itemId) {
+  if (!uid || !itemId) throw new Error('Invalid args to useItemForUser');
+  const itemRef = ref(db, `users/${uid}/items/${itemId}`);
+  const snap = await get(itemRef);
+  if (!snap.exists()) throw new Error('Item not found');
+  const item = snap.val();
+  const qty = item.qty || 0;
+  if (qty <= 0) throw new Error('No item left');
+  const newQty = qty - 1;
+  if (newQty <= 0) {
+    // remove the item node when qty hits zero
+    await set(itemRef, null);
+  } else {
+    await update(itemRef, { qty: newQty });
+  }
+  return item;
+}
+
+// Expose quick helpers for debugging in console
+window.getUserItems = getUserItems;
+window.addItemToUser = addItemToUser;
+window.useItemForUser = useItemForUser;
 

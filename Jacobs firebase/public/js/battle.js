@@ -351,6 +351,14 @@ window.initializeBattle = async function(mId, userId) {
   try { await renderSpecialButtons(); } catch (e) { /* ignore */ }
   onValue(playerRef, () => { renderSpecialButtons().catch(console.error); });
   onValue(currentTurnRef, () => { renderSpecialButtons().catch(console.error); });
+  // Render inventory and re-render on player/opponent changes
+  try { await renderInventory(); } catch (e) { /* ignore */ }
+  onValue(playerRef, () => { renderInventory().catch(console.error); });
+  onValue(opponentRef, () => { renderInventory().catch(console.error); });
+  // Render inventory and re-render on player/opponent changes
+  try { await renderInventory(); } catch (e) { /* ignore */ }
+  onValue(playerRef, () => { renderInventory().catch(console.error); });
+  onValue(opponentRef, () => { renderInventory().catch(console.error); });
   
   // Check if game is already over or players are dead
   const initialMatchSnapshot = await get(matchRef);
@@ -587,6 +595,46 @@ async function handlePlayerDeath(deadPlayerId) {
     fainted: true,
     hp: 0
   });
+
+  // Give rewards: increment wins/losses and award consolation items
+  try {
+    const winnerUid = winnerId;
+    const loserUid = deadPlayerId;
+
+    // increment winner.wins and loser.losses (best-effort)
+    try {
+      const wSnap = await get(ref(db, `users/${winnerUid}/wins`));
+      const lSnap = await get(ref(db, `users/${loserUid}/losses`));
+      const wVal = (wSnap.exists() ? Number(wSnap.val()) : 0) + 1;
+      const lVal = (lSnap.exists() ? Number(lSnap.val()) : 0) + 1;
+      const u1 = update(ref(db, `users/${winnerUid}`), { wins: wVal });
+      const u2 = update(ref(db, `users/${loserUid}`), { losses: lVal });
+      await Promise.all([u1, u2]);
+    } catch (e) {
+      console.error('Could not update wins/losses', e);
+    }
+
+    // Award items: winner gets 1 small potion, loser gets 3 small potions (consolation)
+    try {
+      if (window && window.addItemToUser) {
+        await window.addItemToUser(winnerUid, { id: 'potion_small', name: 'Small Potion', qty: 1 });
+        await window.addItemToUser(loserUid, { id: 'potion_small', name: 'Small Potion', qty: 3 });
+      } else {
+        // fallback: best-effort merge using get/update
+        const wItemSnap = await get(ref(db, `users/${winnerUid}/items/potion_small`));
+        const lItemSnap = await get(ref(db, `users/${loserUid}/items/potion_small`));
+        const wQty = (wItemSnap.exists() && wItemSnap.val().qty) ? Number(wItemSnap.val().qty) + 1 : 1;
+        const lQty = (lItemSnap.exists() && lItemSnap.val().qty) ? Number(lItemSnap.val().qty) + 3 : 3;
+        const p1 = update(ref(db, `users/${winnerUid}/items/potion_small`), { id: 'potion_small', name: 'Small Potion', qty: wQty });
+        const p2 = update(ref(db, `users/${loserUid}/items/potion_small`), { id: 'potion_small', name: 'Small Potion', qty: lQty });
+        await Promise.all([p1, p2]);
+      }
+    } catch (e) {
+      console.error('Could not award items', e);
+    }
+  } catch (e) {
+    console.error('Rewarding players failed', e);
+  }
   
   // Disable buttons
   disableButtons();
@@ -1061,3 +1109,116 @@ async function chooseSpecial(abilityId) {
   logMessage(message);
 }
 window.chooseSpecial = chooseSpecial;
+
+// ------------------
+// Inventory UI + item usage
+// ------------------
+async function renderInventory() {
+  const invEl = document.getElementById('inventory-list');
+  if (!invEl) return;
+  invEl.textContent = '(loading...)';
+
+  if (!currentUserId) {
+    invEl.textContent = '(not signed in)';
+    return;
+  }
+
+  try {
+    // use the helper exposed by app.js
+    const items = (window.getUserItems) ? await window.getUserItems(currentUserId) : {};
+    if (!items || Object.keys(items).length === 0) {
+      invEl.innerHTML = '<div class="inv-empty">(no items)</div>';
+      return;
+    }
+
+    invEl.innerHTML = '';
+    for (const key of Object.keys(items)) {
+      const it = items[key];
+      const row = document.createElement('div');
+      row.className = 'inv-row';
+      row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '8px';
+      const name = document.createElement('span'); name.textContent = `${it.name} x${it.qty}`;
+      const useBtn = document.createElement('button'); useBtn.textContent = 'Use';
+      useBtn.disabled = !(it.qty > 0);
+      useBtn.addEventListener('click', () => { useItem(key).catch(console.error); });
+      row.appendChild(name);
+      row.appendChild(useBtn);
+      invEl.appendChild(row);
+    }
+  } catch (e) {
+    console.error('renderInventory error', e);
+    invEl.textContent = '(error)';
+  }
+}
+
+async function useItem(itemId) {
+  if (!matchId || !currentUserId) {
+    logMessage('Not in a match or not signed in.');
+    return;
+  }
+
+  // Require it to be the player's turn (same rule as abilities)
+  const turnSnapshot = await get(currentTurnRef);
+  if (!turnSnapshot.exists() || turnSnapshot.val() !== currentUserId) {
+    logMessage("It's not your turn to use an item.");
+    return;
+  }
+
+  // Fetch latest states
+  const [pSnap, oSnap] = await Promise.all([ get(playerRef), get(opponentRef) ]);
+  const playerStats = pSnap.val();
+  const opponentStats = oSnap.val();
+  if (!playerStats || playerStats.fainted) { logMessage('You cannot use items; you have fainted'); return; }
+  if (!opponentStats || opponentStats.fainted) { logMessage('Opponent has fainted'); return; }
+
+  // Consume item in user's profile (window.useItemForUser was added in app.js)
+  try {
+    if (!window.useItemForUser) throw new Error('useItemForUser helper not available');
+    const item = await window.useItemForUser(currentUserId, itemId);
+    // Apply effects based on item id
+    const updates = [];
+    const matchUpdates = {};
+
+    if (itemId === 'potion_small') {
+      const heal = 20;
+      const newHp = Math.min(playerStats.maxHp || 100, (playerStats.hp || 0) + heal);
+      updates.push(update(playerRef, { hp: newHp }));
+      matchUpdates.lastMove = 'use_item_potion_small';
+      matchUpdates.lastMoveActor = currentUserId;
+      matchUpdates.lastMoveHeal = heal;
+    } else if (itemId === 'bomb') {
+      const dmg = 20;
+      const actual = Math.max(0, dmg - (opponentStats.defense || 0));
+      const newOppHp = Math.max(0, (opponentStats.hp || 0) - actual);
+      updates.push(update(opponentRef, { hp: newOppHp }));
+      matchUpdates.lastMove = 'use_item_bomb';
+      matchUpdates.lastMoveActor = currentUserId;
+      matchUpdates.lastMoveDamage = actual;
+      if (newOppHp <= 0) { matchUpdates.status = 'finished'; matchUpdates.winner = currentUserId; }
+    } else {
+      logMessage('Used unknown item: ' + itemId);
+    }
+
+    // advance turn and increment counter (unless match ended)
+    const curMatchSnap = await get(matchRef);
+    const turnCounter = (curMatchSnap.val()?.turnCounter || 0) + 1;
+    if (!matchUpdates.status) {
+      matchUpdates.currentTurn = opponentId;
+      matchUpdates.turnCounter = turnCounter;
+    }
+
+    updates.push(update(matchRef, matchUpdates));
+    await Promise.all(updates);
+
+    logMessage(`Used ${item.name || itemId}`);
+    // re-render inventory
+    try { await renderInventory(); } catch (e) { /* ignore */ }
+  } catch (e) {
+    console.error('useItem error', e);
+    logMessage('Could not use item: ' + (e && e.message));
+  }
+}
+
+// expose for debugging
+window.renderInventory = renderInventory;
+window.useItem = useItem;

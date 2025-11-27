@@ -20,6 +20,50 @@ body {
   transition: width 0.3s;
 }
 
+/* Specials (ability) buttons styling */
+#specials {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+#specials button {
+  background: linear-gradient(180deg,#2e7d32,#1b5e20);
+  color: #fff;
+  border: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 6px 10px rgba(0,0,0,0.35), inset 0 -2px 0 rgba(0,0,0,0.15);
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform .08s ease, box-shadow .08s ease, opacity .08s ease;
+}
+
+#specials button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 18px rgba(0,0,0,0.45); }
+#specials button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(.2); }
+
+/* Inventory panel */
+.inventory-panel {
+  margin: 16px auto;
+  max-width: 520px;
+  background: rgba(255,255,255,0.03);
+  border: 2px solid rgba(255,255,255,0.04);
+  padding: 12px;
+  border-radius: 10px;
+  text-align: left;
+}
+
+.inventory-panel h3 { margin: 0 0 8px 0; font-size: 1.1rem; }
+.inventory-panel .inv-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 8px; border-radius:6px; }
+.inventory-panel .inv-row:nth-child(odd) { background: rgba(255,255,255,0.01); }
+.inventory-panel .inv-row button { background: #2196f3; color: white; border: none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:600; }
+.inventory-panel .inv-row button:hover { background:#1e88e5; transform: translateY(-1px); }
+.inventory-panel .inv-row button:disabled { background:#6aa8e6; opacity:0.6; cursor:not-allowed; }
+
+.inv-empty { color: #ccc; font-style: italic; }
+
 #menu button {
   margin: 10px;
   padding: 10px 20px;
