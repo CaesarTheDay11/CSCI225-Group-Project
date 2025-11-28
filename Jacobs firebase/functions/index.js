@@ -1,21 +1,5 @@
-// Try to set global options (best-effort). Newer firebase-functions exposes v2/options
-// but older versions may not — avoid hard crash in emulators by guarding the import.
-let setGlobalOptions = null;
-try {
-  // prefer the v2/options entrypoint when available
-  setGlobalOptions = require("firebase-functions/v2/options").setGlobalOptions;
-} catch (e) {
-  try {
-    // fallback to top-level export if present
-    const ff = require("firebase-functions");
-    if (typeof ff.setGlobalOptions === 'function') setGlobalOptions = ff.setGlobalOptions;
-  } catch (e2) {
-    // no-op; we'll proceed without setting global options
-  }
-}
-if (typeof setGlobalOptions === 'function') {
-  try { setGlobalOptions({ maxInstances: 10 }); } catch (e) { console.warn('setGlobalOptions failed', e); }
-}
+const { setGlobalOptions } = require("firebase-functions/v2/options");
+setGlobalOptions({ maxInstances: 10 });
 
 const { onValueCreated } = require("firebase-functions/v2/database");
 const admin = require("firebase-admin");

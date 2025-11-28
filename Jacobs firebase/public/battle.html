@@ -40,6 +40,13 @@
     <div id="enemy" class="player-card">
       <div class="player-label">Opponent</div>
       <h2 id="enemy-name">Gladiator</h2>
+  <img id="enemy-img" src="img/warrior.jpg" alt="enemy" style="width:96px;height:96px;display:block;margin:8px auto;border-radius:8px;">
+      <div class="stat-lines">
+        <div id="enemy-hp-text">HP: --/--</div>
+        <div class="mana-bar-outer"><div id="enemy-mana-fill" class="mana-fill"></div></div>
+        <div id="enemy-mana-text">Mana: --/--</div>
+        <div id="enemy-stats">ATK: -- &nbsp; DEF: --</div>
+      </div>
       <div class="hp-bar">
         <div id="enemy-hp" class="hp-fill"></div>
       </div>
@@ -49,6 +56,13 @@
     <div id="player" class="player-card">
       <div class="player-label">You</div>
       <h2 id="player-name">Hero</h2>
+  <img id="player-img" src="img/warrior.jpg" alt="player" style="width:96px;height:96px;display:block;margin:8px auto;border-radius:8px;">
+      <div class="stat-lines">
+        <div id="player-hp-text">HP: --/--</div>
+        <div class="mana-bar-outer"><div id="player-mana-fill" class="mana-fill"></div></div>
+        <div id="player-mana-text">Mana: --/--</div>
+        <div id="player-stats">ATK: -- &nbsp; DEF: --</div>
+      </div>
       <div class="hp-bar">
         <div id="player-hp" class="hp-fill"></div>
       </div>
@@ -77,6 +91,9 @@
       <div class="end-game-content">
         <h1 id="end-game-title">Game Over</h1>
         <p id="end-game-message"></p>
+        <!-- Reward chooser shown to winner after match (populated dynamically) -->
+        <div id="reward-chooser" style="margin-top:12px; display:none; text-align:center;"></div>
+        <div id="reward-status" style="margin-top:8px; font-size:0.95rem; color:#ddd"></div>
         <button id="return-to-queue-btn" class="return-btn" onclick="returnToQueue()">Return to Queue</button>
       </div>
     </div>

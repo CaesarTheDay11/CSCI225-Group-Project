@@ -231,9 +231,16 @@ async function seedStarterItemsIfMissing(uid) {
   try {
     const snap = await get(ref(db, `users/${uid}/items`));
     if (!snap.exists()) {
+      // Seed one of each item for testing
       const starter = {
-        potion_small: { id: 'potion_small', name: 'Small Potion', qty: 3 },
-        bomb: { id: 'bomb', name: 'Bomb', qty: 1 }
+        potion_small: { id: 'potion_small', name: 'Small Potion', qty: 1 },
+        potion_large: { id: 'potion_large', name: 'Large Potion', qty: 1 },
+        bomb: { id: 'bomb', name: 'Bomb', qty: 1 },
+        elixir: { id: 'elixir', name: 'Elixir', qty: 1 },
+        shield_token: { id: 'shield_token', name: 'Shield Token', qty: 1 },
+        speed_scroll: { id: 'speed_scroll', name: 'Speed Scroll', qty: 1 },
+        strength_tonic: { id: 'strength_tonic', name: 'Strength Tonic', qty: 1 },
+        revive_scroll: { id: 'revive_scroll', name: 'Revive Scroll', qty: 1 }
       };
       // Use update so we don't overwrite other user fields
       await update(ref(db, `users/${uid}`), { items: starter });
@@ -286,4 +293,18 @@ async function useItemForUser(uid, itemId) {
 window.getUserItems = getUserItems;
 window.addItemToUser = addItemToUser;
 window.useItemForUser = useItemForUser;
+
+// Item catalog (used for reward selection and UI labels)
+const ITEM_CATALOG = {
+  potion_small: { id: 'potion_small', name: 'Small Potion', desc: 'Heals 20 HP.' },
+  potion_large: { id: 'potion_large', name: 'Large Potion', desc: 'Heals 50 HP.' },
+  bomb: { id: 'bomb', name: 'Bomb', desc: 'Deals damage to the opponent.' },
+  elixir: { id: 'elixir', name: 'Elixir', desc: 'Fully restores mana.' },
+  shield_token: { id: 'shield_token', name: 'Shield Token', desc: 'Grants +10 temporary defense for 1 turn.' },
+  speed_scroll: { id: 'speed_scroll', name: 'Speed Scroll', desc: 'Next turn acts first.' },
+  strength_tonic: { id: 'strength_tonic', name: 'Strength Tonic', desc: 'Permanently increases base attack by 1.' },
+  revive_scroll: { id: 'revive_scroll', name: 'Revive Scroll', desc: 'Revives with 30% HP once.' }
+};
+
+window.getItemCatalog = () => ITEM_CATALOG;
 

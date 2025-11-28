@@ -20,6 +20,12 @@ body {
   transition: width 0.3s;
 }
 
+/* Mana bar */
+.mana-bar-outer { background:#333; width:200px; height:10px; margin:6px auto; border-radius:6px; border:1px solid rgba(255,255,255,0.04); }
+.mana-fill { background: linear-gradient(90deg,#2196f3,#64b5f6); height:100%; width:0%; transition: width .25s; }
+.stat-lines { font-size:0.9rem; color:#ddd; margin-bottom:6px; }
+.stat-lines div { margin:3px 0; }
+
 /* Specials (ability) buttons styling */
 #specials {
   margin-top: 12px;
@@ -64,18 +70,36 @@ body {
 
 .inv-empty { color: #ccc; font-style: italic; }
 
-#menu button {
-  margin: 10px;
-  padding: 10px 20px;
-  background: #666;
-  color: white;
-  border: none;
+/* Reward chooser buttons should match specials style */
+#reward-chooser button {
+  background: linear-gradient(180deg,#2e7d32,#1b5e20);
+  color: #fff;
+  border: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 6px 10px rgba(0,0,0,0.35), inset 0 -2px 0 rgba(0,0,0,0.15);
   cursor: pointer;
+  font-weight: 700;
 }
 
-#menu button:hover {
-  background: #888;
+#reward-chooser button:hover { transform: translateY(-2px); box-shadow: 0 12px 18px rgba(0,0,0,0.45); }
+
+#menu button {
+  margin: 10px;
+  margin: 10px;
+  padding: 10px 20px;
+  background: linear-gradient(180deg,#2e7d32,#1b5e20);
+  color: #fff;
+  border: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 6px 10px rgba(0,0,0,0.35), inset 0 -2px 0 rgba(0,0,0,0.15);
+  cursor: pointer;
+  font-weight: 700;
 }
+
+#menu button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 18px rgba(0,0,0,0.45); }
+#menu button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(.2); }
 
 #battle {
   display: none; /* Hidden by default, shown only when matched */

@@ -48,6 +48,14 @@ function applyDamageToObject(targetObj, rawDamage, opts = {}) {
   return { damage: final, newHp };
 }
 
+// Effective attack includes baseAtk plus any one-turn strength boosts
+function getEffectiveBaseAtk(user, fallback = 10) {
+  if (!user) return fallback;
+  const base = Number(user.baseAtk ?? fallback);
+  const temp = (user.status && user.status.strength_boost) ? Number(user.status.strength_boost.amount || 0) : 0;
+  return base + temp;
+}
+
 function tickCooldownsObject(abilityCooldowns) {
   if (!abilityCooldowns) return {};
   const out = Object.assign({}, abilityCooldowns);
@@ -90,7 +98,8 @@ function processStatusEffectsLocal(actorStats) {
 
   // Burn: DOT
   if (status.burn) {
-    const dmg = (status.burn.dmg || Math.max(1, Math.floor((actorStats.baseAtk||10)/3)));
+    const effectiveAtk = getEffectiveBaseAtk(actorStats, actorStats.baseAtk || 10);
+    const dmg = (status.burn.dmg || Math.max(1, Math.floor(effectiveAtk / 3)));
     const { damage, newHp } = applyDamageToObject({ hp: actorStats.hp, defense: 0 }, dmg, { ignoreDefense: true });
     updates.hp = newHp;
     messages.push(`${actorStats.name || 'Player'} suffers ${damage} burn damage.`);
@@ -137,6 +146,16 @@ function processStatusEffectsLocal(actorStats) {
     }
   }
 
+  // Shield: temporary defense buff that expires after its turns
+  if (status.shield) {
+    status.shield.turns = (status.shield.turns || 0) - 1;
+    if (status.shield.turns <= 0) {
+      const amt = status.shield.amount || 0;
+      updates.defense = Math.max(0, (actorStats.defense || 0) - amt);
+      delete status.shield;
+    }
+  }
+
   // Stun is handled by the move logic (we'll check actorStats.status.stun in chooseMove)
 
   updates.status = Object.keys(status).length ? status : null;
@@ -151,7 +170,7 @@ function processStatusEffectsLocal(actorStats) {
 // --- Ability handlers (return DB-friendly update objects) ---
 const abilityHandlers = {
   mage_fireball(user, target) {
-    const base = (user.baseAtk || 10);
+    const base = getEffectiveBaseAtk(user, 10);
     const raw = Math.floor(Math.random() * 8) + base + 8;
     const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw, { ignoreDefense: true });
     const opponentUpdates = { hp: newHp };
@@ -163,7 +182,7 @@ const abilityHandlers = {
   },
 
   warrior_rend(user, target) {
-    const base = user.baseAtk || 12;
+    const base = getEffectiveBaseAtk(user, 12);
     const raw = Math.floor(Math.random() * 10) + base + 6;
     const effectiveDefense = (target.defense || 0) / 2;
     const final = Math.max(0, Math.round(raw - effectiveDefense));
@@ -174,7 +193,7 @@ const abilityHandlers = {
   },
 
   archer_volley(user, target) {
-    const base = user.baseAtk || 14;
+    const base = getEffectiveBaseAtk(user, 14);
     let total = 0;
     for (let i = 0; i < 3; i++) total += Math.floor(Math.random() * 6) + Math.floor(base / 2);
     const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, total);
@@ -193,7 +212,7 @@ const abilityHandlers = {
   },
 
   slime_splatter(user, target) {
-    const base = user.baseAtk || 6;
+    const base = getEffectiveBaseAtk(user, 6);
     const raw = Math.floor(Math.random() * 6) + base;
     const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
     const opponentUpdates = { hp: newHp };
@@ -205,7 +224,7 @@ const abilityHandlers = {
   },
 
   gladiator_charge(user, target) {
-    const base = user.baseAtk || 11;
+    const base = getEffectiveBaseAtk(user, 11);
     const raw = Math.floor(Math.random() * 12) + base + 4;
     const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
     const opponentUpdates = { hp: newHp };
@@ -221,7 +240,7 @@ const abilityHandlers = {
   },
 
   boss_earthquake(user, target) {
-    const base = user.baseAtk || 18;
+    const base = getEffectiveBaseAtk(user, 18);
     const raw = Math.floor(Math.random() * 18) + base + 8;
     const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
     const opponentUpdates = { hp: newHp };
@@ -233,7 +252,7 @@ const abilityHandlers = {
   },
 
   mage_iceblast(user, target) {
-    const base = user.baseAtk || 10;
+    const base = getEffectiveBaseAtk(user, 10);
     const raw = Math.floor(Math.random() * 6) + base + 6;
     const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
     const opponentUpdates = { hp: newHp };
@@ -260,7 +279,7 @@ const abilityHandlers = {
   },
 
   archer_poison(user, target) {
-    const base = user.baseAtk || 14;
+    const base = getEffectiveBaseAtk(user, 14);
     const raw = Math.floor(Math.random() * 6) + base;
     const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
     const opponentUpdates = { hp: newHp };
@@ -583,6 +602,26 @@ async function handlePlayerDeath(deadPlayerId) {
   const isMe = deadPlayerId === currentUserId;
   const winnerId = isMe ? opponentId : currentUserId;
   
+  // Check for revive flag on the player's match node (one-time revive)
+  const deadPlayerRef = ref(db, `matches/${matchId}/players/${deadPlayerId}`);
+  try {
+    const deadSnap = await get(deadPlayerRef);
+    const deadStats = deadSnap.exists() ? deadSnap.val() : {};
+    if (deadStats?.has_revive) {
+      // consume revive and restore to 30% HP
+      const newHp = Math.max(1, Math.ceil((deadStats.maxHp || 100) * 0.3));
+        // remove dangerous DOT status effects so revive isn't immediately countered by poison/burn
+        const newStatus = Object.assign({}, deadStats.status || {});
+        if (newStatus.poison) delete newStatus.poison;
+        if (newStatus.burn) delete newStatus.burn;
+        await update(deadPlayerRef, { has_revive: null, hp: newHp, fainted: false, status: Object.keys(newStatus).length ? newStatus : null });
+      logMessage('A Revive Scroll saved the player from defeat!');
+      return; // do not finish match
+    }
+  } catch (e) {
+    console.error('Error checking revive', e);
+  }
+
   // Update match status
   await update(matchRef, {
     status: "finished",
@@ -590,50 +629,20 @@ async function handlePlayerDeath(deadPlayerId) {
   });
   
   // Mark player as fainted if not already
-  const deadPlayerRef = ref(db, `matches/${matchId}/players/${deadPlayerId}`);
   await update(deadPlayerRef, {
     fainted: true,
     hp: 0
   });
 
   // Give rewards: increment wins/losses and award consolation items
+  // Initiate reward phase: winner chooses an item, loser gets a random item.
   try {
     const winnerUid = winnerId;
     const loserUid = deadPlayerId;
-
-    // increment winner.wins and loser.losses (best-effort)
-    try {
-      const wSnap = await get(ref(db, `users/${winnerUid}/wins`));
-      const lSnap = await get(ref(db, `users/${loserUid}/losses`));
-      const wVal = (wSnap.exists() ? Number(wSnap.val()) : 0) + 1;
-      const lVal = (lSnap.exists() ? Number(lSnap.val()) : 0) + 1;
-      const u1 = update(ref(db, `users/${winnerUid}`), { wins: wVal });
-      const u2 = update(ref(db, `users/${loserUid}`), { losses: lVal });
-      await Promise.all([u1, u2]);
-    } catch (e) {
-      console.error('Could not update wins/losses', e);
-    }
-
-    // Award items: winner gets 1 small potion, loser gets 3 small potions (consolation)
-    try {
-      if (window && window.addItemToUser) {
-        await window.addItemToUser(winnerUid, { id: 'potion_small', name: 'Small Potion', qty: 1 });
-        await window.addItemToUser(loserUid, { id: 'potion_small', name: 'Small Potion', qty: 3 });
-      } else {
-        // fallback: best-effort merge using get/update
-        const wItemSnap = await get(ref(db, `users/${winnerUid}/items/potion_small`));
-        const lItemSnap = await get(ref(db, `users/${loserUid}/items/potion_small`));
-        const wQty = (wItemSnap.exists() && wItemSnap.val().qty) ? Number(wItemSnap.val().qty) + 1 : 1;
-        const lQty = (lItemSnap.exists() && lItemSnap.val().qty) ? Number(lItemSnap.val().qty) + 3 : 3;
-        const p1 = update(ref(db, `users/${winnerUid}/items/potion_small`), { id: 'potion_small', name: 'Small Potion', qty: wQty });
-        const p2 = update(ref(db, `users/${loserUid}/items/potion_small`), { id: 'potion_small', name: 'Small Potion', qty: lQty });
-        await Promise.all([p1, p2]);
-      }
-    } catch (e) {
-      console.error('Could not award items', e);
-    }
+    // show chooser UI for the winner, and waiting text for the loser
+    initiateRewardPhase(winnerUid, loserUid).catch(console.error);
   } catch (e) {
-    console.error('Rewarding players failed', e);
+    console.error('Reward initiation failed', e);
   }
   
   // Disable buttons
@@ -647,6 +656,109 @@ async function handlePlayerDeath(deadPlayerId) {
     await showEndGame(false, `${opponentName} wins! You have been defeated!`);
   } else {
     await showEndGame(true, `You win! ${opponentName} has been defeated!`);
+  }
+}
+
+// Reward flow helpers
+async function initiateRewardPhase(winnerUid, loserUid) {
+  // If current user is the winner, show the chooser and let them pick.
+  const chooser = document.getElementById('reward-chooser');
+  const status = document.getElementById('reward-status');
+  if (!chooser || !status) return;
+  chooser.style.display = 'none';
+  status.textContent = '';
+
+  // get catalog
+  const catalog = (window.getItemCatalog) ? window.getItemCatalog() : {};
+  const itemKeys = Object.keys(catalog || {});
+
+  if (currentUserId === winnerUid) {
+    // render choices
+    chooser.innerHTML = '<div style="margin-bottom:8px;">Pick your reward:</div>';
+    const grid = document.createElement('div'); grid.style.display = 'flex'; grid.style.flexWrap = 'wrap'; grid.style.justifyContent = 'center'; grid.style.gap = '8px';
+    itemKeys.forEach(k => {
+      const meta = catalog[k];
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = meta.name;
+      b.title = meta.desc || '';
+      b.addEventListener('click', async () => {
+        try {
+          await finalizeRewards(winnerUid, loserUid, k);
+          chooser.style.display = 'none';
+          status.textContent = `You received: ${meta.name}. Loser assigned a random reward.`;
+        } catch (e) {
+          console.error('finalizeRewards error', e);
+          status.textContent = '(error assigning rewards)';
+        }
+      });
+      grid.appendChild(b);
+    });
+    chooser.appendChild(grid);
+    chooser.style.display = '';
+  } else if (currentUserId === loserUid) {
+    // loser: show waiting text until DB updated
+    chooser.style.display = 'none';
+    status.textContent = 'Match finished — waiting for winner to pick a reward...';
+  } else {
+    // spectator or other, just hide
+    chooser.style.display = 'none';
+    status.textContent = '';
+  }
+}
+
+async function finalizeRewards(winnerUid, loserUid, chosenItemId) {
+  // Award chosen item to winner and random to loser; increment wins/losses.
+  // Attempt to use window.addItemToUser fallback to manual update.
+  try {
+    // increment wins/losses
+    try {
+      const wSnap = await get(ref(db, `users/${winnerUid}/wins`));
+      const lSnap = await get(ref(db, `users/${loserUid}/losses`));
+      const wVal = (wSnap.exists() ? Number(wSnap.val()) : 0) + 1;
+      const lVal = (lSnap.exists() ? Number(lSnap.val()) : 0) + 1;
+      await Promise.all([
+        update(ref(db, `users/${winnerUid}`), { wins: wVal }),
+        update(ref(db, `users/${loserUid}`), { losses: lVal })
+      ]);
+    } catch (e) { console.error('Could not increment wins/losses', e); }
+
+    // award chosen to winner
+    const catalog = (window.getItemCatalog) ? window.getItemCatalog() : {};
+    const chosenMeta = catalog[chosenItemId] || { id: chosenItemId, name: chosenItemId };
+    if (window && window.addItemToUser) {
+      await window.addItemToUser(winnerUid, { id: chosenMeta.id, name: chosenMeta.name, qty: 1 });
+    } else {
+      const wItemRef = ref(db, `users/${winnerUid}/items/${chosenMeta.id}`);
+      const s = await get(wItemRef);
+      const qty = (s.exists() && s.val().qty) ? Number(s.val().qty) + 1 : 1;
+      await update(wItemRef, { id: chosenMeta.id, name: chosenMeta.name, qty });
+    }
+
+    // award random item to loser (choose from catalog randomly)
+    const keys = Object.keys(catalog || {});
+    let randId = 'potion_small';
+    if (keys.length) {
+      randId = keys[Math.floor(Math.random() * keys.length)];
+    }
+    const randMeta = catalog[randId] || { id: randId, name: randId };
+    if (window && window.addItemToUser) {
+      await window.addItemToUser(loserUid, { id: randMeta.id, name: randMeta.name, qty: 1 });
+    } else {
+      const lItemRef = ref(db, `users/${loserUid}/items/${randMeta.id}`);
+      const s2 = await get(lItemRef);
+      const qty2 = (s2.exists() && s2.val().qty) ? Number(s2.val().qty) + 1 : 1;
+      await update(lItemRef, { id: randMeta.id, name: randMeta.name, qty: qty2 });
+    }
+
+    // Optionally: write a match-level record of rewards for auditing
+    try {
+      await update(ref(db, `matches/${matchId}/rewards`), { winner: chosenItemId, loser: randId });
+    } catch (e) { /* ignore */ }
+
+  } catch (e) {
+    console.error('awardItems error', e);
+    throw e;
   }
 }
 
@@ -735,29 +847,90 @@ window.returnToQueue = async function() {
 };
 
 function updatePlayerUI(stats, isPlayer) {
-  const hpBar = isPlayer ? 
-    document.getElementById("player-hp") : 
-    document.getElementById("enemy-hp");
-  const nameElement = isPlayer ? 
-    document.getElementById("player-name") : 
-    document.getElementById("enemy-name");
+  // Elements depending on whether we're updating player or enemy
+  const hpBar = isPlayer ? document.getElementById("player-hp") : document.getElementById("enemy-hp");
+  const nameElement = isPlayer ? document.getElementById("player-name") : document.getElementById("enemy-name");
+  const hpText = isPlayer ? document.getElementById("player-hp-text") : document.getElementById("enemy-hp-text");
+  const manaFill = isPlayer ? document.getElementById("player-mana-fill") : document.getElementById("enemy-mana-fill");
+  const manaText = isPlayer ? document.getElementById("player-mana-text") : document.getElementById("enemy-mana-text");
+  const statsText = isPlayer ? document.getElementById("player-stats") : document.getElementById("enemy-stats");
+  const imgEl = isPlayer ? document.getElementById("player-img") : document.getElementById("enemy-img");
+  const card = isPlayer ? document.getElementById("player") : document.getElementById("enemy");
 
+  // Defensive defaults
+  const hp = Number(stats?.hp ?? 0);
+  const rawMaxHp = (stats && (typeof stats.maxHp !== 'undefined' ? stats.maxHp : (typeof stats.maxHP !== 'undefined' ? stats.maxHP : undefined)));
+  const maxHp = Number(typeof rawMaxHp !== 'undefined' ? rawMaxHp : (hp || 100)) || 100;
+  const mana = Number(stats?.mana ?? 0);
+  const rawMaxMana = (stats && (typeof stats.maxMana !== 'undefined' ? stats.maxMana : (typeof stats.maxMP !== 'undefined' ? stats.maxMP : undefined)));
+  const maxMana = Number(typeof rawMaxMana !== 'undefined' ? rawMaxMana : 0) || 0;
+  const atk = Number(stats?.baseAtk ?? stats?.attack ?? 0);
+  const def = Number(stats?.defense ?? stats?.def ?? 0);
+
+  // HP bar and text
   if (hpBar) {
-    const hpPercent = Math.max(0, (stats.hp / stats.maxHp) * 100);
+    const hpPercent = Math.max(0, Math.min(100, (hp / Math.max(1, maxHp)) * 100));
     hpBar.style.width = hpPercent + "%";
   }
+  if (hpText) {
+    hpText.textContent = `HP: ${hp}/${maxHp}`;
+  }
 
+  // Mana bar and text
+  if (manaFill) {
+    const manaPercent = maxMana > 0 ? Math.max(0, Math.min(100, (mana / maxMana) * 100)) : 0;
+    manaFill.style.width = manaPercent + "%";
+  }
+  if (manaText) {
+    if (maxMana > 0) {
+      manaText.textContent = `Mana: ${mana}/${maxMana}`;
+    } else {
+      manaText.textContent = '';
+    }
+  }
+
+  // ATK / DEF text
+  if (statsText) {
+    statsText.innerHTML = `ATK: ${atk} &nbsp; DEF: ${def}`;
+  }
+
+  // Name
   if (nameElement && stats.name) {
     nameElement.textContent = stats.name;
   }
-  
-  // Update fainted state visually
-  const card = isPlayer ? 
-    document.getElementById("player") : 
-    document.getElementById("enemy");
-  
+
+  // Set character image based on classId (best-effort)
+  try {
+    const classId = stats?.classId || stats?.class || 'warrior';
+    const jpg = `img/${classId}.jpg`;
+    const svg = `img/${classId}.svg`;
+    if (imgEl) {
+      // attempt JPG -> SVG -> inline SVG fallback
+      imgEl._triedSvg = false;
+      imgEl.onerror = function() {
+        try {
+          if (!imgEl._triedSvg) {
+            imgEl._triedSvg = true;
+            imgEl.src = svg; // try svg next
+            return;
+          }
+        } catch (ee) { /* ignore */ }
+        // last resort: inline SVG showing the initial
+        const initial = (classId && classId[0]) ? classId[0].toUpperCase() : '?';
+        const inline = `<svg xmlns='http://www.w3.org/2000/svg' width='96' height='96'><rect width='100%' height='100%' fill='%23ddd'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='40' fill='%23666' font-family='Arial,Helvetica,sans-serif'>${initial}</text></svg>`;
+        imgEl.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(inline);
+        imgEl.onerror = null;
+      };
+      // start with JPG
+      imgEl.src = jpg;
+    }
+  } catch (e) {
+    /* ignore image setting errors */
+  }
+
+  // Fainted visual state
   if (card) {
-    if (stats.hp <= 0 || stats.fainted) {
+    if (hp <= 0 || stats.fainted) {
       card.classList.add("fainted");
     } else {
       card.classList.remove("fainted");
@@ -948,7 +1121,8 @@ async function chooseMove(move) {
 
   // Apply move
   if (move === "attack") {
-    const damage = Math.floor(Math.random() * 10) + 10 + (playerStats.attackBoost || 0);
+  const tempBoost = (playerStats.status && playerStats.status.strength_boost) ? Number(playerStats.status.strength_boost.amount || 0) : 0;
+  const damage = Math.floor(Math.random() * 10) + 10 + (playerStats.attackBoost || 0) + tempBoost;
     const opponentDefense = opponentStats.defense || 0;
     const actualDamage = Math.max(0, damage - opponentDefense);
     moveDamage = actualDamage;
@@ -999,7 +1173,19 @@ async function chooseMove(move) {
   // Update turn counter and switch turns (unless game over)
   if (!gameOver) {
     matchUpdates.turnCounter = turnCounter;
-    matchUpdates.currentTurn = opponentId;
+    // If player has an extraTurns buffer, consume one and keep the turn
+    const extra = (playerStats.status && playerStats.status.extraTurns) ? Number(playerStats.status.extraTurns) : 0;
+    if (extra > 0) {
+      // decrement extraTurns and persist it
+      const newStatus = Object.assign({}, playerStats.status || {});
+      newStatus.extraTurns = Math.max(0, extra - 1);
+      if (newStatus.extraTurns <= 0) delete newStatus.extraTurns;
+      matchUpdates.currentTurn = currentUserId;
+      // also write back updated status for player
+      playerUpdates.status = Object.keys(newStatus).length ? newStatus : null;
+    } else {
+      matchUpdates.currentTurn = opponentId;
+    }
   }
   matchUpdates.lastMove = move;
   matchUpdates.lastMoveActor = currentUserId;
@@ -1096,8 +1282,21 @@ async function chooseSpecial(abilityId) {
   matchUpdates.lastMove = matchUpdates.lastMove || `special_${abilityId}`;
   matchUpdates.lastMoveActor = currentUserId;
   if (result.lastMoveDamage) matchUpdates.lastMoveDamage = result.lastMoveDamage;
-  matchUpdates.currentTurn = opponentId;
-  matchUpdates.turnCounter = ( ( (await get(matchRef)).val()?.turnCounter || 0 ) + 1 );
+  // determine next turn, consuming extraTurns if present
+  const currentMatchSnap = await get(matchRef);
+  matchUpdates.turnCounter = (currentMatchSnap.val()?.turnCounter || 0) + 1;
+  const extra = (playerStats.status && playerStats.status.extraTurns) ? Number(playerStats.status.extraTurns) : 0;
+  if (extra > 0) {
+    // consume one extra turn and keep turn with current player
+    const newStatus = Object.assign({}, playerStats.status || {});
+    newStatus.extraTurns = Math.max(0, extra - 1);
+    if (newStatus.extraTurns <= 0) delete newStatus.extraTurns;
+    // merge into playerUpdates so it gets written
+    playerUpdates.status = Object.keys(newStatus).length ? newStatus : null;
+    matchUpdates.currentTurn = currentUserId;
+  } else {
+    matchUpdates.currentTurn = opponentId;
+  }
 
   const updatePromises = [];
   if (Object.keys(playerUpdates).length) updatePromises.push(update(playerRef, playerUpdates));
@@ -1186,6 +1385,13 @@ async function useItem(itemId) {
       matchUpdates.lastMove = 'use_item_potion_small';
       matchUpdates.lastMoveActor = currentUserId;
       matchUpdates.lastMoveHeal = heal;
+    } else if (itemId === 'potion_large') {
+      const heal = 50;
+      const newHp = Math.min(playerStats.maxHp || 100, (playerStats.hp || 0) + heal);
+      updates.push(update(playerRef, { hp: newHp }));
+      matchUpdates.lastMove = 'use_item_potion_large';
+      matchUpdates.lastMoveActor = currentUserId;
+      matchUpdates.lastMoveHeal = heal;
     } else if (itemId === 'bomb') {
       const dmg = 20;
       const actual = Math.max(0, dmg - (opponentStats.defense || 0));
@@ -1195,6 +1401,48 @@ async function useItem(itemId) {
       matchUpdates.lastMoveActor = currentUserId;
       matchUpdates.lastMoveDamage = actual;
       if (newOppHp <= 0) { matchUpdates.status = 'finished'; matchUpdates.winner = currentUserId; }
+    } else if (itemId === 'elixir') {
+      // restore mana to max and grant a short attack boost
+      const newMana = playerStats.maxMana || playerStats.mana || 0;
+      const newStatus = Object.assign({}, playerStats.status || {});
+      // temporary attack buff for 2 turns
+      newStatus.strength = { turns: 2, amount: 4 };
+      updates.push(update(playerRef, { mana: newMana, status: newStatus }));
+      matchUpdates.lastMove = 'use_item_elixir';
+      matchUpdates.lastMoveActor = currentUserId;
+    } else if (itemId === 'shield_token') {
+      // grant +10 defense for 1 turn via status
+      const add = 10;
+      const newDefense = (playerStats.defense || 0) + add;
+      const newStatus = Object.assign({}, playerStats.status || {});
+      newStatus.shield = { turns: 1, amount: add };
+      updates.push(update(playerRef, { defense: newDefense, status: newStatus }));
+      matchUpdates.lastMove = 'use_item_shield_token';
+      matchUpdates.lastMoveActor = currentUserId;
+    } else if (itemId === 'speed_scroll') {
+      // grant an extra action: increment player's extraTurns status and keep current turn
+      const newStatus = Object.assign({}, playerStats.status || {});
+      newStatus.extraTurns = (newStatus.extraTurns || 0) + 1;
+      updates.push(update(playerRef, { status: newStatus }));
+      matchUpdates.lastMove = 'use_item_speed_scroll';
+      matchUpdates.lastMoveActor = currentUserId;
+      // keep currentTurn with the player so they can act again immediately
+      matchUpdates.currentTurn = currentUserId;
+    } else if (itemId === 'strength_tonic') {
+        // permanent improvement: +1 baseAtk
+        const newBase = (playerStats.baseAtk || 0) + 1;
+        // temporary +10 attack for this turn
+        const newStatus = Object.assign({}, playerStats.status || {});
+        newStatus.strength_boost = { turns: 1, amount: 10 };
+        updates.push(update(playerRef, { baseAtk: newBase, status: newStatus }));
+      matchUpdates.lastMove = 'use_item_strength_tonic';
+      matchUpdates.lastMoveActor = currentUserId;
+    } else if (itemId === 'revive_scroll') {
+      // set a one-time revive flag on the player's match node so death handler consumes it
+      updates.push(update(playerRef, { has_revive: true }));
+      matchUpdates.lastMove = 'use_item_revive_scroll';
+      matchUpdates.lastMoveActor = currentUserId;
+      logMessage('Revive Scroll prepared: you will be revived automatically if you fall.');
     } else {
       logMessage('Used unknown item: ' + itemId);
     }
@@ -1203,7 +1451,10 @@ async function useItem(itemId) {
     const curMatchSnap = await get(matchRef);
     const turnCounter = (curMatchSnap.val()?.turnCounter || 0) + 1;
     if (!matchUpdates.status) {
-      matchUpdates.currentTurn = opponentId;
+      // If current item explicitly set currentTurn (e.g., speed_scroll), preserve it.
+      if (typeof matchUpdates.currentTurn === 'undefined') {
+        matchUpdates.currentTurn = opponentId;
+      }
       matchUpdates.turnCounter = turnCounter;
     }
 
