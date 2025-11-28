@@ -4,7 +4,7 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arena Battlegrounds</title>
+    <title>Sign Up - Arena Battlegrounds</title>
     <link href="css/styles.css" rel="stylesheet">
   </head>
 
@@ -25,14 +25,19 @@
 
     <main class="auth-wrapper">
       <section class="auth-intro">
-        <h1>Log in to begin playing.</h1>
-        <p class="subhead">Need an account? <a href="signup.html">Sign up here.</a></p>
+        <h1>Create your account</h1>
+        <p class="subhead">Already have an account? <a href="index.html">Log in here.</a></p>
       </section>
 
       <section class="auth-grid">
         <div class="auth-card">
-          <h2>Sign In</h2>
-          <form id="login-form" class="auth-form">
+          <h2>Create Account</h2>
+          <form id="signup-form" class="auth-form">
+            <label class="field">
+              <span>Display Name</span>
+              <input type="text" name="displayName" autocomplete="name" placeholder="ArenaHero" required>
+            </label>
+
             <label class="field">
               <span>Email</span>
               <input type="email" name="email" autocomplete="email" placeholder="you@example.com" required>
@@ -40,10 +45,22 @@
 
             <label class="field">
               <span>Password</span>
-              <input type="password" name="password" autocomplete="current-password" placeholder="********" required>
+              <input type="password" name="password" autocomplete="new-password" placeholder="********" required>
             </label>
 
-            <button type="submit" class="primary-btn">Sign in</button>
+            <div class="field">
+              <span>Choose your class</span>
+              <div class="class-options">
+                <label><input type="radio" name="playerClass" value="warrior" required> Warrior</label>
+                <label><input type="radio" name="playerClass" value="mage"> Mage</label>
+                <label><input type="radio" name="playerClass" value="archer"> Archer</label>
+                <label><input type="radio" name="playerClass" value="cleric"> Cleric</label>
+                <label><input type="radio" name="playerClass" value="thief"> Thief</label>
+                <label><input type="radio" name="playerClass" value="monk"> Monk</label>
+              </div>
+            </div>
+
+            <button type="submit" class="primary-btn">Sign up & join</button>
           </form>
         </div>
       </section>

@@ -29,6 +29,8 @@ const userDisplay = document.getElementById("user-display");
 const battleElement = document.getElementById("battle");
 const queueBtn = document.getElementById("queueBtn");
 const signOutBtn = document.getElementById("signOutBtn");
+const navAuthLinks = document.querySelectorAll(".nav-auth-link");
+const navProtectedLinks = document.querySelectorAll(".nav-protected-link");
 
 // setup connection listener
 const connectedRef = ref(db, ".info/connected");
@@ -65,6 +67,8 @@ onAuthStateChanged(auth, async (user) => {
       }
     });
     if (signOutBtn) signOutBtn.style.display = "inline-flex";
+    navAuthLinks.forEach((link) => (link.style.display = "none"));
+    navProtectedLinks.forEach((link) => (link.style.display = ""));
 
     queueRef = ref(db, "queue/" + uid);
     onDisconnect(queueRef).remove();
@@ -104,6 +108,8 @@ onAuthStateChanged(auth, async (user) => {
     if (userDisplay) userDisplay.textContent = "Not signed in";
     if (battleElement) battleElement.style.display = "none";
     if (signOutBtn) signOutBtn.style.display = "none";
+    navAuthLinks.forEach((link) => (link.style.display = ""));
+    navProtectedLinks.forEach((link) => (link.style.display = "none"));
 
     document.querySelectorAll(".not-logged-in-vis")
       .forEach((el) => (el.style.display = ""));
@@ -152,6 +158,8 @@ if (signOutBtn) {
       await signOut(auth);
     } catch (err) {
       console.error("Failed to sign out", err);
+    } finally {
+      window.location.replace("index.html");
     }
   });
 }

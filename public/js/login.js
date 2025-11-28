@@ -66,6 +66,7 @@ if (signupForm) {
       await saveUserProfile(credential.user, playerClass);
       setStatus("Account created. You're ready to battle!", "success");
       signupForm.reset();
+      window.location.href = "battle.html";
     } catch (err) {
       console.error(err);
       setStatus(err.message, "error");
@@ -90,6 +91,7 @@ if (loginForm) {
       await saveUserProfile(credential.user);
       setStatus("Signed in. Queue up when you're ready.", "success");
       loginForm.reset();
+      window.location.href = "battle.html";
     } catch (err) {
       console.error(err);
       setStatus(err.message, "error");

@@ -8,24 +8,24 @@
   <link href="css/styles.css" rel="stylesheet">
 </head>
 
-<nav class="navbar">
-  <div class="nav-logo">Arena Battlegrounds</div>
-  <div class="nav-right">
-    <div class="user" id="user-display"> Not Signed In </div>
-    <button id="signOutBtn" class="secondary-btn nav-signout" type="button" style="display: none;">Sign out</button>
-  </div>
-
-  <ul class="nav-links">
-    <li><a href="battle.html">Battle</a></li>
-    <li><a href="profile.html">Profile</a></li>
-    <li><a href="index.html">Login / Signup</a></li>
-  </ul>
-</nav>
-
 <body>
+  <nav class="navbar">
+    <a class="nav-logo" href="index.html">Arena Battlegrounds</a>
+
+    <ul class="nav-links">
+      <li class="nav-protected-link"><a href="battle.html">Battle</a></li>
+      <li class="nav-protected-link"><a href="profile.html">Profile</a></li>
+      <li class="nav-auth-link"><a href="index.html">Login</a></li>
+      <li class="nav-auth-link"><a href="signup.html">Sign up</a></li>
+    </ul>
+
+    <div class="nav-right">
+      <div class="user" id="user-display">Not Signed In</div>
+      <button id="signOutBtn" class="secondary-btn nav-signout" type="button" style="display: none;">Sign out</button>
+    </div>
+  </nav>
   <button class="queueBtn" id="queueBtn"> Find a Match </button>
-  <p class="not-logged-in-vis"> You aren't currently logged in, please log in or sign up <a href="index.html"> here </a>
-  </p>
+  <p class="not-logged-in-vis"> You aren't currently logged in. Please <a href="index.html">log in</a> or <a href="signup.html">sign up</a>.</p>
 
   <div id="battle">
     <div id="enemy" class="player-card">
