@@ -46,7 +46,7 @@ ABILITIES.paladin_aura = { id: 'paladin_aura', name: 'Aura of Valor', cost: 0, c
 ABILITIES.paladin_holy_strike = { id: 'paladin_holy_strike', name: 'Holy Strike', cost: 10, cooldown: 4, desc: 'Deal holy damage and heal yourself a bit.' };
 
 ABILITIES.necro_siphon = { id: 'necro_siphon', name: 'Siphon Life', cost: 8, cooldown: 3, desc: 'Deal damage and heal the caster for part of it.' };
-ABILITIES.necro_raise = { id: 'necro_raise', name: 'Raise Rot', cost: 12, cooldown: 5, desc: 'Inflict a necrotic poison over time.' };
+ABILITIES.necro_raise = { id: 'necro_raise', name: 'Raise Rot', cost: 12, cooldown: 5, desc: 'Inflict a necrotic poison that deals stronger damage over several turns.' };
 
 // Druid abilities (replaced Ranger)
 ABILITIES.druid_entangle = { id: 'druid_entangle', name: 'Entangle', cost: 0, cooldown: 3, desc: 'Conjure vines that weaken the target for a short time.' };
@@ -182,6 +182,16 @@ function processStatusEffectsLocal(actorStats) {
       const amt = status.shout.amount || 0;
       updates.attackBoost = Math.max(0, (actorStats.attackBoost || 0) - amt);
       delete status.shout;
+    }
+  }
+
+  // Prepare: temporary attack boost that lasts a fixed number of turns (handled like shout)
+  if (status.prepare) {
+    status.prepare.turns = (status.prepare.turns || 0) - 1;
+    if (status.prepare.turns <= 0) {
+      const amt = status.prepare.amount || 0;
+      updates.attackBoost = Math.max(0, (actorStats.attackBoost || 0) - amt);
+      delete status.prepare;
     }
   }
 
@@ -322,8 +332,16 @@ const abilityHandlers = {
     const raw = Math.floor(Math.random() * 6) + base;
     const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
     const opponentUpdates = { hp: newHp };
+    // merge poison with existing poison if present (refresh turns and keep higher dmg)
     const newStatus = Object.assign({}, target.status || {});
-    newStatus.poison = { turns: 3, dmg: Math.max(1, Math.floor(base / 4)) };
+    const incoming = { turns: 3, dmg: Math.max(1, Math.floor(base / 4)) };
+    if (newStatus.poison) {
+      // refresh turns to max and use the larger dmg
+      newStatus.poison.dmg = Math.max(newStatus.poison.dmg || 0, incoming.dmg);
+      newStatus.poison.turns = Math.max(newStatus.poison.turns || 0, incoming.turns);
+    } else {
+      newStatus.poison = incoming;
+    }
     opponentUpdates.status = newStatus;
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'archer_poison') };
     return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_archer_poison' }, message: `${user.name || 'You'} hits ${target.name || 'the enemy'} for ${damage} and applies poison!`, lastMoveDamage: damage };
@@ -392,8 +410,15 @@ const abilityHandlers = {
     const raw = Math.floor(Math.random() * 8) + base;
     const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
     const opponentUpdates = { hp: newHp };
+    // merge poison with any existing poison
     const newStatus = Object.assign({}, target.status || {});
-    newStatus.poison = { turns: 3, dmg: Math.max(1, Math.floor(base / 4)) };
+    const incoming = { turns: 3, dmg: Math.max(1, Math.floor(base / 4)) };
+    if (newStatus.poison) {
+      newStatus.poison.dmg = Math.max(newStatus.poison.dmg || 0, incoming.dmg);
+      newStatus.poison.turns = Math.max(newStatus.poison.turns || 0, incoming.turns);
+    } else {
+      newStatus.poison = incoming;
+    }
     opponentUpdates.status = newStatus;
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'rogue_poisoned_dagger') };
     return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_rogue_poisoned_dagger' }, message: `${user.name || 'You'} plunges a poisoned dagger for ${damage} damage and applies poison!`, lastMoveDamage: damage };
@@ -431,12 +456,22 @@ const abilityHandlers = {
 
   necro_raise(user, target) {
     const base = getEffectiveBaseAtk(user, 9);
-    const poisonDmg = Math.max(1, Math.floor(base / 3));
+    // Increase rot potency: stronger per-turn damage and longer duration
+    const poisonDmg = Math.max(2, Math.floor(base / 2));
     const newStatus = Object.assign({}, target.status || {});
-    newStatus.poison = { turns: 3, dmg: poisonDmg };
+    const incoming = { turns: 5, dmg: poisonDmg };
+    // Merge with existing poison so Raise Rot refreshes/strengthens rather than silently overwrite
+    if (newStatus.poison) {
+      newStatus.poison.dmg = Math.max(newStatus.poison.dmg || 0, incoming.dmg);
+      newStatus.poison.turns = Math.max(newStatus.poison.turns || 0, incoming.turns);
+    } else {
+      newStatus.poison = incoming;
+    }
     const opponentUpdates = { status: newStatus };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'necro_raise'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.necro_raise.cost || 0)) };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_necro_raise' }, message: `${user.name || 'You'} invokes rot; ${target.name || 'the enemy'} is cursed for ${poisonDmg} poison per turn.` };
+    // Debug to help diagnose in-browser if users report it not applying
+    try { console.debug('[ability] necro_raise applied', { caster: user?.name, target: target?.name, incoming, resultingStatus: newStatus }); } catch (e) {}
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_necro_raise' }, message: `${user.name || 'You'} invokes rot; ${target.name || 'the enemy'} is cursed for ${poisonDmg} poison per turn for ${incoming.turns} turns.` };
   },
 
   druid_entangle(user, target) {
@@ -857,7 +892,10 @@ async function initiateRewardPhase(winnerUid, loserUid) {
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = meta.name;
-      b.title = meta.desc || '';
+      if (meta && meta.desc) {
+        b.classList.add('has-tooltip');
+        b.setAttribute('data-tooltip', meta.desc);
+      }
       b.addEventListener('click', async () => {
         try {
           await finalizeRewards(winnerUid, loserUid, k);
@@ -1095,7 +1133,11 @@ function updatePlayerUI(stats, isPlayer) {
     const atkBoost = Number(stats?.attackBoost ?? 0);
     const baseAtk = Number(stats?.baseAtk ?? 0);
     statsText.innerHTML = `ATK: ${atkBoost} (base ${baseAtk}) &nbsp; DEF: ${def}`;
-    statsText.title = `Base ATK: ${baseAtk}. Current attack boost: ${atkBoost}.`;
+    // Replace native title with styled tooltip
+    try {
+      statsText.classList.add('has-tooltip');
+      statsText.setAttribute('data-tooltip', `Base ATK: ${baseAtk}. Current attack boost: ${atkBoost}.`);
+    } catch (e) { /* ignore DOM issues */ }
   }
 
   // Name
@@ -1176,7 +1218,11 @@ async function renderSpecialButtons() {
     btn.type = 'button';
     btn.textContent = `${abil.name}${cd > 0 ? ` (CD:${cd})` : (cost ? ` (${cost}M)` : '')}`;
     btn.disabled = !isMyTurn || cd > 0 || (cost && ((playerStats.mana || 0) < cost));
-    btn.title = abil.desc || '';
+    // use custom styled tooltip instead of native title
+    if (abil.desc) {
+      btn.classList.add('has-tooltip');
+      btn.setAttribute('data-tooltip', abil.desc);
+    }
     btn.addEventListener('click', () => chooseSpecial(abilityId));
     specials.appendChild(btn);
   });
@@ -1352,8 +1398,12 @@ async function chooseMove(move) {
     const currentDefense = playerStats.defense || 0;
     playerUpdates.defense = currentDefense + 5;
   } else if (move === "prepare") {
-    const currentBoost = playerStats.attackBoost || 0;
-    playerUpdates.attackBoost = currentBoost + 5;
+    // Give a temporary attack boost that lasts for 2 turns (handled in processStatusEffectsLocal)
+    const add = 5;
+    const newStatus = Object.assign({}, playerStats.status || {});
+    newStatus.prepare = { turns: 2, amount: add };
+    playerUpdates.status = newStatus;
+    playerUpdates.attackBoost = (playerStats.attackBoost || 0) + add;
   }
 
   // Check for turn counter - reset boosts every 3 turns
@@ -1540,16 +1590,20 @@ async function renderInventory() {
     for (const key of Object.keys(items)) {
       const it = items[key];
       const row = document.createElement('div');
-      row.className = 'inv-row';
-      row.style.display = 'flex'; row.style.alignItems = 'center'; row.style.gap = '8px';
-      const name = document.createElement('span'); name.textContent = `${it.name} x${it.qty}`;
-      const useBtn = document.createElement('button'); useBtn.textContent = 'Use';
+      row.className = 'inventory-item';
+      row.tabIndex = 0; // make focusable for keyboard users
+      const name = document.createElement('span');
+      name.textContent = `${it.name} x${it.qty}`;
+      const useBtn = document.createElement('button');
+      useBtn.type = 'button';
+      useBtn.textContent = 'Use';
+      useBtn.className = 'inv-use-btn';
       useBtn.disabled = !(it.qty > 0);
-      // add tooltip describing the item when available
+      // add tooltip describing the item when available on the Use button (no hidden text)
       const meta = catalog[key];
       if (meta && meta.desc) {
-        name.title = meta.desc;
-        useBtn.title = meta.desc;
+        useBtn.classList.add('has-tooltip');
+        useBtn.setAttribute('data-tooltip', meta.desc);
       }
       useBtn.addEventListener('click', () => { useItem(key).catch(console.error); });
       row.appendChild(name);

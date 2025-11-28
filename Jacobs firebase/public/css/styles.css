@@ -30,6 +30,72 @@ body {
 .class-select { margin: 12px auto; max-width: 720px; text-align: left; padding: 10px; }
 .class-select label { display:block; font-weight:700; margin-bottom:8px; }
 .class-grid { display:flex; flex-wrap:wrap; gap:8px; }
+
+/* Custom tooltip for consistent styling across elements */
+.has-tooltip {
+  position: relative;
+  cursor: help;
+}
+.has-tooltip[data-tooltip]:hover::after,
+.has-tooltip[data-tooltip]:focus::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(100% + 8px);
+  background: rgba(20,20,30,0.95);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  z-index: 40;
+}
+.has-tooltip[data-tooltip]:hover::before,
+.has-tooltip[data-tooltip]:focus::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(100% + 2px);
+  border-width: 6px 6px 0 6px;
+  border-style: solid;
+  border-color: rgba(20,20,30,0.95) transparent transparent transparent;
+  z-index: 41;
+}
+
+/* Inventory: compact rows that reveal details on hover/focus for accessibility */
+.inventory-item {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:8px 10px;
+  border-radius:8px;
+  background: rgba(255,255,255,0.02);
+  transition: background 120ms ease, transform 120ms ease;
+}
+.inventory-item:focus-within,
+.inventory-item:hover {
+  background: rgba(255,255,255,0.03);
+  transform: translateY(-1px);
+}
+
+/* Use button in inventory: visually match specials but smaller */
+.inv-use-btn {
+  background: linear-gradient(180deg,#2e7d32,#1b5e20);
+  color: #fff;
+  border: 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.25), inset 0 -2px 0 rgba(0,0,0,0.12);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.inv-use-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 15px rgba(0,0,0,0.35); }
+.inv-use-btn:disabled { opacity: 0.6; cursor: not-allowed; }
 .class-btn { background: linear-gradient(180deg,#3949ab,#1e88e5); color:#fff; border: none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:700; box-shadow: 0 6px 10px rgba(0,0,0,0.35); transition: transform .08s ease, box-shadow .08s ease; }
 .class-btn:hover { transform: translateY(-3px); box-shadow: 0 12px 18px rgba(0,0,0,0.45); }
 .class-btn.active { outline: 3px solid rgba(255,255,255,0.08); box-shadow: 0 0 20px rgba(30,136,229,0.15); }

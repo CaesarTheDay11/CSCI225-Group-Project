@@ -199,7 +199,10 @@ function initClassSelector() {
         necromancer: 'Necromancer — deals necrotic damage and siphons life',
         druid: 'Druid — nature caster: heal-over-time and control'
       };
-      b.title = descMap[cid] || '';
+      if (descMap[cid]) {
+        b.classList.add('has-tooltip');
+        b.setAttribute('data-tooltip', descMap[cid]);
+      }
       grid.appendChild(b);
     });
     classButtons = Array.from(container.querySelectorAll('[data-class]'));
@@ -348,7 +351,7 @@ const ITEM_CATALOG = {
   elixir: { id: 'elixir', name: 'Elixir', desc: 'Fully restores mana.' },
   shield_token: { id: 'shield_token', name: 'Shield Token', desc: 'Grants +10 temporary defense for 1 turn.' },
   speed_scroll: { id: 'speed_scroll', name: 'Speed Scroll', desc: 'Next turn acts first.' },
-  strength_tonic: { id: 'strength_tonic', name: 'Strength Tonic', desc: 'Permanently increases base attack by 1.' },
+  strength_tonic: { id: 'strength_tonic', name: 'Strength Tonic', desc: 'Temporarily increases attack for 1 turn.' },
   revive_scroll: { id: 'revive_scroll', name: 'Revive Scroll', desc: 'Revives with 30% HP once.' }
 };
 
