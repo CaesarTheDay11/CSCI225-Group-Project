@@ -32,12 +32,40 @@ const ABILITIES = {
   archer_poison:  { id: 'archer_poison', name: 'Poison Arrow', cost: 0, cooldown: 4, desc: 'Deal damage and apply poison (DOT).' }
 };
 
+// New classes abilities (added per-request)
+ABILITIES.cleric_heal = { id: 'cleric_heal', name: 'Divine Heal', cost: 8, cooldown: 3, desc: 'Restore a moderate amount of HP to yourself.' };
+ABILITIES.cleric_smite = { id: 'cleric_smite', name: 'Smite', cost: 6, cooldown: 4, desc: 'Holy damage that also dispels poison/burn.' };
+
+ABILITIES.knight_guard = { id: 'knight_guard', name: 'Guard Stance', cost: 0, cooldown: 4, desc: 'Increase defense with a shield for 2 turns.' };
+ABILITIES.knight_charge = { id: 'knight_charge', name: 'Mounted Charge', cost: 0, cooldown: 3, desc: 'Powerful charge that may stun.' };
+
+ABILITIES.rogue_backstab = { id: 'rogue_backstab', name: 'Backstab', cost: 0, cooldown: 3, desc: 'High damage attack that ignores some defense.' };
+ABILITIES.rogue_poisoned_dagger = { id: 'rogue_poisoned_dagger', name: 'Poisoned Dagger', cost: 0, cooldown: 4, desc: 'Deal damage and apply poison.' };
+
+ABILITIES.paladin_aura = { id: 'paladin_aura', name: 'Aura of Valor', cost: 0, cooldown: 5, desc: 'Boost your attack for a few turns.' };
+ABILITIES.paladin_holy_strike = { id: 'paladin_holy_strike', name: 'Holy Strike', cost: 10, cooldown: 4, desc: 'Deal holy damage and heal yourself a bit.' };
+
+ABILITIES.necro_siphon = { id: 'necro_siphon', name: 'Siphon Life', cost: 8, cooldown: 3, desc: 'Deal damage and heal the caster for part of it.' };
+ABILITIES.necro_raise = { id: 'necro_raise', name: 'Raise Rot', cost: 12, cooldown: 5, desc: 'Inflict a necrotic poison over time.' };
+
+// Druid abilities (replaced Ranger)
+ABILITIES.druid_entangle = { id: 'druid_entangle', name: 'Entangle', cost: 0, cooldown: 3, desc: 'Conjure vines that weaken the target for a short time.' };
+ABILITIES.druid_regrowth = { id: 'druid_regrowth', name: 'Regrowth', cost: 8, cooldown: 4, desc: 'Heal immediately and apply a small regeneration over time.' };
+
 // --- CLASS stats & ability lists (used to seed player records in DB) ---
 const CLASS_STATS = {
   warrior: { name: 'Warrior', hp: 120, maxHp: 120, baseAtk: 12, defense: 4, attackBoost: 0, fainted: false, abilities: ['warrior_rend', 'warrior_shout'] },
   mage:    { name: 'Mage',    hp: 80,  maxHp: 80,  baseAtk: 16, defense: 1, attackBoost: 0, fainted: false, abilities: ['mage_fireball', 'mage_iceblast'], mana: 30 },
   archer:  { name: 'Archer',  hp: 95,  maxHp: 95,  baseAtk: 14, defense: 2, attackBoost: 0, fainted: false, abilities: ['archer_volley', 'archer_poison'] }
 };
+
+// Added classes (6 new)
+CLASS_STATS.cleric = { name: 'Cleric', hp: 90, maxHp: 90, baseAtk: 8, defense: 2, attackBoost: 0, fainted: false, abilities: ['cleric_heal', 'cleric_smite'], mana: 30 };
+CLASS_STATS.knight = { name: 'Knight', hp: 140, maxHp: 140, baseAtk: 13, defense: 6, attackBoost: 0, fainted: false, abilities: ['knight_guard', 'knight_charge'], mana: 0 };
+CLASS_STATS.rogue = { name: 'Rogue', hp: 85, maxHp: 85, baseAtk: 18, defense: 1, attackBoost: 0, fainted: false, abilities: ['rogue_backstab', 'rogue_poisoned_dagger'], mana: 0 };
+CLASS_STATS.paladin = { name: 'Paladin', hp: 130, maxHp: 130, baseAtk: 11, defense: 5, attackBoost: 0, fainted: false, abilities: ['paladin_aura', 'paladin_holy_strike'], mana: 15 };
+CLASS_STATS.necromancer = { name: 'Necromancer', hp: 75, maxHp: 75, baseAtk: 12, defense: 1, attackBoost: 0, fainted: false, abilities: ['necro_siphon', 'necro_raise'], mana: 35 };
+CLASS_STATS.druid = { name: 'Druid', hp: 92, maxHp: 92, baseAtk: 12, defense: 2, attackBoost: 0, fainted: false, abilities: ['druid_entangle', 'druid_regrowth'], mana: 25 };
 
 // --- Generic helpers used by abilities and turn processing ---
 function applyDamageToObject(targetObj, rawDamage, opts = {}) {
@@ -105,6 +133,17 @@ function processStatusEffectsLocal(actorStats) {
     messages.push(`${actorStats.name || 'Player'} suffers ${damage} burn damage.`);
     status.burn.turns = (status.burn.turns || 0) - 1;
     if (status.burn.turns <= 0) delete status.burn;
+  }
+
+  // Regeneration / healing-over-time (used by Druid regrowth)
+  if (status.regen) {
+    const healAmt = status.regen.amount || 3;
+    const maxHpLocal = actorStats.maxHp || actorStats.maxHP || 100;
+    const newHp = Math.min(maxHpLocal, (updates.hp ?? actorStats.hp) + healAmt);
+    updates.hp = newHp;
+    messages.push(`${actorStats.name || 'Player'} regenerates ${healAmt} HP.`);
+    status.regen.turns = (status.regen.turns || 0) - 1;
+    if (status.regen.turns <= 0) delete status.regen;
   }
 
   // Poison: DOT
@@ -288,6 +327,143 @@ const abilityHandlers = {
     opponentUpdates.status = newStatus;
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'archer_poison') };
     return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_archer_poison' }, message: `${user.name || 'You'} hits ${target.name || 'the enemy'} for ${damage} and applies poison!`, lastMoveDamage: damage };
+  }
+
+  // New ability handlers for added classes
+  ,
+  cleric_heal(user, target) {
+    const heal = Math.floor(Math.random() * 14) + 12; // 12-25
+    const newHp = Math.min(user.maxHp || 100, (user.hp || 0) + heal);
+    const playerUpdates = { hp: newHp, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'cleric_heal'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.cleric_heal.cost || 0)) };
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_cleric_heal' }, message: `${user.name || 'You'} channels divine energy and heals for ${heal} HP!`, lastMoveHeal: heal };
+  },
+
+  cleric_smite(user, target) {
+    const base = getEffectiveBaseAtk(user, 8);
+    const raw = Math.floor(Math.random() * 8) + base + 6;
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw, { ignoreDefense: false });
+    const opponentUpdates = { hp: newHp };
+    // dispel damaging DOTs
+    const newStatus = Object.assign({}, target.status || {});
+    if (newStatus.poison) delete newStatus.poison;
+    if (newStatus.burn) delete newStatus.burn;
+    opponentUpdates.status = Object.keys(newStatus).length ? newStatus : null;
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'cleric_smite'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.cleric_smite.cost || 0)) };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_cleric_smite' }, message: `${user.name || 'You'} smite the foe for ${damage} holy damage and dispels DOTs!`, lastMoveDamage: damage };
+  },
+
+  knight_guard(user, target) {
+    const add = 8;
+    const newDefense = (user.defense || 0) + add;
+    const newStatus = Object.assign({}, user.status || {});
+    newStatus.shield = { turns: 2, amount: add };
+    const playerUpdates = { defense: newDefense, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'knight_guard') };
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_knight_guard' }, message: `${user.name || 'You'} takes a guarded stance, increasing defense by ${add}.` };
+  },
+
+  knight_charge(user, target) {
+    const base = getEffectiveBaseAtk(user, 13);
+    const raw = Math.floor(Math.random() * 14) + base + 6;
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+    const opponentUpdates = { hp: newHp };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'knight_charge') };
+    let message = `${user.name || 'You'} charges for ${damage} damage!`;
+    if (Math.random() < 0.35) {
+      const s = Object.assign({}, target.status || {});
+      s.stun = { turns: 1 };
+      opponentUpdates.status = s;
+      message = `${user.name || 'You'} charges with a crushing blow for ${damage} — ${target.name || 'the enemy'} is stunned!`;
+    }
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_knight_charge' }, message, lastMoveDamage: damage };
+  },
+
+  rogue_backstab(user, target) {
+    const base = getEffectiveBaseAtk(user, 16);
+    const raw = Math.floor(Math.random() * 12) + base + 8;
+    // backstab ignores defense partially
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: Math.floor((target.defense || 0) / 3) }, raw);
+    const opponentUpdates = { hp: newHp };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'rogue_backstab') };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_rogue_backstab' }, message: `${user.name || 'You'} backstabs ${target.name || 'the enemy'} for ${damage} damage!`, lastMoveDamage: damage };
+  },
+
+  rogue_poisoned_dagger(user, target) {
+    const base = getEffectiveBaseAtk(user, 12);
+    const raw = Math.floor(Math.random() * 8) + base;
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+    const opponentUpdates = { hp: newHp };
+    const newStatus = Object.assign({}, target.status || {});
+    newStatus.poison = { turns: 3, dmg: Math.max(1, Math.floor(base / 4)) };
+    opponentUpdates.status = newStatus;
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'rogue_poisoned_dagger') };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_rogue_poisoned_dagger' }, message: `${user.name || 'You'} plunges a poisoned dagger for ${damage} damage and applies poison!`, lastMoveDamage: damage };
+  },
+
+  paladin_aura(user, target) {
+    const amt = 6;
+    const newStatus = Object.assign({}, user.status || {});
+    newStatus.shout = { turns: 2, amount: amt };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'paladin_aura'), attackBoost: (user.attackBoost || 0) + amt, status: newStatus };
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_paladin_aura' }, message: `${user.name || 'You'} radiates an Aura of Valor, increasing attack by ${amt} for a short time.` };
+  },
+
+  paladin_holy_strike(user, target) {
+    const base = getEffectiveBaseAtk(user, 11);
+    const raw = Math.floor(Math.random() * 10) + base + 6;
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+    const heal = Math.floor(damage * 0.4);
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'paladin_holy_strike'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.paladin_holy_strike.cost || 0)) };
+    playerUpdates.hp = Math.min(user.maxHp || 100, (user.hp || 0) + heal);
+    const opponentUpdates = { hp: newHp };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_paladin_holy_strike' }, message: `${user.name || 'You'} smites for ${damage} and is healed for ${heal} HP.`, lastMoveDamage: damage };
+  },
+
+  necro_siphon(user, target) {
+    const base = getEffectiveBaseAtk(user, 10);
+    const raw = Math.floor(Math.random() * 10) + base + 6;
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+    const healAmt = Math.floor(damage * 0.6);
+    const opponentUpdates = { hp: newHp };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'necro_siphon'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.necro_siphon.cost || 0)) };
+    playerUpdates.hp = Math.min(user.maxHp || 100, (user.hp || 0) + healAmt);
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_necro_siphon' }, message: `${user.name || 'You'} siphons ${damage} life and heals for ${healAmt}.`, lastMoveDamage: damage };
+  },
+
+  necro_raise(user, target) {
+    const base = getEffectiveBaseAtk(user, 9);
+    const poisonDmg = Math.max(1, Math.floor(base / 3));
+    const newStatus = Object.assign({}, target.status || {});
+    newStatus.poison = { turns: 3, dmg: poisonDmg };
+    const opponentUpdates = { status: newStatus };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'necro_raise'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.necro_raise.cost || 0)) };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_necro_raise' }, message: `${user.name || 'You'} invokes rot; ${target.name || 'the enemy'} is cursed for ${poisonDmg} poison per turn.` };
+  },
+
+  druid_entangle(user, target) {
+    // Uses weaken status to simulate entangle/root
+    const amount = 4;
+    const newStatus = Object.assign({}, target.status || {});
+    if (!newStatus.weaken) {
+      newStatus.weaken = { turns: 2, amount: amount, prevBoost: (target.attackBoost || 0) };
+    } else {
+      newStatus.weaken.amount = (newStatus.weaken.amount || 0) + amount;
+      newStatus.weaken.turns = Math.max(newStatus.weaken.turns || 0, 2);
+    }
+    const opponentUpdates = { status: newStatus };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'druid_entangle') };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_druid_entangle' }, message: `${user.name || 'You'} conjures grasping vines that entangle the foe and weaken their attacks.` };
+  },
+
+  druid_regrowth(user, target) {
+    // Immediate heal + regen status for a few turns
+    const immediate = Math.floor(Math.random() * 8) + 6; // 6-13
+    const regenAmount = 4; // per turn
+    const regenTurns = 3;
+    const newHp = Math.min(user.maxHp || 100, (user.hp || 0) + immediate);
+    const newStatus = Object.assign({}, user.status || {});
+    newStatus.regen = { turns: regenTurns, amount: regenAmount };
+    const playerUpdates = { hp: newHp, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'druid_regrowth'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.druid_regrowth.cost || 0)) };
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_druid_regrowth' }, message: `${user.name || 'You'} calls regrowth, healing ${immediate} HP and regenerating ${regenAmount} HP for ${regenTurns} turns.`, lastMoveHeal: immediate };
   }
 };
 
@@ -864,6 +1040,30 @@ function updatePlayerUI(stats, isPlayer) {
   const mana = Number(stats?.mana ?? 0);
   const rawMaxMana = (stats && (typeof stats.maxMana !== 'undefined' ? stats.maxMana : (typeof stats.maxMP !== 'undefined' ? stats.maxMP : undefined)));
   const maxMana = Number(typeof rawMaxMana !== 'undefined' ? rawMaxMana : 0) || 0;
+  // displayMaxMana will be used for rendering (may be inferred)
+  let displayMaxMana = maxMana;
+  // If maxMana is missing but the class template specifies mana, write it back to the match node
+  if (displayMaxMana <= 0) {
+    try {
+      const cls = stats?.classId || stats?.class;
+      if (cls && CLASS_STATS[cls] && CLASS_STATS[cls].mana && matchId) {
+        const inferred = CLASS_STATS[cls].mana;
+        // write back inferred maxMana and set mana if absent
+        const targetUid = isPlayer ? currentUserId : opponentId;
+        if (targetUid) {
+          const pRef = ref(db, `matches/${matchId}/players/${targetUid}`);
+          const toWrite = {};
+          if (!stats.hasOwnProperty('maxMana') || !stats.maxMana) toWrite.maxMana = inferred;
+          if (!stats.hasOwnProperty('mana') || stats.mana === undefined || stats.mana === null) toWrite.mana = inferred;
+          if (Object.keys(toWrite).length) {
+            update(pRef, toWrite).catch(() => {});
+          }
+          // use inferred for rendering immediately
+          displayMaxMana = inferred;
+        }
+      }
+    } catch (e) { /* ignore */ }
+  }
   const atk = Number(stats?.baseAtk ?? stats?.attack ?? 0);
   const def = Number(stats?.defense ?? stats?.def ?? 0);
 
@@ -878,12 +1078,12 @@ function updatePlayerUI(stats, isPlayer) {
 
   // Mana bar and text
   if (manaFill) {
-    const manaPercent = maxMana > 0 ? Math.max(0, Math.min(100, (mana / maxMana) * 100)) : 0;
+    const manaPercent = displayMaxMana > 0 ? Math.max(0, Math.min(100, (mana / displayMaxMana) * 100)) : 0;
     manaFill.style.width = manaPercent + "%";
   }
   if (manaText) {
-    if (maxMana > 0) {
-      manaText.textContent = `Mana: ${mana}/${maxMana}`;
+    if (displayMaxMana > 0) {
+      manaText.textContent = `Mana: ${mana}/${displayMaxMana}`;
     } else {
       manaText.textContent = '';
     }
@@ -891,7 +1091,11 @@ function updatePlayerUI(stats, isPlayer) {
 
   // ATK / DEF text
   if (statsText) {
-    statsText.innerHTML = `ATK: ${atk} &nbsp; DEF: ${def}`;
+    // Display attack boost (ATK) primarily, with base attack shown in parentheses
+    const atkBoost = Number(stats?.attackBoost ?? 0);
+    const baseAtk = Number(stats?.baseAtk ?? 0);
+    statsText.innerHTML = `ATK: ${atkBoost} (base ${baseAtk}) &nbsp; DEF: ${def}`;
+    statsText.title = `Base ATK: ${baseAtk}. Current attack boost: ${atkBoost}.`;
   }
 
   // Name
@@ -963,7 +1167,7 @@ async function renderSpecialButtons() {
 
   specials.innerHTML = '';
 
-  playerStats.abilities.forEach((abilityId) => {
+    playerStats.abilities.forEach((abilityId) => {
     const abil = ABILITIES[abilityId] || { name: abilityId, cooldown: 0, cost: 0 };
     const cd = (playerStats.abilityCooldowns && (playerStats.abilityCooldowns[abilityId] || 0)) || 0;
     const cost = abil.cost || 0;
@@ -972,6 +1176,7 @@ async function renderSpecialButtons() {
     btn.type = 'button';
     btn.textContent = `${abil.name}${cd > 0 ? ` (CD:${cd})` : (cost ? ` (${cost}M)` : '')}`;
     btn.disabled = !isMyTurn || cd > 0 || (cost && ((playerStats.mana || 0) < cost));
+    btn.title = abil.desc || '';
     btn.addEventListener('click', () => chooseSpecial(abilityId));
     specials.appendChild(btn);
   });
@@ -1331,6 +1536,7 @@ async function renderInventory() {
     }
 
     invEl.innerHTML = '';
+    const catalog = (window.getItemCatalog) ? window.getItemCatalog() : {};
     for (const key of Object.keys(items)) {
       const it = items[key];
       const row = document.createElement('div');
@@ -1339,6 +1545,12 @@ async function renderInventory() {
       const name = document.createElement('span'); name.textContent = `${it.name} x${it.qty}`;
       const useBtn = document.createElement('button'); useBtn.textContent = 'Use';
       useBtn.disabled = !(it.qty > 0);
+      // add tooltip describing the item when available
+      const meta = catalog[key];
+      if (meta && meta.desc) {
+        name.title = meta.desc;
+        useBtn.title = meta.desc;
+      }
       useBtn.addEventListener('click', () => { useItem(key).catch(console.error); });
       row.appendChild(name);
       row.appendChild(useBtn);
@@ -1429,12 +1641,10 @@ async function useItem(itemId) {
       // keep currentTurn with the player so they can act again immediately
       matchUpdates.currentTurn = currentUserId;
     } else if (itemId === 'strength_tonic') {
-        // permanent improvement: +1 baseAtk
-        const newBase = (playerStats.baseAtk || 0) + 1;
-        // temporary +10 attack for this turn
+        // temporary improvement only: +10 strength for 1 turn (no permanent baseAtk increase)
         const newStatus = Object.assign({}, playerStats.status || {});
         newStatus.strength_boost = { turns: 1, amount: 10 };
-        updates.push(update(playerRef, { baseAtk: newBase, status: newStatus }));
+        updates.push(update(playerRef, { status: newStatus }));
       matchUpdates.lastMove = 'use_item_strength_tonic';
       matchUpdates.lastMoveActor = currentUserId;
     } else if (itemId === 'revive_scroll') {

@@ -12,6 +12,14 @@ const CLASS_STATS = {
   archer:  { hp: 95,  maxHp: 95,  baseAtk: 14, defense: 2, abilities: ['archer_volley', 'archer_poison'], mana: 0 }
 };
 
+// New class templates added to keep server-side seeding in sync with client
+CLASS_STATS.cleric = { hp: 90, maxHp: 90, baseAtk: 8, defense: 2, abilities: ['cleric_heal', 'cleric_smite'], mana: 30 };
+CLASS_STATS.knight = { hp: 140, maxHp: 140, baseAtk: 13, defense: 6, abilities: ['knight_guard', 'knight_charge'], mana: 0 };
+CLASS_STATS.rogue = { hp: 85, maxHp: 85, baseAtk: 18, defense: 1, abilities: ['rogue_backstab', 'rogue_poisoned_dagger'], mana: 0 };
+CLASS_STATS.paladin = { hp: 130, maxHp: 130, baseAtk: 11, defense: 5, abilities: ['paladin_aura', 'paladin_holy_strike'], mana: 15 };
+CLASS_STATS.necromancer = { hp: 75, maxHp: 75, baseAtk: 12, defense: 1, abilities: ['necro_siphon', 'necro_raise'], mana: 35 };
+CLASS_STATS.druid = { hp: 92, maxHp: 92, baseAtk: 12, defense: 2, abilities: ['druid_entangle', 'druid_regrowth'], mana: 25 };
+
 exports.onQueueJoin = onValueCreated("/queue/{uid}", async (event) => {
   const joiningUid = event.params.uid;
   const db = admin.database();

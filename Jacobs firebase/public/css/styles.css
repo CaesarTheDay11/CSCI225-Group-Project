@@ -21,10 +21,28 @@ body {
 }
 
 /* Mana bar */
-.mana-bar-outer { background:#333; width:200px; height:10px; margin:6px auto; border-radius:6px; border:1px solid rgba(255,255,255,0.04); }
-.mana-fill { background: linear-gradient(90deg,#2196f3,#64b5f6); height:100%; width:0%; transition: width .25s; }
+.mana-bar-outer { background:#262b31; width:200px; height:12px; margin:6px auto; border-radius:6px; border:1px solid rgba(255,255,255,0.12); box-shadow: inset 0 1px 0 rgba(255,255,255,0.02); }
+.mana-fill { background: linear-gradient(90deg,#1976d2,#42a5f5); height:100%; width:0%; transition: width .25s; box-shadow: 0 0 8px rgba(66,165,245,0.12); border-radius:5px; }
 .stat-lines { font-size:0.9rem; color:#ddd; margin-bottom:6px; }
 .stat-lines div { margin:3px 0; }
+
+/* Class selector styles */
+.class-select { margin: 12px auto; max-width: 720px; text-align: left; padding: 10px; }
+.class-select label { display:block; font-weight:700; margin-bottom:8px; }
+.class-grid { display:flex; flex-wrap:wrap; gap:8px; }
+.class-btn { background: linear-gradient(180deg,#3949ab,#1e88e5); color:#fff; border: none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:700; box-shadow: 0 6px 10px rgba(0,0,0,0.35); transition: transform .08s ease, box-shadow .08s ease; }
+.class-btn:hover { transform: translateY(-3px); box-shadow: 0 12px 18px rgba(0,0,0,0.45); }
+.class-btn.active { outline: 3px solid rgba(255,255,255,0.08); box-shadow: 0 0 20px rgba(30,136,229,0.15); }
+
+/* Modal class buttons */
+.modal-class-btn { background: linear-gradient(180deg,#6d4c41,#5d4037); color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:700; }
+.modal-class-btn:hover { transform: translateY(-2px); }
+
+/* Make selector responsive on narrow screens */
+@media (max-width: 520px) {
+  .class-grid { gap:6px; }
+  .class-btn { flex: 1 1 45%; }
+}
 
 /* Specials (ability) buttons styling */
 #specials {

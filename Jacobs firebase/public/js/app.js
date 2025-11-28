@@ -162,18 +162,64 @@ function initClassSelector() {
     })();
   }
 
+  function markActive(classId) {
+    Array.from(container.querySelectorAll('[data-class]')).forEach(b => b.classList.remove('active'));
+    if (!classId) return;
+    const btn = container.querySelector(`[data-class='${classId}']`);
+    if (btn) btn.classList.add('active');
+  }
   // attach handlers to buttons
-  Array.from(container.querySelectorAll('[data-class]')).forEach(btn => {
+  let classButtons = Array.from(container.querySelectorAll('[data-class]'));
+  // If no buttons are present (HTML not updated or cached), create fallback buttons dynamically
+  if (!classButtons || classButtons.length === 0) {
+    console.warn('[class-select] no class buttons found in DOM — creating fallback buttons');
+    const classes = ['warrior','mage','archer','cleric','knight','rogue','paladin','necromancer','druid'];
+    let grid = container.querySelector('.class-grid');
+    if (!grid) {
+      grid = document.createElement('div');
+      grid.className = 'class-grid';
+      container.appendChild(grid);
+    }
+    classes.forEach(cid => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.setAttribute('data-class', cid);
+      b.className = 'class-btn';
+      const label = cid.charAt(0).toUpperCase() + cid.slice(1);
+      b.textContent = label;
+      // small descriptive tooltip for fallback buttons
+      const descMap = {
+        warrior: 'Warrior — tough melee fighter, high HP and defense',
+        mage: 'Mage — powerful spellcaster with mana and area damage',
+        archer: 'Archer — ranged DPS, balanced attack and accuracy',
+        cleric: 'Cleric — divine healer, can restore HP and remove DOTs',
+        knight: 'Knight — heavy tank, strong defense and crowd control',
+        rogue: 'Rogue — high single-target damage, stealthy strikes',
+        paladin: 'Paladin — hybrid support with heals and offensive strikes',
+        necromancer: 'Necromancer — deals necrotic damage and siphons life',
+        druid: 'Druid — nature caster: heal-over-time and control'
+      };
+      b.title = descMap[cid] || '';
+      grid.appendChild(b);
+    });
+    classButtons = Array.from(container.querySelectorAll('[data-class]'));
+  }
+
+  classButtons.forEach(btn => {
     btn.addEventListener('click', (ev) => {
       const cls = btn.getAttribute('data-class');
       // fire-and-forget async selection handler
       try { setSelectedClass(cls); } catch (e) { console.error(e); }
+      // visually mark active
+      try { markActive(cls); } catch (e) { /* ignore */ }
     });
   });
 
   // initialize label from localStorage
   const existing = (typeof localStorage !== 'undefined') ? localStorage.getItem('selectedClass') : null;
   if (existing && label) label.textContent = `Selected: ${existing}`;
+  // mark active button visually
+  try { markActive(existing); } catch (e) { /* ignore */ }
   console.debug('Class selector initialized, existing:', existing);
   // update visible status on init
   updateClassStatusUI().catch(console.error);

@@ -30,9 +30,17 @@
   <!-- Class selection: choose your class before queueing -->
   <div id="class-select" class="class-select">
     <label>Select Class:</label>
-    <button type="button" data-class="warrior">Warrior</button>
-    <button type="button" data-class="mage">Mage</button>
-    <button type="button" data-class="archer">Archer</button>
+    <div class="class-grid">
+  <button type="button" data-class="warrior" class="class-btn" title="Warrior — tough melee fighter, high HP and defense">Warrior</button>
+  <button type="button" data-class="mage" class="class-btn" title="Mage — powerful spellcaster with mana and area damage">Mage</button>
+  <button type="button" data-class="archer" class="class-btn" title="Archer — ranged DPS, balanced attack and accuracy">Archer</button>
+  <button type="button" data-class="cleric" class="class-btn" title="Cleric — divine healer, can restore HP and remove DOTs">Cleric</button>
+  <button type="button" data-class="knight" class="class-btn" title="Knight — heavy tank, strong defense and crowd control">Knight</button>
+  <button type="button" data-class="rogue" class="class-btn" title="Rogue — high single-target damage, stealthy strikes">Rogue</button>
+  <button type="button" data-class="paladin" class="class-btn" title="Paladin — hybrid support with heals and offensive strikes">Paladin</button>
+  <button type="button" data-class="necromancer" class="class-btn" title="Necromancer — deals necrotic damage and siphons life">Necromancer</button>
+  <button type="button" data-class="druid" class="class-btn" title="Druid — nature caster: heal-over-time and control">Druid</button>
+    </div>
     <span id="selected-class-label"></span>
   </div>
 
@@ -103,10 +111,16 @@
       <div class="modal-content" style="background:#fff; padding:16px; border-radius:8px; width:320px; text-align:center;">
         <h3>Choose Your Class</h3>
         <p>Select a class to use for this match. You can also save it for future matches.</p>
-        <div style="margin:12px 0; display:flex; gap:8px; justify-content:center;">
-          <button type="button" data-class="warrior" class="modal-class-btn">Warrior</button>
-          <button type="button" data-class="mage" class="modal-class-btn">Mage</button>
-          <button type="button" data-class="archer" class="modal-class-btn">Archer</button>
+        <div style="margin:12px 0; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+          <button type="button" data-class="warrior" class="modal-class-btn" title="Warrior — tough melee fighter, high HP and defense">Warrior</button>
+          <button type="button" data-class="mage" class="modal-class-btn" title="Mage — powerful spellcaster with mana and area damage">Mage</button>
+          <button type="button" data-class="archer" class="modal-class-btn" title="Archer — ranged DPS, balanced attack and accuracy">Archer</button>
+          <button type="button" data-class="cleric" class="modal-class-btn" title="Cleric — divine healer, can restore HP and remove DOTs">Cleric</button>
+          <button type="button" data-class="knight" class="modal-class-btn" title="Knight — heavy tank, strong defense and crowd control">Knight</button>
+          <button type="button" data-class="rogue" class="modal-class-btn" title="Rogue — high single-target damage, stealthy strikes">Rogue</button>
+          <button type="button" data-class="paladin" class="modal-class-btn" title="Paladin — hybrid support with heals and offensive strikes">Paladin</button>
+          <button type="button" data-class="necromancer" class="modal-class-btn" title="Necromancer — deals necrotic damage and siphons life">Necromancer</button>
+          <button type="button" data-class="druid" class="modal-class-btn" title="Druid — nature caster: heal-over-time and control">Druid</button>
         </div>
         <div style="margin-top:8px; font-size:12px; color:#666;">You must choose before taking your first turn.</div>
       </div>
