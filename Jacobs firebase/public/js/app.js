@@ -353,6 +353,8 @@ const ITEM_CATALOG = {
   speed_scroll: { id: 'speed_scroll', name: 'Speed Scroll', desc: 'Next turn acts first.' },
   strength_tonic: { id: 'strength_tonic', name: 'Strength Tonic', desc: 'Temporarily increases attack for 1 turn.' },
   revive_scroll: { id: 'revive_scroll', name: 'Revive Scroll', desc: 'Revives with 30% HP once.' }
+  ,
+  jps: { id: 'jps', name: 'JPS Token', desc: 'A mysterious token — appears in inventory for testing.' }
 };
 
 window.getItemCatalog = () => ITEM_CATALOG;

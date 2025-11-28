@@ -73,6 +73,17 @@ body {
   gap:12px;
   padding:8px 10px;
   border-radius:8px;
+/* This rule does: style class selector buttons and their icons */
+.class-btn { display:flex; align-items:center; gap:8px; padding:8px 10px; }
+.class-select .class-btn .class-icon,
+.class-grid .class-btn .class-icon {
+  /* This rule does: constrain pre-game selector images to a fixed small size and prevent layout shifts */
+  width:24px; height:24px; min-width:24px; min-height:24px; max-width:24px; max-height:24px;
+  flex-shrink:0; border-radius:6px; object-fit:cover; display:inline-block;
+}
+
+/* This rule does: style in-battle portraits (player/enemy) to be larger and centered */
+.portrait { width:128px; height:128px; display:block; margin:8px auto; border-radius:8px; object-fit:cover; }
   background: rgba(255,255,255,0.02);
   transition: background 120ms ease, transform 120ms ease;
 }
@@ -96,6 +107,13 @@ body {
 }
 .inv-use-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 15px rgba(0,0,0,0.35); }
 .inv-use-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* This rule does: hide the inventory panel until the Items button is toggled */
+.inventory-panel.hidden { display: none; }
+
+/* This rule does: style the item image shown in inventory rows */
+.inv-item-img { width:44px; height:44px; border-radius:6px; object-fit:cover; margin-right:10px; display:inline-block; vertical-align:middle; }
+.inv-item-left { display:flex; align-items:center; gap:8px; }
 .class-btn { background: linear-gradient(180deg,#3949ab,#1e88e5); color:#fff; border: none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:700; box-shadow: 0 6px 10px rgba(0,0,0,0.35); transition: transform .08s ease, box-shadow .08s ease; }
 .class-btn:hover { transform: translateY(-3px); box-shadow: 0 12px 18px rgba(0,0,0,0.45); }
 .class-btn.active { outline: 3px solid rgba(255,255,255,0.08); box-shadow: 0 0 20px rgba(30,136,229,0.15); }

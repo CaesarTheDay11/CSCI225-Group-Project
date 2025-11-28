@@ -28,13 +28,23 @@ const ABILITIES = {
   gladiator_charge:{id:'gladiator_charge',name:'Charge',  cost: 0,  cooldown: 4, desc: 'Heavy single-target hit with chance to stun.' },
   boss_earthquake:{id:'boss_earthquake', name:'Earthquake', cost:0, cooldown:5, desc:'Massive damage and stuns the player for 1 turn.'},
   mage_iceblast:  { id: 'mage_iceblast', name: 'Ice Blast', cost: 8, cooldown: 4, desc: 'Deal magic damage and reduce enemy ATK for 2 turns.' },
-  warrior_shout:  { id: 'warrior_shout', name: 'Battle Shout', cost: 0, cooldown: 5, desc: 'Increase allied attackBoost for 2 turns.' },
+  warrior_shout:  { id: 'warrior_shout', name: 'Battle Shout', cost: 0, cooldown: 5, desc: 'Increase your attack boost for 2 turns.' },
   archer_poison:  { id: 'archer_poison', name: 'Poison Arrow', cost: 0, cooldown: 4, desc: 'Deal damage and apply poison (DOT).' }
 };
 
-// New classes abilities (added per-request)
-ABILITIES.cleric_heal = { id: 'cleric_heal', name: 'Divine Heal', cost: 8, cooldown: 3, desc: 'Restore a moderate amount of HP to yourself.' };
-ABILITIES.cleric_smite = { id: 'cleric_smite', name: 'Smite', cost: 6, cooldown: 4, desc: 'Holy damage that also dispels poison/burn.' };
+ABILITIES.cleric_heal = { id: 'cleric_heal', name: 'Divine Heal', cost: 8, cooldown: 3, desc: 'Restore a moderate amount of HP to yourself and dispel poison/burn from yourself.' };
+ABILITIES.cleric_smite = { id: 'cleric_smite', name: 'Smite', cost: 6, cooldown: 4, desc: 'Holy damage that also dispels poison/burn from yourself.' };
+
+// Third abilities added for each class
+ABILITIES.warrior_whirlwind = { id: 'warrior_whirlwind', name: 'Whirlwind', cost: 0, cooldown: 4, desc: 'Spin and strike hard, dealing physical damage and reducing the enemy attack for a short time.' };
+ABILITIES.mage_arcane_burst = { id: 'mage_arcane_burst', name: 'Arcane Burst', cost: 12, cooldown: 5, desc: 'A focused magical blast that deals strong magic damage and empowers the caster with a temporary +9 attack instead of burning the foe.' };
+ABILITIES.archer_trap = { id: 'archer_trap', name: 'Trap', cost: 0, cooldown: 5, desc: 'Set a wound-trap on the enemy (applies bleeding over time).' };
+ABILITIES.cleric_shield = { id: 'cleric_shield', name: 'Sanctuary Shield', cost: 6, cooldown: 5, desc: 'Create a holy shield around yourself that raises defense for a few turns.' };
+ABILITIES.knight_bastion = { id: 'knight_bastion', name: 'Bastion', cost: 0, cooldown: 6, desc: 'Enter a bastion state: large temporary defense increase for several turns.' };
+ABILITIES.rogue_evade = { id: 'rogue_evade', name: 'Evasive Roll', cost: 0, cooldown: 4, desc: 'Delay your action and unleash three rapid, consecutive turns.' };
+ABILITIES.paladin_bless = { id: 'paladin_bless', name: 'Blessing', cost: 8, cooldown: 5, desc: 'A small heal and an inspirational attack boost to yourself.' };
+ABILITIES.necro_curse = { id: 'necro_curse', name: 'Curse of Decay', cost: 10, cooldown: 5, desc: 'Afflict the target so they suffer reduced healing (slimed) and ongoing rot.' };
+ABILITIES.druid_barkskin = { id: 'druid_barkskin', name: 'Barkskin', cost: 8, cooldown: 5, desc: 'Harden your skin: heal a small amount, gain +8 defense for several turns, and lash the enemy for minor damage.' };
 
 ABILITIES.knight_guard = { id: 'knight_guard', name: 'Guard Stance', cost: 0, cooldown: 4, desc: 'Increase defense with a shield for 2 turns.' };
 ABILITIES.knight_charge = { id: 'knight_charge', name: 'Mounted Charge', cost: 0, cooldown: 3, desc: 'Powerful charge that may stun.' };
@@ -45,29 +55,53 @@ ABILITIES.rogue_poisoned_dagger = { id: 'rogue_poisoned_dagger', name: 'Poisoned
 ABILITIES.paladin_aura = { id: 'paladin_aura', name: 'Aura of Valor', cost: 0, cooldown: 5, desc: 'Boost your attack for a few turns.' };
 ABILITIES.paladin_holy_strike = { id: 'paladin_holy_strike', name: 'Holy Strike', cost: 10, cooldown: 4, desc: 'Deal holy damage and heal yourself a bit.' };
 
-ABILITIES.necro_siphon = { id: 'necro_siphon', name: 'Siphon Life', cost: 8, cooldown: 3, desc: 'Deal damage and heal the caster for part of it.' };
+ABILITIES.necro_siphon = { id: 'necro_siphon', name: 'Siphon Life', cost: 8, cooldown: 3, desc: 'Deal damage and heal the caster for part of it. Deals double damage against targets suffering reduced healing (slimed).' };
 ABILITIES.necro_raise = { id: 'necro_raise', name: 'Raise Rot', cost: 12, cooldown: 5, desc: 'Inflict a necrotic poison that deals stronger damage over several turns.' };
 
-// Druid abilities (replaced Ranger)
-ABILITIES.druid_entangle = { id: 'druid_entangle', name: 'Entangle', cost: 0, cooldown: 3, desc: 'Conjure vines that weaken the target for a short time.' };
-ABILITIES.druid_regrowth = { id: 'druid_regrowth', name: 'Regrowth', cost: 8, cooldown: 4, desc: 'Heal immediately and apply a small regeneration over time.' };
+ABILITIES.druid_entangle = { id: 'druid_entangle', name: 'Entangle', cost: 0, cooldown: 3, desc: "Conjure grasping vines that deal increased immediate damage, have a 10% chance to stun, and weaken the target's attack for a short time." };
+ABILITIES.druid_regrowth = { id: 'druid_regrowth', name: 'Regrowth', cost: 8, cooldown: 4, desc: 'A larger immediate heal and a stronger regeneration-over-time to restore allies.' };
 
-// --- CLASS stats & ability lists (used to seed player records in DB) ---
 const CLASS_STATS = {
-  warrior: { name: 'Warrior', hp: 120, maxHp: 120, baseAtk: 12, defense: 4, attackBoost: 0, fainted: false, abilities: ['warrior_rend', 'warrior_shout'] },
-  mage:    { name: 'Mage',    hp: 80,  maxHp: 80,  baseAtk: 16, defense: 1, attackBoost: 0, fainted: false, abilities: ['mage_fireball', 'mage_iceblast'], mana: 30 },
-  archer:  { name: 'Archer',  hp: 95,  maxHp: 95,  baseAtk: 14, defense: 2, attackBoost: 0, fainted: false, abilities: ['archer_volley', 'archer_poison'] }
+  warrior: { name: 'Warrior', hp: 120, maxHp: 120, baseAtk: 12, defense: 4, attackBoost: 0, fainted: false, abilities: ['warrior_rend', 'warrior_shout', 'warrior_whirlwind'] },
+  mage:    { name: 'Mage',    hp: 80,  maxHp: 80,  baseAtk: 16, defense: 1, attackBoost: 0, fainted: false, abilities: ['mage_fireball', 'mage_iceblast', 'mage_arcane_burst'], mana: 30 },
+  archer:  { name: 'Archer',  hp: 95,  maxHp: 95,  baseAtk: 14, defense: 2, attackBoost: 0, fainted: false, abilities: ['archer_volley', 'archer_poison', 'archer_trap'] }
 };
 
-// Added classes (6 new)
-CLASS_STATS.cleric = { name: 'Cleric', hp: 90, maxHp: 90, baseAtk: 8, defense: 2, attackBoost: 0, fainted: false, abilities: ['cleric_heal', 'cleric_smite'], mana: 30 };
-CLASS_STATS.knight = { name: 'Knight', hp: 140, maxHp: 140, baseAtk: 13, defense: 6, attackBoost: 0, fainted: false, abilities: ['knight_guard', 'knight_charge'], mana: 0 };
-CLASS_STATS.rogue = { name: 'Rogue', hp: 85, maxHp: 85, baseAtk: 18, defense: 1, attackBoost: 0, fainted: false, abilities: ['rogue_backstab', 'rogue_poisoned_dagger'], mana: 0 };
-CLASS_STATS.paladin = { name: 'Paladin', hp: 130, maxHp: 130, baseAtk: 11, defense: 5, attackBoost: 0, fainted: false, abilities: ['paladin_aura', 'paladin_holy_strike'], mana: 15 };
-CLASS_STATS.necromancer = { name: 'Necromancer', hp: 75, maxHp: 75, baseAtk: 12, defense: 1, attackBoost: 0, fainted: false, abilities: ['necro_siphon', 'necro_raise'], mana: 35 };
-CLASS_STATS.druid = { name: 'Druid', hp: 92, maxHp: 92, baseAtk: 12, defense: 2, attackBoost: 0, fainted: false, abilities: ['druid_entangle', 'druid_regrowth'], mana: 25 };
+CLASS_STATS.cleric = { name: 'Cleric', hp: 90, maxHp: 90, baseAtk: 8, defense: 2, attackBoost: 0, fainted: false, abilities: ['cleric_heal', 'cleric_smite', 'cleric_shield'], mana: 30 };
+CLASS_STATS.knight = { name: 'Knight', hp: 140, maxHp: 140, baseAtk: 13, defense: 6, attackBoost: 0, fainted: false, abilities: ['knight_guard', 'knight_charge', 'knight_bastion'], mana: 0 };
+CLASS_STATS.rogue = { name: 'Rogue', hp: 85, maxHp: 85, baseAtk: 18, defense: 1, attackBoost: 0, fainted: false, abilities: ['rogue_backstab', 'rogue_poisoned_dagger', 'rogue_evade'], mana: 0 };
+CLASS_STATS.paladin = { name: 'Paladin', hp: 130, maxHp: 130, baseAtk: 11, defense: 5, attackBoost: 0, fainted: false, abilities: ['paladin_aura', 'paladin_holy_strike', 'paladin_bless'], mana: 15 };
+CLASS_STATS.necromancer = { name: 'Necromancer', hp: 75, maxHp: 75, baseAtk: 12, defense: 1, attackBoost: 0, fainted: false, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 };
+// Increased Druid health per balance request
+CLASS_STATS.druid = { name: 'Druid', hp: 100, maxHp: 100, baseAtk: 12, defense: 2, attackBoost: 0, fainted: false, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 };
 
-// --- Generic helpers used by abilities and turn processing ---
+// Mapping for item image filenames in this project's public/img directory.
+// Prefer these filenames (they exist under Jacobs firebase/public/img). Fall back to img/items/<id>.jpg/svg when missing.
+const ITEM_IMAGE_MAP = {
+  potion_small: 'small potion.jpg',
+  potion_large: 'large potion.jpg',
+  bomb: 'bomb.jpg',
+  elixir: 'elixir.jpg',
+  shield_token: 'shield scroll.jpg',
+  speed_scroll: 'speed scroll.jpg',
+  strength_tonic: 'strength tonic.jpg',
+  revive_scroll: 'revive scroll.jpg',
+  // (removed legacy 'jps' stray token mapping per request)
+};
+
+function getItemImagePaths(itemId) {
+  const mapped = ITEM_IMAGE_MAP[itemId];
+  // Use the project's root public/img path first
+  if (mapped) {
+    const jpg = `img/${mapped}`;
+    // try svg with same base name (replace .jpg with .svg) if available
+    const svg = mapped.endsWith('.jpg') ? `img/${mapped.slice(0, -4)}.svg` : `img/${mapped}.svg`;
+    return { jpg, svg };
+  }
+  // fallback to legacy per-item folder
+  return { jpg: `img/items/${itemId}.jpg`, svg: `img/items/${itemId}.svg` };
+}
+
 function applyDamageToObject(targetObj, rawDamage, opts = {}) {
   const ignoreDefense = !!opts.ignoreDefense;
   const defense = ignoreDefense ? 0 : (targetObj.defense || 0);
@@ -116,7 +150,6 @@ function startAbilityCooldownLocal(abilityCooldowns = {}, abilityId) {
   return out;
 }
 
-// --- Status processing that returns update objects to apply to DB ---
 function processStatusEffectsLocal(actorStats) {
   if (!actorStats) return { updates: {}, messages: [] };
 
@@ -154,6 +187,20 @@ function processStatusEffectsLocal(actorStats) {
     messages.push(`${actorStats.name || 'Player'} suffers ${damage} poison damage.`);
     status.poison.turns = (status.poison.turns || 0) - 1;
     if (status.poison.turns <= 0) delete status.poison;
+  }
+
+  // Bleed: percent-based DOT (e.g., 5% max HP per turn)
+  if (status.bleed) {
+    try {
+      const pct = Number(status.bleed.pct || 0);
+      const maxHpLocal = actorStats.maxHp || actorStats.maxHP || 100;
+      const pDmg = Math.max(1, Math.floor(maxHpLocal * pct));
+      const { damage, newHp } = applyDamageToObject({ hp: (updates.hp ?? actorStats.hp) }, pDmg, { ignoreDefense: true });
+      updates.hp = newHp;
+      messages.push(`${actorStats.name || 'Player'} bleeds for ${damage} damage.`);
+      status.bleed.turns = (status.bleed.turns || 0) - 1;
+      if (status.bleed.turns <= 0) delete status.bleed;
+    } catch (e) { /* ignore bleed processing errors */ }
   }
 
   // Slimed: reduce heal behavior: just decrement turns
@@ -255,7 +302,9 @@ const abilityHandlers = {
       newStatus.weaken.amount = (newStatus.weaken.amount || 0) + amount;
       newStatus.weaken.turns = Math.max(newStatus.weaken.turns || 0, 2);
     }
-    opponentUpdates.status = newStatus;
+  // also reduce opponent attackBoost immediately so weaken has effect right away
+  opponentUpdates.status = newStatus;
+  opponentUpdates.attackBoost = Math.max(0, (target.attackBoost || 0) - amount);
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'archer_volley') };
     return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_archer_volley' }, message: `${user.name || 'You'} fires a volley for ${damage} total damage!`, lastMoveDamage: damage };
   },
@@ -313,7 +362,9 @@ const abilityHandlers = {
       newStatus.weaken.amount = (newStatus.weaken.amount || 0) + amount;
       newStatus.weaken.turns = Math.max(newStatus.weaken.turns || 0, 2);
     }
-    opponentUpdates.status = newStatus;
+  // decrease target's attack immediately to reflect weaken
+  opponentUpdates.status = newStatus;
+  opponentUpdates.attackBoost = Math.max(0, (target.attackBoost || 0) - amount);
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'mage_iceblast'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.mage_iceblast.cost || 0)) };
     return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_mage_iceblast' }, message: `${user.name || 'You'} blasts ${target.name || 'the target'} with ice for ${damage} damage and lowers attack!`, lastMoveDamage: damage };
   },
@@ -321,9 +372,9 @@ const abilityHandlers = {
   warrior_shout(user, target) {
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'warrior_shout') };
     const newStatus = Object.assign({}, user.status || {});
-    newStatus.shout = { turns: 2, amount: 4 };
-    playerUpdates.status = newStatus;
-    playerUpdates.attackBoost = (user.attackBoost || 0) + 8;
+  newStatus.shout = { turns: 2, amount: 8 };
+  playerUpdates.status = newStatus;
+  playerUpdates.attackBoost = (user.attackBoost || 0) + 8;
     return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_warrior_shout' }, message: `${user.name || 'You'} shouts and increases their attack!` };
   },
 
@@ -342,6 +393,11 @@ const abilityHandlers = {
     } else {
       newStatus.poison = incoming;
     }
+    // Immediately reduce target attack when applying weaken (for display and effect)
+    if (!newStatus.weakenAppliedByPoison) {
+      // Use the weaken mechanic separately if you want to stack; avoid touching attackBoost if not present
+      // We'll not modify attackBoost here to preserve previous behavior, but display will reflect weaken if set elsewhere.
+    }
     opponentUpdates.status = newStatus;
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'archer_poison') };
     return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_archer_poison' }, message: `${user.name || 'You'} hits ${target.name || 'the enemy'} for ${damage} and applies poison!`, lastMoveDamage: damage };
@@ -351,9 +407,18 @@ const abilityHandlers = {
   ,
   cleric_heal(user, target) {
     const heal = Math.floor(Math.random() * 14) + 12; // 12-25
-    const newHp = Math.min(user.maxHp || 100, (user.hp || 0) + heal);
-    const playerUpdates = { hp: newHp, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'cleric_heal'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.cleric_heal.cost || 0)) };
-    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_cleric_heal' }, message: `${user.name || 'You'} channels divine energy and heals for ${heal} HP!`, lastMoveHeal: heal };
+    // If caster is slimed (healing reduction), reduce heal amount
+    const isSlimed = !!(user.status && user.status.slimed);
+    const actualHeal = isSlimed ? Math.floor(heal / 2) : heal;
+    const newHp = Math.min(user.maxHp || 100, (user.hp || 0) + actualHeal);
+    // Also dispel harmful DOTs (poison / burn) on self
+    const newStatus = Object.assign({}, user.status || {});
+    let dispelled = false;
+    if (newStatus.poison) { delete newStatus.poison; dispelled = true; }
+    if (newStatus.burn) { delete newStatus.burn; dispelled = true; }
+    const playerUpdates = { hp: newHp, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'cleric_heal'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.cleric_heal.cost || 0)), status: Object.keys(newStatus).length ? newStatus : null };
+    const msg = `${user.name || 'You'} channels divine energy and heals for ${actualHeal} HP${dispelled ? ' and dispels harmful effects!' : '!'}`;
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_cleric_heal' }, message: msg, lastMoveHeal: actualHeal };
   },
 
   cleric_smite(user, target) {
@@ -361,22 +426,33 @@ const abilityHandlers = {
     const raw = Math.floor(Math.random() * 8) + base + 6;
     const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw, { ignoreDefense: false });
     const opponentUpdates = { hp: newHp };
-    // dispel damaging DOTs
-    const newStatus = Object.assign({}, target.status || {});
-    if (newStatus.poison) delete newStatus.poison;
-    if (newStatus.burn) delete newStatus.burn;
-    opponentUpdates.status = Object.keys(newStatus).length ? newStatus : null;
-    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'cleric_smite'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.cleric_smite.cost || 0)) };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_cleric_smite' }, message: `${user.name || 'You'} smite the foe for ${damage} holy damage and dispels DOTs!`, lastMoveDamage: damage };
+    // inflict burn on the enemy
+    const oppStatus = Object.assign({}, target.status || {});
+    oppStatus.burn = { turns: 3, dmg: 4 };
+    opponentUpdates.status = oppStatus;
+    // dispel damaging DOTs from self (caster)
+    const newStatus = Object.assign({}, user.status || {});
+    let dispelled = false;
+    if (newStatus.poison) { delete newStatus.poison; dispelled = true; }
+    if (newStatus.burn) { delete newStatus.burn; dispelled = true; }
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'cleric_smite'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.cleric_smite.cost || 0)), status: Object.keys(newStatus).length ? newStatus : null };
+    const msg = `${user.name || 'You'} smite the foe for ${damage} holy damage${dispelled ? ' and dispels DOTs on yourself!' : '!'}`;
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_cleric_smite' }, message: msg, lastMoveDamage: damage };
   },
 
   knight_guard(user, target) {
-    const add = 8;
+    // Make Guard distinct from Bastion: small immediate strike + a short defensive buff
+    const base = getEffectiveBaseAtk(user, 10);
+    const raw = Math.floor(Math.random() * 6) + base + 4;
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+    const opponentUpdates = { hp: newHp };
+
+    const add = 5; // smaller, short-lived defense increase
     const newDefense = (user.defense || 0) + add;
     const newStatus = Object.assign({}, user.status || {});
-    newStatus.shield = { turns: 2, amount: add };
+    newStatus.shield = { turns: 1, amount: add };
     const playerUpdates = { defense: newDefense, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'knight_guard') };
-    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_knight_guard' }, message: `${user.name || 'You'} takes a guarded stance, increasing defense by ${add}.` };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_knight_guard' }, message: `${user.name || 'You'} strikes and assumes a guarded stance, dealing ${damage} damage and increasing defense by ${add} for a short time.`, lastMoveDamage: damage };
   },
 
   knight_charge(user, target) {
@@ -426,32 +502,39 @@ const abilityHandlers = {
 
   paladin_aura(user, target) {
     const amt = 6;
+    const defAdd = 5;
     const newStatus = Object.assign({}, user.status || {});
     newStatus.shout = { turns: 2, amount: amt };
-    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'paladin_aura'), attackBoost: (user.attackBoost || 0) + amt, status: newStatus };
-    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_paladin_aura' }, message: `${user.name || 'You'} radiates an Aura of Valor, increasing attack by ${amt} for a short time.` };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'paladin_aura'), attackBoost: (user.attackBoost || 0) + amt, defense: (user.defense || 0) + defAdd, status: newStatus };
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_paladin_aura' }, message: `${user.name || 'You'} radiates an Aura of Valor, increasing attack by ${amt} and defense by ${defAdd} for a short time.` };
   },
 
   paladin_holy_strike(user, target) {
     const base = getEffectiveBaseAtk(user, 11);
     const raw = Math.floor(Math.random() * 10) + base + 6;
     const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
-    const heal = Math.floor(damage * 0.4);
-    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'paladin_holy_strike'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.paladin_holy_strike.cost || 0)) };
-    playerUpdates.hp = Math.min(user.maxHp || 100, (user.hp || 0) + heal);
-    const opponentUpdates = { hp: newHp };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_paladin_holy_strike' }, message: `${user.name || 'You'} smites for ${damage} and is healed for ${heal} HP.`, lastMoveDamage: damage };
+  const heal = Math.floor(damage * 0.4);
+  const actualHeal = (user.status && user.status.slimed) ? Math.floor(heal / 2) : heal;
+  const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'paladin_holy_strike'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.paladin_holy_strike.cost || 0)) };
+  playerUpdates.hp = Math.min(user.maxHp || 100, (user.hp || 0) + actualHeal);
+  const opponentUpdates = { hp: newHp };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_paladin_holy_strike' }, message: `${user.name || 'You'} smites for ${damage} and is healed for ${actualHeal} HP.`, lastMoveDamage: damage };
   },
 
   necro_siphon(user, target) {
     const base = getEffectiveBaseAtk(user, 10);
-    const raw = Math.floor(Math.random() * 10) + base + 6;
+    let raw = Math.floor(Math.random() * 10) + base + 6;
+    // If target has healing reduction (slimed), siphon does double damage
+    const hasHealingReduction = !!(target.status && target.status.slimed);
+    if (hasHealingReduction) raw = raw * 2;
     const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
-    const healAmt = Math.floor(damage * 0.6);
+  let healAmt = Math.floor(damage * 0.6);
+  // If caster is slimed (healing reduction), reduce siphon heal
+  if (user.status && user.status.slimed) healAmt = Math.floor(healAmt / 2);
     const opponentUpdates = { hp: newHp };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'necro_siphon'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.necro_siphon.cost || 0)) };
     playerUpdates.hp = Math.min(user.maxHp || 100, (user.hp || 0) + healAmt);
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_necro_siphon' }, message: `${user.name || 'You'} siphons ${damage} life and heals for ${healAmt}.`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_necro_siphon' }, message: `${user.name || 'You'} siphons ${damage} life and heals for ${healAmt}.`, lastMoveDamage: damage };
   },
 
   necro_raise(user, target) {
@@ -475,8 +558,8 @@ const abilityHandlers = {
   },
 
   druid_entangle(user, target) {
-    // Uses weaken status to simulate entangle/root
-    const amount = 4;
+    // Uses weaken status to simulate entangle/root, also deals increased immediate damage and may stun
+  const amount = 4;
     const newStatus = Object.assign({}, target.status || {});
     if (!newStatus.weaken) {
       newStatus.weaken = { turns: 2, amount: amount, prevBoost: (target.attackBoost || 0) };
@@ -484,21 +567,171 @@ const abilityHandlers = {
       newStatus.weaken.amount = (newStatus.weaken.amount || 0) + amount;
       newStatus.weaken.turns = Math.max(newStatus.weaken.turns || 0, 2);
     }
-    const opponentUpdates = { status: newStatus };
+    // increased immediate damage
+    const base = getEffectiveBaseAtk(user, 10);
+    const raw = Math.floor(Math.random() * 10) + Math.floor(base / 2);
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+    const opponentUpdates = { status: newStatus, hp: newHp };
+    opponentUpdates.attackBoost = Math.max(0, (target.attackBoost || 0) - amount);
+    // 15% chance to stun
+    if (Math.random() < 0.15) {
+      const s = Object.assign({}, newStatus || {});
+      s.stun = { turns: 1 };
+      opponentUpdates.status = s;
+    }
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'druid_entangle') };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_druid_entangle' }, message: `${user.name || 'You'} conjures grasping vines that entangle the foe and weaken their attacks.` };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_druid_entangle' }, message: `${user.name || 'You'} conjures grasping vines that entangle the foe, dealing ${damage} damage and weakening their attacks.`, lastMoveDamage: damage };
   },
 
   druid_regrowth(user, target) {
-    // Immediate heal + regen status for a few turns
-    const immediate = Math.floor(Math.random() * 8) + 6; // 6-13
-    const regenAmount = 4; // per turn
-    const regenTurns = 3;
-    const newHp = Math.min(user.maxHp || 100, (user.hp || 0) + immediate);
+    // Larger immediate heal + stronger regen status for more sustained healing
+    const immediate = Math.floor(Math.random() * 10) + 10; // 10-19
+    const regenAmount = 6; // per turn (increased)
+    const regenTurns = 4; // lasts longer
+    const actualImmediate = (user.status && user.status.slimed) ? Math.floor(immediate / 2) : immediate;
+    const newHp = Math.min(user.maxHp || 100, (user.hp || 0) + actualImmediate);
     const newStatus = Object.assign({}, user.status || {});
     newStatus.regen = { turns: regenTurns, amount: regenAmount };
     const playerUpdates = { hp: newHp, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'druid_regrowth'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.druid_regrowth.cost || 0)) };
-    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_druid_regrowth' }, message: `${user.name || 'You'} calls regrowth, healing ${immediate} HP and regenerating ${regenAmount} HP for ${regenTurns} turns.`, lastMoveHeal: immediate };
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_druid_regrowth' }, message: `${user.name || 'You'} calls regrowth, healing ${actualImmediate} HP and regenerating ${regenAmount} HP for ${regenTurns} turns.`, lastMoveHeal: actualImmediate };
+  }
+
+  ,
+  // Third-ability handlers
+  warrior_whirlwind(user, target) {
+    const base = getEffectiveBaseAtk(user, 12);
+    const raw = Math.floor(Math.random() * 12) + base + 6;
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+    const opponentUpdates = { hp: newHp };
+    // apply a weaken to reduce enemy attack for 2 turns
+    const newStatus = Object.assign({}, target.status || {});
+    const amount = 3;
+    if (!newStatus.weaken) {
+      newStatus.weaken = { turns: 2, amount: amount, prevBoost: (target.attackBoost || 0) };
+    } else {
+      newStatus.weaken.amount = (newStatus.weaken.amount || 0) + amount;
+      newStatus.weaken.turns = Math.max(newStatus.weaken.turns || 0, 2);
+    }
+    opponentUpdates.status = newStatus;
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'warrior_whirlwind') };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_warrior_whirlwind' }, message: `${user.name || 'You'} spins a Whirlwind for ${damage} damage and weakens the foe!`, lastMoveDamage: damage };
+  },
+
+  mage_arcane_burst(user, target) {
+    const base = getEffectiveBaseAtk(user, 14);
+    const raw = Math.floor(Math.random() * 14) + base + 8;
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw, { ignoreDefense: true });
+    const opponentUpdates = { hp: newHp };
+    // Instead of burning the target, empower the caster with a temporary attack boost
+    const playerStatus = Object.assign({}, user.status || {});
+    const boost = 9;
+    playerStatus.shout = { turns: 2, amount: boost };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'mage_arcane_burst'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.mage_arcane_burst.cost || 0)), status: playerStatus, attackBoost: (user.attackBoost || 0) + boost };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_mage_arcane_burst' }, message: `${user.name || 'You'} unleashes Arcane Burst for ${damage} magic damage and is empowered with +${boost} attack!`, lastMoveDamage: damage };
+  },
+
+  archer_trap(user, target) {
+    const base = getEffectiveBaseAtk(user, 12);
+    const raw = Math.floor(Math.random() * 8) + base + 4;
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+    const opponentUpdates = { hp: newHp };
+    // Apply bleeding as the trap effect (3 turns, 5% of target max HP per turn)
+    const newStatus = Object.assign({}, target.status || {});
+    const incoming = { turns: 3, pct: 0.05 };
+    if (newStatus.bleed) {
+      newStatus.bleed.pct = Math.max(newStatus.bleed.pct || 0, incoming.pct);
+      newStatus.bleed.turns = Math.max(newStatus.bleed.turns || 0, incoming.turns);
+    } else {
+      newStatus.bleed = incoming;
+    }
+    opponentUpdates.status = newStatus;
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'archer_trap') };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_archer_trap' }, message: `${user.name || 'You'} sets a trap and deals ${damage} damage, inflicting bleeding for several turns.`, lastMoveDamage: damage };
+  },
+
+  cleric_shield(user, target) {
+    const add = 10;
+    const newDefense = (user.defense || 0) + add;
+    const newStatus = Object.assign({}, user.status || {});
+    newStatus.shield = { turns: 3, amount: add };
+    const playerUpdates = { defense: newDefense, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'cleric_shield'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.cleric_shield.cost || 0)) };
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_cleric_shield' }, message: `${user.name || 'You'} raises a Sanctuary Shield, increasing defense by ${add} for several turns.` };
+  },
+
+  knight_bastion(user, target) {
+    const add = 12;
+    const newDefense = (user.defense || 0) + add;
+    const newStatus = Object.assign({}, user.status || {});
+    newStatus.shield = { turns: 3, amount: add };
+    const playerUpdates = { defense: newDefense, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'knight_bastion') };
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_knight_bastion' }, message: `${user.name || 'You'} assumes Bastion stance, greatly increasing defense for several turns.` };
+  },
+
+  rogue_evade(user, target) {
+    // Grant multiple immediate actions: give two extraTurns so the player gets 3 consecutive turns total.
+    const newStatus = Object.assign({}, user.status || {});
+    newStatus.extraTurns = (newStatus.extraTurns || 0) + 2; // two extra turns (current action + 2 = 3 total)
+    const playerUpdates = { status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'rogue_evade') };
+    // Keep the current turn with the acting player so they can act immediately
+    const matchUpdates = { lastMove: 'special_rogue_evade', currentTurn: currentUserId };
+    return { playerUpdates, opponentUpdates: {}, matchUpdates, message: `${user.name || 'You'} performs an evasive roll and gains multiple rapid actions!` };
+  },
+
+  paladin_bless(user, target) {
+    const baseHeal = 20; // stronger heal as requested
+    const actualHeal = (user.status && user.status.slimed) ? Math.floor(baseHeal / 2) : baseHeal;
+    const newHp = Math.min(user.maxHp || 100, (user.hp || 0) + actualHeal);
+    const amt = 8; // stronger attack boost
+    const newStatus = Object.assign({}, user.status || {});
+    newStatus.shout = { turns: 2, amount: amt };
+    const playerUpdates = { hp: newHp, attackBoost: (user.attackBoost || 0) + amt, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'paladin_bless'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.paladin_bless.cost || 0)) };
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_paladin_bless' }, message: `${user.name || 'You'} calls a Blessing, healing ${actualHeal} HP and gaining +${amt} attack for a short time.`, lastMoveHeal: actualHeal };
+  },
+
+  necro_curse(user, target) {
+    const base = getEffectiveBaseAtk(user, 9);
+    const newStatus = Object.assign({}, target.status || {});
+    // apply slimed to reduce healing
+    newStatus.slimed = { turns: 4, effect: 'reduce-heal' };
+    // apply stronger poison/rot
+    const incoming = { turns: 5, dmg: Math.max(2, Math.floor(base / 2)) };
+    if (newStatus.poison) {
+      newStatus.poison.dmg = Math.max(newStatus.poison.dmg || 0, incoming.dmg);
+      newStatus.poison.turns = Math.max(newStatus.poison.turns || 0, incoming.turns);
+    } else {
+      newStatus.poison = incoming;
+    }
+    // also apply a burn
+    newStatus.burn = { turns: 3, dmg: 3 };
+    // 70% chance to stun
+    if (Math.random() < 0.7) {
+      newStatus.stun = { turns: 1 };
+      try { console.debug('[ability] necro_curse applied stun to target', { caster: user?.name, target: target?.name, status: newStatus }); } catch (e) {}
+    }
+    const opponentUpdates = { status: newStatus };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'necro_curse'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.necro_curse.cost || 0)) };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_necro_curse' }, message: `${user.name || 'You'} curses ${target.name || 'the enemy'}, reducing their healing and afflicting rot and flame.` };
+  },
+
+  druid_barkskin(user, target) {
+    // Barkskin: grant a short defensive shield, heal a bit, and also deal a small lash of damage
+    // Fix: when applying a shield we must also increase the actor's defense property so that
+    // the shield expiration can safely subtract it without resulting in net negative defense.
+    const immediate = 6;
+    const newHp = Math.min(user.maxHp || 100, (user.hp || 0) + immediate);
+  const shieldAmount = 8; // increased defense boost per request
+    const newStatus = Object.assign({}, user.status || {});
+    newStatus.shield = { turns: 3, amount: shieldAmount };
+    // increase defense immediately so the shield has an effect and expires cleanly later
+    const playerUpdates = { hp: newHp, status: newStatus, defense: (user.defense || 0) + shieldAmount, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'druid_barkskin'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.druid_barkskin.cost || 0)) };
+
+    // small damaging lash to the target
+    const base = getEffectiveBaseAtk(user, 10);
+    const raw = Math.floor(Math.random() * 6) + Math.floor(base / 2);
+    const { damage, newHp: oppNewHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+    const opponentUpdates = { hp: oppNewHp };
+
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_druid_barkskin' }, message: `${user.name || 'You'} hardens skin and lashes out, healing ${immediate} HP, gaining +${shieldAmount} defense and dealing ${damage} damage to the foe.`, lastMoveHeal: immediate, lastMoveDamage: damage };
   }
 };
 
@@ -533,6 +766,15 @@ window.initializeBattle = async function(mId, userId) {
   // Get existing player node to avoid overwriting any existing server values
   const existingPlayerSnap = await get(playerRef);
   const existing = existingPlayerSnap.exists() ? existingPlayerSnap.val() : {};
+  // Merge abilities: preserve existing customizations but ensure any newly added class-template
+  // abilities are included (so players see the 3rd ability added in code updates).
+  const templateAbilities = Array.isArray(classTemplate.abilities) ? classTemplate.abilities : [];
+  let resolvedAbilities = templateAbilities.slice();
+  if (existing && Array.isArray(existing.abilities) && existing.abilities.length) {
+    // Merge unique entries, keeping existing ones first
+    const set = new Set([...(existing.abilities || []), ...templateAbilities]);
+    resolvedAbilities = Array.from(set);
+  }
 
   const seed = {
     name: userName,
@@ -545,7 +787,7 @@ window.initializeBattle = async function(mId, userId) {
     fainted: existing.fainted ?? false,
     abilityCooldowns: existing.abilityCooldowns ?? {},
     status: existing.status ?? {},
-    abilities: existing.abilities ?? classTemplate.abilities ?? [],
+    abilities: resolvedAbilities,
     mana: existing.mana ?? (classTemplate.mana || 0),
     maxMana: existing.maxMana ?? (classTemplate.mana || 0)
   };
@@ -752,6 +994,67 @@ function setupMatchListeners() {
       }, { once: true });
     }
   });
+
+  // Listen for rewards being assigned (winner chosen / loser random)
+  onValue(ref(db, `matches/${matchId}/rewards`), async (snap) => {
+    if (!snap.exists()) return;
+    const rewards = snap.val();
+    try {
+      const matchSnap = await get(matchRef);
+      const matchData = matchSnap.exists() ? matchSnap.val() : {};
+      const winnerId = matchData?.winner;
+      const catalog = (window.getItemCatalog) ? window.getItemCatalog() : {};
+      const rewardStatusEl = document.getElementById('reward-status');
+      const chooser = document.getElementById('reward-chooser');
+      if (!rewardStatusEl) return;
+
+      // Backwards-compatible shapes: rewards.loser/winner may be a string id or an object { id, uid }
+      const loserInfoRaw = rewards?.loser;
+      const winnerInfoRaw = rewards?.winner;
+      const loserInfo = (typeof loserInfoRaw === 'string' || typeof loserInfoRaw === 'number') ? { id: loserInfoRaw } : (loserInfoRaw || null);
+      const winnerInfo = (typeof winnerInfoRaw === 'string' || typeof winnerInfoRaw === 'number') ? { id: winnerInfoRaw } : (winnerInfoRaw || null);
+
+      // If loserInfo is present and has a uid, show to that user; otherwise if only id present and no winner yet, try to infer
+      if (loserInfo && loserInfo.id) {
+        const ownerUid = loserInfo.uid;
+        if (ownerUid) {
+          if (currentUserId === ownerUid) {
+            const meta = catalog[loserInfo.id] || { id: loserInfo.id, name: loserInfo.id };
+            rewardStatusEl.textContent = `You received: ${meta.name}`;
+            if (chooser) chooser.style.display = 'none';
+          }
+        } else {
+          // no owner UID written: infer by checking match players if winner set
+          if (winnerId) {
+            const loserUid = (matchData?.p1 === winnerId) ? matchData?.p2 : matchData?.p1;
+            if (currentUserId === loserUid) {
+              const meta = catalog[loserInfo.id] || { id: loserInfo.id, name: loserInfo.id };
+              rewardStatusEl.textContent = `You received: ${meta.name}`;
+              if (chooser) chooser.style.display = 'none';
+            }
+          }
+        }
+      }
+
+      // If winnerInfo is present and has uid (preferred), show to that user; otherwise compare to match winner id
+      if (winnerInfo && winnerInfo.id) {
+        const ownerUid = winnerInfo.uid;
+        if (ownerUid) {
+          if (currentUserId === ownerUid) {
+            const meta = catalog[winnerInfo.id] || { id: winnerInfo.id, name: winnerInfo.id };
+            rewardStatusEl.textContent = `You received: ${meta.name}`;
+            if (chooser) chooser.style.display = 'none';
+          }
+        } else if (winnerId && currentUserId === winnerId) {
+          const meta = catalog[winnerInfo.id] || { id: winnerInfo.id, name: winnerInfo.id };
+          rewardStatusEl.textContent = `You received: ${meta.name}`;
+          if (chooser) chooser.style.display = 'none';
+        }
+      }
+    } catch (e) {
+      console.error('Error handling rewards listener', e);
+    }
+  });
 }
 
   // In-match class chooser UI helpers
@@ -881,7 +1184,40 @@ async function initiateRewardPhase(winnerUid, loserUid) {
 
   // get catalog
   const catalog = (window.getItemCatalog) ? window.getItemCatalog() : {};
-  const itemKeys = Object.keys(catalog || {});
+  // filter out any legacy/removed tokens (e.g., 'jps') so they don't surface in the chooser
+  let itemKeys = Object.keys(catalog || {}).filter(k => k !== 'jps');
+
+  // Immediately assign a random reward to the loser so they don't have to wait
+  try {
+    const rewardsRef = ref(db, `matches/${matchId}/rewards`);
+    const rewardsSnap = await get(rewardsRef);
+    const existingRewards = rewardsSnap.exists() ? rewardsSnap.val() : {};
+    if (!existingRewards || !existingRewards.loser) {
+      // choose random item for loser
+  const keys = Object.keys(catalog || {}).filter(k => k !== 'jps');
+  let randId = 'potion_small';
+  if (keys.length) randId = keys[Math.floor(Math.random() * keys.length)];
+      const randMeta = catalog[randId] || { id: randId, name: randId };
+      // award to loser user record
+      if (window && window.addItemToUser) {
+        try { await window.addItemToUser(loserUid, { id: randMeta.id, name: randMeta.name, qty: 1 }); } catch (e) { console.error('addItemToUser failed for loser', e); }
+      } else {
+        try {
+          const lItemRef = ref(db, `users/${loserUid}/items/${randMeta.id}`);
+          const s2 = await get(lItemRef);
+          const qty2 = (s2.exists() && s2.val().qty) ? Number(s2.val().qty) + 1 : 1;
+          await update(lItemRef, { id: randMeta.id, name: randMeta.name, qty: qty2 });
+        } catch (e) { console.error('Direct DB loser item award failed', e); }
+      }
+      // write the loser assignment into the match rewards so client UIs update
+      try {
+        // store as an object with id and uid so clients can unambiguously show the correct owner
+        await update(rewardsRef, { loser: { id: randId, uid: loserUid } });
+      } catch (e) { console.error('Could not write loser reward to match', e); }
+    }
+  } catch (e) {
+    console.error('Error assigning random loser reward', e);
+  }
 
   if (currentUserId === winnerUid) {
     // render choices
@@ -949,26 +1285,10 @@ async function finalizeRewards(winnerUid, loserUid, chosenItemId) {
       await update(wItemRef, { id: chosenMeta.id, name: chosenMeta.name, qty });
     }
 
-    // award random item to loser (choose from catalog randomly)
-    const keys = Object.keys(catalog || {});
-    let randId = 'potion_small';
-    if (keys.length) {
-      randId = keys[Math.floor(Math.random() * keys.length)];
-    }
-    const randMeta = catalog[randId] || { id: randId, name: randId };
-    if (window && window.addItemToUser) {
-      await window.addItemToUser(loserUid, { id: randMeta.id, name: randMeta.name, qty: 1 });
-    } else {
-      const lItemRef = ref(db, `users/${loserUid}/items/${randMeta.id}`);
-      const s2 = await get(lItemRef);
-      const qty2 = (s2.exists() && s2.val().qty) ? Number(s2.val().qty) + 1 : 1;
-      await update(lItemRef, { id: randMeta.id, name: randMeta.name, qty: qty2 });
-    }
-
-    // Optionally: write a match-level record of rewards for auditing
+    // write winner choice into match rewards (loser was assigned earlier)
     try {
-      await update(ref(db, `matches/${matchId}/rewards`), { winner: chosenItemId, loser: randId });
-    } catch (e) { /* ignore */ }
+      await update(ref(db, `matches/${matchId}/rewards`), { winner: { id: chosenItemId, uid: winnerUid } });
+    } catch (e) { console.error('Could not write winner reward to match', e); }
 
   } catch (e) {
     console.error('awardItems error', e);
@@ -1132,11 +1452,13 @@ function updatePlayerUI(stats, isPlayer) {
     // Display attack boost (ATK) primarily, with base attack shown in parentheses
     const atkBoost = Number(stats?.attackBoost ?? 0);
     const baseAtk = Number(stats?.baseAtk ?? 0);
-    statsText.innerHTML = `ATK: ${atkBoost} (base ${baseAtk}) &nbsp; DEF: ${def}`;
+    const weakenAmt = Number((stats?.status && stats.status.weaken && stats.status.weaken.amount) || 0);
+    const displayAtkBoost = atkBoost - weakenAmt;
+    statsText.innerHTML = `ATK: ${displayAtkBoost} (base ${baseAtk}) &nbsp; DEF: ${def}`;
     // Replace native title with styled tooltip
     try {
       statsText.classList.add('has-tooltip');
-      statsText.setAttribute('data-tooltip', `Base ATK: ${baseAtk}. Current attack boost: ${atkBoost}.`);
+      statsText.setAttribute('data-tooltip', `Base ATK: ${baseAtk}. Current attack boost: ${displayAtkBoost}${weakenAmt ? ` (weakened by ${weakenAmt})` : ''}.`);
     } catch (e) { /* ignore DOM issues */ }
   }
 
@@ -1564,50 +1886,82 @@ async function chooseSpecial(abilityId) {
 }
 window.chooseSpecial = chooseSpecial;
 
-// ------------------
-// Inventory UI + item usage
-// ------------------
+// This section does: Inventory UI and item usage (rendering, image, qty, and use actions)
 async function renderInventory() {
   const invEl = document.getElementById('inventory-list');
   if (!invEl) return;
   invEl.textContent = '(loading...)';
 
-  if (!currentUserId) {
-    invEl.textContent = '(not signed in)';
-    return;
-  }
-
   try {
-    // use the helper exposed by app.js
-    const items = (window.getUserItems) ? await window.getUserItems(currentUserId) : {};
-    if (!items || Object.keys(items).length === 0) {
-      invEl.innerHTML = '<div class="inv-empty">(no items)</div>';
+    if (!currentUserId) {
+      invEl.textContent = '(not signed in)';
       return;
     }
 
+    // fetch user's items from DB
+    const itemsSnap = await get(ref(db, `users/${currentUserId}/items`));
+    const items = itemsSnap.exists() ? itemsSnap.val() : {};
     invEl.innerHTML = '';
+
     const catalog = (window.getItemCatalog) ? window.getItemCatalog() : {};
-    for (const key of Object.keys(items)) {
-      const it = items[key];
+
+    const keys = Object.keys(items || {});
+    if (!keys.length) {
+      invEl.textContent = '(no items)';
+      return;
+    }
+
+    for (const key of keys) {
+      // Skip legacy/removed item ids (e.g. 'jps') so they do not appear in the inventory UI
+      if (key === 'jps') continue;
+      const it = items[key] || {};
       const row = document.createElement('div');
       row.className = 'inventory-item';
-      row.tabIndex = 0; // make focusable for keyboard users
-      const name = document.createElement('span');
-      name.textContent = `${it.name} x${it.qty}`;
+      row.tabIndex = 0; // keyboard focus
+
+      const left = document.createElement('div');
+      left.className = 'inv-item-left';
+
+      const img = document.createElement('img');
+      img.className = 'inv-item-img';
+      const paths = getItemImagePaths(key);
+      img.src = paths.jpg;
+      img.alt = (catalog[key]?.name) ? catalog[key].name : key;
+      img.onerror = function() {
+        try {
+          // try svg fallback in the preferred location
+          if (paths.svg && this.src !== paths.svg) {
+            this.onerror = null;
+            this.src = paths.svg;
+            return;
+          }
+        } catch (e) {}
+        // final fallback to legacy path without spaces
+        try { this.onerror = null; this.src = `img/items/${key}.jpg`; } catch (ee) { this.onerror = null; }
+      };
+
+      const nameWrap = document.createElement('div');
+      nameWrap.innerHTML = `<div class="inv-item-name">${catalog[key]?.name || it.name || key}</div><div class="inv-item-qty">x${it.qty || 1}</div>`;
+
+      left.appendChild(img);
+      left.appendChild(nameWrap);
+
+      const right = document.createElement('div');
       const useBtn = document.createElement('button');
       useBtn.type = 'button';
-      useBtn.textContent = 'Use';
       useBtn.className = 'inv-use-btn';
+      useBtn.textContent = 'Use';
       useBtn.disabled = !(it.qty > 0);
-      // add tooltip describing the item when available on the Use button (no hidden text)
-      const meta = catalog[key];
-      if (meta && meta.desc) {
+      if (catalog[key] && catalog[key].desc) {
         useBtn.classList.add('has-tooltip');
-        useBtn.setAttribute('data-tooltip', meta.desc);
+        useBtn.setAttribute('data-tooltip', catalog[key].desc);
       }
       useBtn.addEventListener('click', () => { useItem(key).catch(console.error); });
-      row.appendChild(name);
-      row.appendChild(useBtn);
+
+      right.appendChild(useBtn);
+
+      row.appendChild(left);
+      row.appendChild(right);
       invEl.appendChild(row);
     }
   } catch (e) {
@@ -1646,18 +2000,20 @@ async function useItem(itemId) {
 
     if (itemId === 'potion_small') {
       const heal = 20;
-      const newHp = Math.min(playerStats.maxHp || 100, (playerStats.hp || 0) + heal);
+      const actualHeal = (playerStats.status && playerStats.status.slimed) ? Math.floor(heal / 2) : heal;
+      const newHp = Math.min(playerStats.maxHp || 100, (playerStats.hp || 0) + actualHeal);
       updates.push(update(playerRef, { hp: newHp }));
       matchUpdates.lastMove = 'use_item_potion_small';
       matchUpdates.lastMoveActor = currentUserId;
-      matchUpdates.lastMoveHeal = heal;
+      matchUpdates.lastMoveHeal = actualHeal;
     } else if (itemId === 'potion_large') {
       const heal = 50;
-      const newHp = Math.min(playerStats.maxHp || 100, (playerStats.hp || 0) + heal);
+      const actualHeal = (playerStats.status && playerStats.status.slimed) ? Math.floor(heal / 2) : heal;
+      const newHp = Math.min(playerStats.maxHp || 100, (playerStats.hp || 0) + actualHeal);
       updates.push(update(playerRef, { hp: newHp }));
       matchUpdates.lastMove = 'use_item_potion_large';
       matchUpdates.lastMoveActor = currentUserId;
-      matchUpdates.lastMoveHeal = heal;
+      matchUpdates.lastMoveHeal = actualHeal;
     } else if (itemId === 'bomb') {
       const dmg = 20;
       const actual = Math.max(0, dmg - (opponentStats.defense || 0));
@@ -1734,6 +2090,53 @@ async function useItem(itemId) {
   }
 }
 
-// expose for debugging
+// This line does: expose renderInventory and useItem for debugging
 window.renderInventory = renderInventory;
 window.useItem = useItem;
+
+// This section does: wire the Items toggle button to show/hide the inventory panel
+try {
+  const toggleBtn = document.getElementById('toggle-inventory-btn');
+  const invPanel = document.getElementById('inventory');
+  if (toggleBtn && invPanel) {
+    toggleBtn.addEventListener('click', async () => {
+      const hidden = invPanel.classList.toggle('hidden');
+      toggleBtn.textContent = hidden ? 'Items' : 'Close Items';
+      if (!hidden) {
+        try {
+          // ensure the user has at least one of each item for testing if inventory is empty
+          if (typeof ensureTestItemsForUser === 'function') await ensureTestItemsForUser();
+          await renderInventory();
+        } catch (e) { console.error('Could not render inventory on open', e); }
+      }
+    });
+  }
+} catch (e) { /* ignore DOM timing issues */ }
+
+// This function does: ensure test items exist for the current user (seed one of each catalog item if user has no items)
+async function ensureTestItemsForUser() {
+  if (!currentUserId) return;
+  try {
+    const userItemsSnap = await get(ref(db, `users/${currentUserId}/items`));
+    if (userItemsSnap.exists() && Object.keys(userItemsSnap.val() || {}).length) return; // already has items
+
+    const catalog = (window.getItemCatalog) ? window.getItemCatalog() : (typeof ITEM_CATALOG !== 'undefined' ? ITEM_CATALOG : {});
+    const keys = Object.keys(catalog || {});
+    if (!keys.length) return;
+
+    const promises = [];
+    for (const k of keys) {
+      const meta = catalog[k] || { id: k, name: k };
+      const itemRef = ref(db, `users/${currentUserId}/items/${k}`);
+      // set qty:1
+      promises.push(update(itemRef, { id: meta.id || k, name: meta.name || k, qty: 1 }));
+    }
+    await Promise.all(promises);
+    console.debug('[seed] seeded test items for', currentUserId);
+  } catch (e) {
+    console.error('ensureTestItemsForUser error', e);
+  }
+}
+
+// This line does: expose ensureTestItemsForUser for manual testing
+window.ensureTestItemsForUser = ensureTestItemsForUser;
