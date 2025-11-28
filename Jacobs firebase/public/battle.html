@@ -30,9 +30,17 @@
   <!-- Class selection: choose your class before queueing -->
   <div id="class-select" class="class-select">
     <label>Select Class:</label>
-    <button type="button" data-class="warrior">Warrior</button>
-    <button type="button" data-class="mage">Mage</button>
-    <button type="button" data-class="archer">Archer</button>
+    <div class="class-grid">
+  <button type="button" data-class="warrior" class="class-btn has-tooltip" data-tooltip="Warrior — tough melee fighter, high HP and defense"><img class="class-icon" src="img/warrior.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/warrior.svg'" alt="Warrior"><br>Warrior</button>
+  <button type="button" data-class="mage" class="class-btn has-tooltip" data-tooltip="Mage — powerful spellcaster with mana and area damage"><img class="class-icon" src="img/mage.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/mage.svg'" alt="Mage"><br>Mage</button>
+  <button type="button" data-class="archer" class="class-btn has-tooltip" data-tooltip="Archer — ranged DPS, balanced attack and accuracy"><img class="class-icon" src="img/archer.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/archer.svg'" alt="Archer"><br>Archer</button>
+  <button type="button" data-class="cleric" class="class-btn has-tooltip" data-tooltip="Cleric — divine healer, can restore HP and remove DOTs"><img class="class-icon" src="img/cleric.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/cleric.svg'" alt="Cleric"><br>Cleric</button>
+  <button type="button" data-class="knight" class="class-btn has-tooltip" data-tooltip="Knight — heavy tank, strong defense and crowd control"><img class="class-icon" src="img/knight.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/knight.svg'" alt="Knight"><br>Knight</button>
+  <button type="button" data-class="rogue" class="class-btn has-tooltip" data-tooltip="Rogue — high single-target damage, stealthy strikes"><img class="class-icon" src="img/rogue.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/rogue.svg'" alt="Rogue"><br>Rogue</button>
+  <button type="button" data-class="paladin" class="class-btn has-tooltip" data-tooltip="Paladin — hybrid support with heals and offensive strikes"><img class="class-icon" src="img/paladin.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/paladin.svg'" alt="Paladin"><br>Paladin</button>
+  <button type="button" data-class="necromancer" class="class-btn has-tooltip" data-tooltip="Necromancer — deals necrotic damage and siphons life"><img class="class-icon" src="img/necromancer.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/necromancer.svg'" alt="Necromancer"><br>Necromancer</button>
+  <button type="button" data-class="druid" class="class-btn has-tooltip" data-tooltip="Druid — nature caster: heal-over-time and control"><img class="class-icon" src="img/druid.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/druid.svg'" alt="Druid"><br>Druid</button>
+    </div>
     <span id="selected-class-label"></span>
   </div>
 
@@ -40,6 +48,13 @@
     <div id="enemy" class="player-card">
       <div class="player-label">Opponent</div>
       <h2 id="enemy-name">Gladiator</h2>
+  <img id="enemy-img" src="img/warrior.jpg" alt="enemy" style="width:96px;height:96px;display:block;margin:8px auto;border-radius:8px;">
+      <div class="stat-lines">
+        <div id="enemy-hp-text">HP: --/--</div>
+        <div class="mana-bar-outer"><div id="enemy-mana-fill" class="mana-fill"></div></div>
+        <div id="enemy-mana-text">Mana: --/--</div>
+        <div id="enemy-stats">ATK: -- &nbsp; DEF: --</div>
+      </div>
       <div class="hp-bar">
         <div id="enemy-hp" class="hp-fill"></div>
       </div>
@@ -49,6 +64,13 @@
     <div id="player" class="player-card">
       <div class="player-label">You</div>
       <h2 id="player-name">Hero</h2>
+  <img id="player-img" src="img/warrior.jpg" alt="player" style="width:96px;height:96px;display:block;margin:8px auto;border-radius:8px;">
+      <div class="stat-lines">
+        <div id="player-hp-text">HP: --/--</div>
+        <div class="mana-bar-outer"><div id="player-mana-fill" class="mana-fill"></div></div>
+        <div id="player-mana-text">Mana: --/--</div>
+        <div id="player-stats">ATK: -- &nbsp; DEF: --</div>
+      </div>
       <div class="hp-bar">
         <div id="player-hp" class="hp-fill"></div>
       </div>
@@ -60,17 +82,27 @@
       <button onclick="chooseMove('heal')">Heal</button>
       <button onclick="chooseMove('defend')">Defend</button>
       <button onclick="chooseMove('prepare')">Prepare</button>
+      <button id="toggle-inventory-btn" type="button">Items</button>
     </div>
 
   <div id="specials"></div>
 
     <div id="message"></div>
+
+    <!-- Inventory panel (hidden until Items button clicked) -->
+    <div id="inventory" class="inventory-panel hidden" style="margin-top:12px;">
+      <h3>Inventory</h3>
+      <div id="inventory-list">(loading...)</div>
+    </div>
     
     <!-- End Game Overlay -->
     <div id="end-game-overlay" class="end-game-overlay" style="display: none;">
       <div class="end-game-content">
         <h1 id="end-game-title">Game Over</h1>
         <p id="end-game-message"></p>
+        <!-- Reward chooser shown to winner after match (populated dynamically) -->
+        <div id="reward-chooser" style="margin-top:12px; display:none; text-align:center;"></div>
+        <div id="reward-status" style="margin-top:8px; font-size:0.95rem; color:#ddd"></div>
         <button id="return-to-queue-btn" class="return-btn" onclick="returnToQueue()">Return to Queue</button>
       </div>
     </div>
@@ -80,10 +112,16 @@
       <div class="modal-content" style="background:#fff; padding:16px; border-radius:8px; width:320px; text-align:center;">
         <h3>Choose Your Class</h3>
         <p>Select a class to use for this match. You can also save it for future matches.</p>
-        <div style="margin:12px 0; display:flex; gap:8px; justify-content:center;">
-          <button type="button" data-class="warrior" class="modal-class-btn">Warrior</button>
-          <button type="button" data-class="mage" class="modal-class-btn">Mage</button>
-          <button type="button" data-class="archer" class="modal-class-btn">Archer</button>
+        <div style="margin:12px 0; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+          <button type="button" data-class="warrior" class="modal-class-btn has-tooltip" data-tooltip="Warrior — tough melee fighter, high HP and defense">Warrior</button>
+          <button type="button" data-class="mage" class="modal-class-btn has-tooltip" data-tooltip="Mage — powerful spellcaster with mana and area damage">Mage</button>
+          <button type="button" data-class="archer" class="modal-class-btn has-tooltip" data-tooltip="Archer — ranged DPS, balanced attack and accuracy">Archer</button>
+          <button type="button" data-class="cleric" class="modal-class-btn has-tooltip" data-tooltip="Cleric — divine healer, can restore HP and remove DOTs">Cleric</button>
+          <button type="button" data-class="knight" class="modal-class-btn has-tooltip" data-tooltip="Knight — heavy tank, strong defense and crowd control">Knight</button>
+          <button type="button" data-class="rogue" class="modal-class-btn has-tooltip" data-tooltip="Rogue — high single-target damage, stealthy strikes">Rogue</button>
+          <button type="button" data-class="paladin" class="modal-class-btn has-tooltip" data-tooltip="Paladin — hybrid support with heals and offensive strikes">Paladin</button>
+          <button type="button" data-class="necromancer" class="modal-class-btn has-tooltip" data-tooltip="Necromancer — deals necrotic damage and siphons life">Necromancer</button>
+          <button type="button" data-class="druid" class="modal-class-btn has-tooltip" data-tooltip="Druid — nature caster: heal-over-time and control">Druid</button>
         </div>
         <div style="margin-top:8px; font-size:12px; color:#666;">You must choose before taking your first turn.</div>
       </div>

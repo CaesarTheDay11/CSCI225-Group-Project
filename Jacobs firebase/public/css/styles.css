@@ -20,18 +20,188 @@ body {
   transition: width 0.3s;
 }
 
-#menu button {
-  margin: 10px;
-  padding: 10px 20px;
-  background: #666;
-  color: white;
-  border: none;
-  cursor: pointer;
+/* Mana bar */
+.mana-bar-outer { background:#262b31; width:200px; height:12px; margin:6px auto; border-radius:6px; border:1px solid rgba(255,255,255,0.12); box-shadow: inset 0 1px 0 rgba(255,255,255,0.02); }
+.mana-fill { background: linear-gradient(90deg,#1976d2,#42a5f5); height:100%; width:0%; transition: width .25s; box-shadow: 0 0 8px rgba(66,165,245,0.12); border-radius:5px; }
+.stat-lines { font-size:0.9rem; color:#ddd; margin-bottom:6px; }
+.stat-lines div { margin:3px 0; }
+
+/* Class selector styles */
+.class-select { margin: 12px auto; max-width: 720px; text-align: left; padding: 10px; }
+.class-select label { display:block; font-weight:700; margin-bottom:8px; }
+.class-grid { display:flex; flex-wrap:wrap; gap:8px; }
+
+/* Custom tooltip for consistent styling across elements */
+.has-tooltip {
+  position: relative;
+  cursor: help;
+}
+.has-tooltip[data-tooltip]:hover::after,
+.has-tooltip[data-tooltip]:focus::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(100% + 8px);
+  background: rgba(20,20,30,0.95);
+  color: #fff;
+  padding: 6px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.35);
+  z-index: 40;
+}
+.has-tooltip[data-tooltip]:hover::before,
+.has-tooltip[data-tooltip]:focus::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(100% + 2px);
+  border-width: 6px 6px 0 6px;
+  border-style: solid;
+  border-color: rgba(20,20,30,0.95) transparent transparent transparent;
+  z-index: 41;
 }
 
-#menu button:hover {
-  background: #888;
+/* Inventory: compact rows that reveal details on hover/focus for accessibility */
+.inventory-item {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:8px 10px;
+  border-radius:8px;
+/* This rule does: style class selector buttons and their icons */
+.class-btn { display:flex; align-items:center; gap:8px; padding:8px 10px; }
+.class-select .class-btn .class-icon,
+.class-grid .class-btn .class-icon {
+  /* This rule does: constrain pre-game selector images to a fixed small size and prevent layout shifts */
+  width:24px; height:24px; min-width:24px; min-height:24px; max-width:24px; max-height:24px;
+  flex-shrink:0; border-radius:6px; object-fit:cover; display:inline-block;
 }
+
+/* This rule does: style in-battle portraits (player/enemy) to be larger and centered */
+.portrait { width:128px; height:128px; display:block; margin:8px auto; border-radius:8px; object-fit:cover; }
+  background: rgba(255,255,255,0.02);
+  transition: background 120ms ease, transform 120ms ease;
+}
+.inventory-item:focus-within,
+.inventory-item:hover {
+  background: rgba(255,255,255,0.03);
+  transform: translateY(-1px);
+}
+
+/* Use button in inventory: visually match specials but smaller */
+.inv-use-btn {
+  background: linear-gradient(180deg,#2e7d32,#1b5e20);
+  color: #fff;
+  border: 0;
+  padding: 6px 10px;
+  border-radius: 6px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.25), inset 0 -2px 0 rgba(0,0,0,0.12);
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+.inv-use-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 10px 15px rgba(0,0,0,0.35); }
+.inv-use-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* This rule does: hide the inventory panel until the Items button is toggled */
+.inventory-panel.hidden { display: none; }
+
+/* This rule does: style the item image shown in inventory rows */
+.inv-item-img { width:44px; height:44px; border-radius:6px; object-fit:cover; margin-right:10px; display:inline-block; vertical-align:middle; }
+.inv-item-left { display:flex; align-items:center; gap:8px; }
+.class-btn { background: linear-gradient(180deg,#3949ab,#1e88e5); color:#fff; border: none; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:700; box-shadow: 0 6px 10px rgba(0,0,0,0.35); transition: transform .08s ease, box-shadow .08s ease; }
+.class-btn:hover { transform: translateY(-3px); box-shadow: 0 12px 18px rgba(0,0,0,0.45); }
+.class-btn.active { outline: 3px solid rgba(255,255,255,0.08); box-shadow: 0 0 20px rgba(30,136,229,0.15); }
+
+/* Modal class buttons */
+.modal-class-btn { background: linear-gradient(180deg,#6d4c41,#5d4037); color:white; border:none; padding:8px 12px; border-radius:6px; cursor:pointer; font-weight:700; }
+.modal-class-btn:hover { transform: translateY(-2px); }
+
+/* Make selector responsive on narrow screens */
+@media (max-width: 520px) {
+  .class-grid { gap:6px; }
+  .class-btn { flex: 1 1 45%; }
+}
+
+/* Specials (ability) buttons styling */
+#specials {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+#specials button {
+  background: linear-gradient(180deg,#2e7d32,#1b5e20);
+  color: #fff;
+  border: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 6px 10px rgba(0,0,0,0.35), inset 0 -2px 0 rgba(0,0,0,0.15);
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform .08s ease, box-shadow .08s ease, opacity .08s ease;
+}
+
+#specials button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 18px rgba(0,0,0,0.45); }
+#specials button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(.2); }
+
+/* Inventory panel */
+.inventory-panel {
+  margin: 16px auto;
+  max-width: 520px;
+  background: rgba(255,255,255,0.03);
+  border: 2px solid rgba(255,255,255,0.04);
+  padding: 12px;
+  border-radius: 10px;
+  text-align: left;
+}
+
+.inventory-panel h3 { margin: 0 0 8px 0; font-size: 1.1rem; }
+.inventory-panel .inv-row { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:6px 8px; border-radius:6px; }
+.inventory-panel .inv-row:nth-child(odd) { background: rgba(255,255,255,0.01); }
+.inventory-panel .inv-row button { background: #2196f3; color: white; border: none; padding:6px 10px; border-radius:6px; cursor:pointer; font-weight:600; }
+.inventory-panel .inv-row button:hover { background:#1e88e5; transform: translateY(-1px); }
+.inventory-panel .inv-row button:disabled { background:#6aa8e6; opacity:0.6; cursor:not-allowed; }
+
+.inv-empty { color: #ccc; font-style: italic; }
+
+/* Reward chooser buttons should match specials style */
+#reward-chooser button {
+  background: linear-gradient(180deg,#2e7d32,#1b5e20);
+  color: #fff;
+  border: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 6px 10px rgba(0,0,0,0.35), inset 0 -2px 0 rgba(0,0,0,0.15);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+#reward-chooser button:hover { transform: translateY(-2px); box-shadow: 0 12px 18px rgba(0,0,0,0.45); }
+
+#menu button {
+  margin: 10px;
+  margin: 10px;
+  padding: 10px 20px;
+  background: linear-gradient(180deg,#2e7d32,#1b5e20);
+  color: #fff;
+  border: 0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 6px 10px rgba(0,0,0,0.35), inset 0 -2px 0 rgba(0,0,0,0.15);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+#menu button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 18px rgba(0,0,0,0.45); }
+#menu button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(.2); }
 
 #battle {
   display: none; /* Hidden by default, shown only when matched */
