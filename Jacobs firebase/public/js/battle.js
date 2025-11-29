@@ -18,6 +18,8 @@ let opponentRef = null;
 let isPlayer1 = false;
 let lastProcessedMoveActor = null;
 let lastProcessedMove = null;
+// timers to debounce death checks triggered by realtime listeners to avoid races with concurrent writes
+const _deathCheckTimers = {};
 
 // --- ABILITIES metadata (ported from single-player) ---
 const ABILITIES = {
@@ -40,7 +42,7 @@ ABILITIES.warrior_whirlwind = { id: 'warrior_whirlwind', name: 'Whirlwind', cost
 ABILITIES.mage_arcane_burst = { id: 'mage_arcane_burst', name: 'Arcane Burst', cost: 12, cooldown: 5, desc: 'A focused magical blast that deals strong magic damage and empowers the caster with a temporary +9 attack instead of burning the foe.' };
 ABILITIES.archer_trap = { id: 'archer_trap', name: 'Trap', cost: 0, cooldown: 5, desc: 'Set a wound-trap on the enemy (applies bleeding over time).' };
 ABILITIES.cleric_shield = { id: 'cleric_shield', name: 'Sanctuary Shield', cost: 6, cooldown: 5, desc: 'Create a holy shield around yourself that raises defense for a few turns.' };
-ABILITIES.knight_bastion = { id: 'knight_bastion', name: 'Bastion', cost: 0, cooldown: 6, desc: 'Enter a bastion state: large temporary defense increase for several turns.' };
+ABILITIES.knight_bastion = { id: 'knight_bastion', name: 'Bastion', cost: 0, cooldown: 6, desc: 'Assume Bastion: gain +12 DEF for 3 turns (shield persists until it expires). Incoming damage is reduced by your increased defense while active.' };
 ABILITIES.rogue_evade = { id: 'rogue_evade', name: 'Evasive Roll', cost: 0, cooldown: 4, desc: 'Delay your action and unleash three rapid, consecutive turns.' };
 ABILITIES.paladin_bless = { id: 'paladin_bless', name: 'Blessing', cost: 8, cooldown: 5, desc: 'A small heal and an inspirational attack boost to yourself.' };
 ABILITIES.necro_curse = { id: 'necro_curse', name: 'Curse of Decay', cost: 10, cooldown: 5, desc: 'Afflict the target so they suffer reduced healing (slimed) and ongoing rot.' };
@@ -57,9 +59,9 @@ ABILITIES.necro_spirit_shackles = { id: 'necro_spirit_shackles', name: 'Spirit S
 ABILITIES.necro_dark_inversion = { id: 'necro_dark_inversion', name: 'Dark Inversion', cost: 12, cooldown: 8, desc: 'For 3 turns, damage heals you and healing damages you (reverse HP effects).' };
 
 // Wild Magic Sorcerer abilities
-ABILITIES.wild_attack = { id: 'wild_attack', name: 'Wild Magic: Attack', cost: 10, cooldown: 4, desc: 'Unleash chaotic magic: a d20 roll determines many possible effects on the enemy.' };
-ABILITIES.wild_buff = { id: 'wild_buff', name: 'Wild Magic: Buff', cost: 8, cooldown: 5, desc: 'A chaotic buff — roll a d20 for one of many random boons or banes.' };
-ABILITIES.wild_arcanum = { id: 'wild_arcanum', name: 'Wild Magic: Arcanum', cost: 14, cooldown: 6, desc: 'High-damage unpredictable arcane burst with wild side effects determined by a d20 roll.' };
+ABILITIES.wild_attack = { id: 'wild_attack', name: 'Wild Magic: Attack', cost: 10, cooldown: 4, desc: 'Unleash chaotic magic (d20): effects range from caster backlash to debuffs, burn, stuns, or extra damage. Use when you accept variable risk for high upside.' };
+ABILITIES.wild_buff = { id: 'wild_buff', name: 'Wild Magic: Buff', cost: 8, cooldown: 5, desc: 'Invoke chaotic boons (d20): may curse you, heal a little, grant attack buffs, mana, or a powerful boon on a high roll.' };
+ABILITIES.wild_arcanum = { id: 'wild_arcanum', name: 'Wild Magic: Arcanum', cost: 14, cooldown: 6, desc: 'High-variance arcane nuke (d20): can deal massive damage, sometimes backfires and harms the caster; best used when you can tolerate risk.' };
 
 ABILITIES.knight_guard = { id: 'knight_guard', name: 'Guard Stance', cost: 0, cooldown: 4, desc: 'Increase defense with a shield for 2 turns.' };
 ABILITIES.knight_charge = { id: 'knight_charge', name: 'Mounted Charge', cost: 0, cooldown: 3, desc: 'Powerful charge that may stun.' };
@@ -73,8 +75,14 @@ ABILITIES.paladin_holy_strike = { id: 'paladin_holy_strike', name: 'Holy Strike'
 ABILITIES.necro_siphon = { id: 'necro_siphon', name: 'Siphon Life', cost: 8, cooldown: 3, desc: 'Deal damage and heal the caster for part of it. Deals double damage against targets suffering reduced healing (slimed).' };
 ABILITIES.necro_raise = { id: 'necro_raise', name: 'Raise Rot', cost: 12, cooldown: 5, desc: 'Inflict a necrotic poison that deals stronger damage over several turns.' };
 
-ABILITIES.druid_entangle = { id: 'druid_entangle', name: 'Entangle', cost: 0, cooldown: 3, desc: "Conjure grasping vines that deal increased immediate damage, have a 10% chance to stun, and weaken the target's attack for a short time." };
-ABILITIES.druid_regrowth = { id: 'druid_regrowth', name: 'Regrowth', cost: 8, cooldown: 4, desc: 'A larger immediate heal and a stronger regeneration-over-time to restore allies.' };
+ABILITIES.druid_entangle = { id: 'druid_entangle', name: 'Entangle', cost: 0, cooldown: 3, desc: "Conjure grasping vines that deal immediate damage, 10% chance to stun, and weaken the target's attack for 2 turns." };
+ABILITIES.druid_regrowth = { id: 'druid_regrowth', name: 'Regrowth', cost: 8, cooldown: 4, desc: 'Heal immediately and gain regeneration-over-time for several turns to restore sustained HP.' };
+
+// Basic move tooltips (used for menu buttons)
+ABILITIES.attack = { id: 'attack', name: 'Attack', desc: 'Basic physical attack: deal damage equal to your attack (reduced by target defense).' };
+ABILITIES.heal = { id: 'heal', name: 'Rest', desc: 'Basic heal: recover a small amount of HP to yourself.' };
+ABILITIES.defend = { id: 'defend', name: 'Defend', desc: 'Defend: brace and gain a small defense increase that helps against the next enemy attack.' };
+ABILITIES.prepare = { id: 'prepare', name: 'Prepare', desc: 'Prepare: gain a temporary attack boost for the next 1–2 turns.' };
 
 const CLASS_STATS = {
   warrior: { name: 'Warrior', hp: 120, maxHp: 120, baseAtk: 12, defense: 4, attackBoost: 0, fainted: false, abilities: ['warrior_rend', 'warrior_shout', 'warrior_whirlwind'] },
@@ -122,6 +130,35 @@ function getItemImagePaths(itemId) {
   }
   // fallback to legacy per-item folder
   return { jpg: `img/items/${itemId}.jpg`, svg: `img/items/${itemId}.svg` };
+}
+
+function attachActionTooltips() {
+  const menu = document.getElementById('menu');
+  if (!menu) return;
+  const buttons = Array.from(menu.querySelectorAll('button'));
+  buttons.forEach(btn => {
+    // Skip special buttons inside #specials - they have their own tooltips
+    if (btn.closest && btn.closest('#specials')) return;
+    let abilityKey = btn.getAttribute('data-ability');
+    if (!abilityKey) {
+      const on = btn.getAttribute('onclick') || '';
+      const m = on.match(/chooseMove\(['"](\w+)['"]\)/);
+      if (m) abilityKey = m[1];
+    }
+    abilityKey = abilityKey || btn.textContent.trim().toLowerCase();
+
+    const moveHandler = (evt) => {
+      // Build a small info object (compatible with _showAbilityTooltip signature)
+      const info = ABILITIES[abilityKey] || { name: abilityKey, desc: '' };
+      try { _showAbilityTooltip(evt, info); } catch (e) { /* ignore */ }
+    };
+
+    btn.addEventListener('mouseenter', moveHandler);
+    btn.addEventListener('mousemove', moveHandler);
+    btn.addEventListener('mouseleave', _hideAbilityTooltip);
+    btn.addEventListener('focus', moveHandler);
+    btn.addEventListener('blur', _hideAbilityTooltip);
+  });
 }
 
 function applyDamageToObject(targetObj, rawDamage, opts = {}) {
@@ -174,11 +211,13 @@ function applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates =
       if (!updatesObj || typeof updatesObj.hp === 'undefined' || !targetStats) return updatesObj;
       const cur = Number(targetStats.hp || 0);
       const newHp = Number(updatesObj.hp || 0);
+      console.debug('[darkInversion] target before:', { cur, newHp, dark_inversion: !!(targetStats.status && targetStats.status.dark_inversion) });
       if (newHp < cur && targetStats.status && targetStats.status.dark_inversion) {
         const damage = cur - newHp;
         const maxHp = Number(targetStats.maxHp || targetStats.maxHP || cur || 100);
         updatesObj.hp = Math.min(maxHp, cur + damage);
         if (updatesObj.hp > 0 && updatesObj.fainted) updatesObj.fainted = false;
+        console.debug('[darkInversion] inverted damage -> heal', { damage, healedTo: updatesObj.hp });
       }
       return updatesObj;
     };
@@ -190,6 +229,30 @@ function applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates =
   }
 
   return { playerUpdates: p, opponentUpdates: o };
+}
+
+// Schedule a re-check for death handling to avoid races between realtime listeners and
+// the acting client's writes (which may include inverted HP values). When a player node
+// shows hp<=0 we wait a short moment, re-read the match and player nodes, and then
+// call handlePlayerDeath only if the player is still dead and the match is not already finished.
+function scheduleDeathCheck(uid) {
+  try {
+    if (_deathCheckTimers[uid]) clearTimeout(_deathCheckTimers[uid]);
+    _deathCheckTimers[uid] = setTimeout(async () => {
+      delete _deathCheckTimers[uid];
+      if (!matchRef) return;
+      try {
+        const [mSnap, pSnap] = await Promise.all([get(matchRef), get(ref(db, `matches/${matchId}/players/${uid}`))]);
+        const m = mSnap.exists() ? mSnap.val() : {};
+        const p = pSnap.exists() ? pSnap.val() : {};
+        if (m?.status === 'finished') return; // already finished by another writer
+        if ((p.hp || 0) <= 0 || p.fainted) {
+          // still dead — call handler
+          handlePlayerDeath(uid).catch(console.error);
+        }
+      } catch (e) { console.error('scheduleDeathCheck read error', e); }
+    }, 180);
+  } catch (e) { console.error('scheduleDeathCheck error', e); }
 }
 
 function canUseAbilityLocal(actorStats, abilityId) {
@@ -321,10 +384,21 @@ function processStatusEffectsLocal(actorStats) {
 
   // Shield: temporary defense buff that expires after its turns
   if (status.shield) {
+  try { console.debug('[status] shield tick for', actorStats?.name, 'turnsBefore:', status.shield.turns); console.log('[status] shield tick for', actorStats?.name, 'turnsBefore:', status.shield.turns); } catch (e) {}
     status.shield.turns = (status.shield.turns || 0) - 1;
     if (status.shield.turns <= 0) {
       const amt = status.shield.amount || 0;
-      updates.defense = Math.max(0, (actorStats.defense || 0) - amt);
+  try { console.debug('[status] shield expired for', actorStats?.name, { amount: amt, defenseBefore: actorStats?.defense }); console.log('[status] shield expired for', actorStats?.name, { amount: amt, defenseBefore: actorStats?.defense }); } catch (e) {}
+      // Instead of subtracting the amount (which can double-remove if expiry runs multiple times),
+      // reset defense to the class baseline. This is idempotent and avoids negative/zeroing bugs.
+      try {
+        const cls = actorStats.classId || actorStats.class || null;
+        const baseDef = (cls && CLASS_STATS[cls] && typeof CLASS_STATS[cls].defense !== 'undefined') ? CLASS_STATS[cls].defense : 0;
+        updates.defense = baseDef;
+      } catch (e) {
+        // fallback: keep current defense (avoid zeroing when class lookup fails)
+        updates.defense = (typeof actorStats.defense !== 'undefined') ? actorStats.defense : 0;
+      }
       delete status.shield;
     }
   }
@@ -528,6 +602,7 @@ const abilityHandlers = {
     const newDefense = (user.defense || 0) + add;
     const newStatus = Object.assign({}, user.status || {});
     newStatus.shield = { turns: 1, amount: add };
+  try { console.debug('[ability] knight_guard applied', { caster: user?.name, amount: add, turns: newStatus.shield.turns }); console.log('[ability] knight_guard applied', { caster: user?.name, amount: add, turns: newStatus.shield.turns }); } catch (e) {}
     const playerUpdates = { defense: newDefense, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'knight_guard') };
     return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_knight_guard' }, message: `${user.name || 'You'} strikes and assumes a guarded stance, dealing ${damage} damage and increasing defense by ${add} for a short time.`, lastMoveDamage: damage };
   },
@@ -630,7 +705,7 @@ const abilityHandlers = {
     const opponentUpdates = { status: newStatus };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'necro_raise'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.necro_raise.cost || 0)) };
     // Debug to help diagnose in-browser if users report it not applying
-    try { console.debug('[ability] necro_raise applied', { caster: user?.name, target: target?.name, incoming, resultingStatus: newStatus }); } catch (e) {}
+  try { console.debug('[ability] necro_raise applied', { caster: user?.name, target: target?.name, incoming, resultingStatus: newStatus }); console.log('[ability] necro_raise applied', { caster: user?.name, target: target?.name, incoming, resultingStatus: newStatus }); } catch (e) {}
     return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_necro_raise' }, message: `${user.name || 'You'} invokes rot; ${target.name || 'the enemy'} is cursed for ${poisonDmg} poison per turn for ${incoming.turns} turns.` };
   },
 
@@ -731,6 +806,7 @@ const abilityHandlers = {
     const newDefense = (user.defense || 0) + add;
     const newStatus = Object.assign({}, user.status || {});
     newStatus.shield = { turns: 3, amount: add };
+  try { console.debug('[ability] cleric_shield applied', { caster: user?.name, amount: add, turns: newStatus.shield.turns }); console.log('[ability] cleric_shield applied', { caster: user?.name, amount: add, turns: newStatus.shield.turns }); } catch (e) {}
     const playerUpdates = { defense: newDefense, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'cleric_shield'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.cleric_shield.cost || 0)) };
     return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_cleric_shield' }, message: `${user.name || 'You'} raises a Sanctuary Shield, increasing defense by ${add} for several turns.` };
   },
@@ -740,6 +816,7 @@ const abilityHandlers = {
     const newDefense = (user.defense || 0) + add;
     const newStatus = Object.assign({}, user.status || {});
     newStatus.shield = { turns: 3, amount: add };
+  try { console.debug('[ability] knight_bastion applied', { caster: user?.name, amount: add, turns: newStatus.shield.turns }); console.log('[ability] knight_bastion applied', { caster: user?.name, amount: add, turns: newStatus.shield.turns }); } catch (e) {}
     const playerUpdates = { defense: newDefense, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'knight_bastion') };
     return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_knight_bastion' }, message: `${user.name || 'You'} assumes Bastion stance, greatly increasing defense for several turns.` };
   },
@@ -783,7 +860,7 @@ const abilityHandlers = {
     // 70% chance to stun
     if (Math.random() < 0.7) {
       newStatus.stun = { turns: 1 };
-      try { console.debug('[ability] necro_curse applied stun to target', { caster: user?.name, target: target?.name, status: newStatus }); } catch (e) {}
+  try { console.debug('[ability] necro_curse applied stun to target', { caster: user?.name, target: target?.name, status: newStatus }); console.log('[ability] necro_curse applied stun to target', { caster: user?.name, target: target?.name, status: newStatus }); } catch (e) {}
     }
     const opponentUpdates = { status: newStatus };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'necro_curse'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.necro_curse.cost || 0)) };
@@ -797,8 +874,9 @@ const abilityHandlers = {
     const immediate = 6;
     const newHp = Math.min(user.maxHp || 100, (user.hp || 0) + immediate);
   const shieldAmount = 8; // increased defense boost per request
-    const newStatus = Object.assign({}, user.status || {});
-    newStatus.shield = { turns: 3, amount: shieldAmount };
+  const newStatus = Object.assign({}, user.status || {});
+  newStatus.shield = { turns: 3, amount: shieldAmount };
+  try { console.debug('[ability] druid_barkskin applied', { caster: user?.name, amount: shieldAmount, turns: newStatus.shield.turns }); console.log('[ability] druid_barkskin applied', { caster: user?.name, amount: shieldAmount, turns: newStatus.shield.turns }); } catch (e) {}
     // increase defense immediately so the shield has an effect and expires cleanly later
     const playerUpdates = { hp: newHp, status: newStatus, defense: (user.defense || 0) + shieldAmount, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'druid_barkskin'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.druid_barkskin.cost || 0)) };
 
@@ -1148,6 +1226,7 @@ window.initializeBattle = async function(mId, userId) {
 
   // Render specials now and attach listeners for updates (player node and turn changes)
   try { await renderSpecialButtons(); } catch (e) { /* ignore */ }
+  try { attachActionTooltips(); } catch (e) { /* ignore */ }
   onValue(playerRef, () => { renderSpecialButtons().catch(console.error); });
   onValue(currentTurnRef, () => { renderSpecialButtons().catch(console.error); });
   // Render inventory and re-render on player/opponent changes
@@ -1213,9 +1292,10 @@ function setupMatchListeners() {
     if (snap.exists()) {
       const stats = snap.val();
       updatePlayerUI(stats, true);
-      // Check if player died
+      // Check if player died — debounce the actual death handling to avoid races
       if (stats.hp <= 0 || stats.fainted) {
-        handlePlayerDeath(currentUserId);
+        console.debug('[listener] player hp <=0 observed, scheduling death check for', currentUserId, stats);
+        scheduleDeathCheck(currentUserId);
       }
     }
   });
@@ -1225,9 +1305,10 @@ function setupMatchListeners() {
     if (snap.exists()) {
       const stats = snap.val();
       updatePlayerUI(stats, false);
-      // Check if opponent died
+      // Check if opponent died — debounce the actual death handling to avoid races
       if (stats.hp <= 0 || stats.fainted) {
-        handlePlayerDeath(opponentId);
+        console.debug('[listener] opponent hp <=0 observed, scheduling death check for', opponentId, stats);
+        scheduleDeathCheck(opponentId);
       }
     }
   });
@@ -1313,6 +1394,18 @@ function setupMatchListeners() {
           // Get opponent name for message
           const opponentSnapshot = await get(opponentRef);
           const opponentName = opponentSnapshot.val()?.name || "Opponent";
+          // Winner client should initiate the reward phase (assign loser random item and show chooser)
+          try {
+            if (isWinner) {
+              const fullMatchSnap = await get(matchRef);
+              const fullMatchData = fullMatchSnap.exists() ? fullMatchSnap.val() : {};
+              const loserUid = (fullMatchData?.p1 === winnerId) ? fullMatchData?.p2 : fullMatchData?.p1;
+              // start reward flow (winner client shows chooser)
+              initiateRewardPhase(winnerId, loserUid).catch(console.error);
+            }
+          } catch (e) {
+            console.error('Could not initiate reward phase automatically', e);
+          }
           
           await showEndGame(isWinner, isWinner ? 
             `You win!` : 
@@ -2063,11 +2156,32 @@ async function chooseMove(move) {
   // Reset player's defense at the start of their turn (defense from previous turn expires)
   // Unless they're defending again this turn
   if (move !== "defend") {
-    playerUpdates.defense = 0;
+    // Only clear an explicit defense value if the player does not have an active shield status
+    if (!(playerStats.status && playerStats.status.shield)) {
+      // Reset to the class' baseline defense rather than zero
+      try {
+        const cls = playerStats.classId || playerStats.class || null;
+        const baseDef = (cls && CLASS_STATS[cls] && typeof CLASS_STATS[cls].defense !== 'undefined') ? CLASS_STATS[cls].defense : 0;
+        playerUpdates.defense = baseDef;
+      } catch (e) {
+        // fallback: preserve current defense if class lookup fails
+        playerUpdates.defense = (typeof playerStats.defense !== 'undefined') ? playerStats.defense : 0;
+      }
+    }
   }
   
   // Reset opponent's defense (their turn has ended, so their defense expires)
-  opponentUpdates.defense = 0;
+  // Only clear opponent defense if they do not currently have a shield status active
+  if (!(opponentStats.status && opponentStats.status.shield)) {
+    try {
+      const ocls = opponentStats.classId || opponentStats.class || null;
+      const oBaseDef = (ocls && CLASS_STATS[ocls] && typeof CLASS_STATS[ocls].defense !== 'undefined') ? CLASS_STATS[ocls].defense : 0;
+      opponentUpdates.defense = oBaseDef;
+    } catch (e) {
+      // fallback: preserve current opponent defense if class lookup fails
+      opponentUpdates.defense = (typeof opponentStats.defense !== 'undefined') ? opponentStats.defense : 0;
+    }
+  }
 
   // Update turn counter and switch turns (unless game over)
   if (!gameOver) {
@@ -2097,11 +2211,18 @@ async function chooseMove(move) {
 
   // Apply dark inversion if present on either actor before writing
   // actingIsPlayer = true (current user acting)
+  try { console.debug('[chooseMove] prepared updates', { playerUid: currentUserId, playerUpdates, opponentUpdates, matchUpdates }); } catch (e) {}
   const adjusted = applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates, opponentUpdates, true);
 
   // Re-evaluate fainting / game over based on adjusted HP values (post-inversion)
   const postPlayerHp = (typeof adjusted.playerUpdates.hp !== 'undefined') ? adjusted.playerUpdates.hp : playerStats.hp;
   const postOpponentHp = (typeof adjusted.opponentUpdates.hp !== 'undefined') ? adjusted.opponentUpdates.hp : opponentStats.hp;
+  // Clear any pre-set match finish info from handlers so we decide based on post-inversion HP
+  if (matchUpdates) {
+    delete matchUpdates.status;
+    delete matchUpdates.winner;
+    delete matchUpdates.message;
+  }
 
   if (postOpponentHp <= 0) {
     adjusted.opponentUpdates.fainted = true;
@@ -2217,6 +2338,12 @@ async function chooseSpecial(abilityId) {
   // Re-evaluate fainting / game over based on adjusted HP values (post-inversion)
   const postPlayerHp = (typeof adjusted.playerUpdates.hp !== 'undefined') ? adjusted.playerUpdates.hp : playerStats.hp;
   const postOpponentHp = (typeof adjusted.opponentUpdates.hp !== 'undefined') ? adjusted.opponentUpdates.hp : opponentStats.hp;
+  // Clear any prior finish/winner/message set by the ability handler; decide outcome from post-inversion HP
+  if (matchUpdates) {
+    delete matchUpdates.status;
+    delete matchUpdates.winner;
+    delete matchUpdates.message;
+  }
 
   if (postOpponentHp <= 0) {
     adjusted.opponentUpdates.fainted = true;
@@ -2384,8 +2511,7 @@ async function useItem(itemId) {
       opponentUpdates.hp = newOppHp;
       matchUpdates.lastMove = 'use_item_bomb';
       matchUpdates.lastMoveActor = currentUserId;
-      matchUpdates.lastMoveDamage = actual;
-      if (newOppHp <= 0) { matchUpdates.status = 'finished'; matchUpdates.winner = currentUserId; }
+  matchUpdates.lastMoveDamage = actual;
     } else if (itemId === 'elixir') {
       // restore mana to max and grant a short attack boost
       const newMana = playerStats.maxMana || playerStats.mana || 0;

@@ -41,7 +41,7 @@
   <button type="button" data-class="necromancer" class="class-btn has-tooltip" data-tooltip="Necromancer — deals necrotic damage and siphons life"><img class="class-icon" src="img/necromancer.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/necromancer.svg'" alt="Necromancer"><br>Necromancer</button>
   <button type="button" data-class="druid" class="class-btn has-tooltip" data-tooltip="Druid — nature caster: heal-over-time and control"><img class="class-icon" src="img/druid.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/druid.svg'" alt="Druid"><br>Druid</button>
   <button type="button" data-class="monk" class="class-btn has-tooltip" data-tooltip="Monk — spiritual martial artist with balance of offense and defense"><img class="class-icon" src="img/monk.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/monk.svg'" alt="Monk"><br>Monk</button>
-  <button type="button" data-class="wild_sorcerer" class="class-btn has-tooltip" data-tooltip="Wild Magic Sorcerer — unpredictable spellcaster with chaotic effects"><img class="class-icon" src="img/wild_sorcerer.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/wild_sorcerer.svg'" alt="Wild Magic Sorcerer"><br>Wild Magic Sorcerer</button>
+  <button type="button" data-class="wild_sorcerer" class="class-btn has-tooltip" data-tooltip="Wild Magic Sorcerer — unpredictable spellcaster with chaotic effects"><img class="class-icon" src="img/wild_magic_sorcerer.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/wild_sorcerer.svg'" alt="Wild Magic Sorcerer"><br>Wild Magic Sorcerer</button>
   <button type="button" data-class="dark_mage" class="class-btn has-tooltip" data-tooltip="Dark Mage — wields dark magic and necromantic powers"><img class="class-icon" src="img/dark_mage.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/dark_mage.svg'" alt="Dark Mage"><br>Dark Mage</button>
     </div>
     <span id="selected-class-label"></span>
@@ -81,10 +81,10 @@
     </div>
 
     <div id="menu">
-      <button onclick="chooseMove('attack')">Attack</button>
-      <button onclick="chooseMove('heal')">Heal</button>
-      <button onclick="chooseMove('defend')">Defend</button>
-      <button onclick="chooseMove('prepare')">Prepare</button>
+      <button class="has-tooltip" data-tooltip="Basic physical attack: deal damage equal to your attack (reduced by target defense)." onclick="chooseMove('attack')">Attack</button>
+      <button class="has-tooltip" data-tooltip="Basic heal: recover a small amount of HP to yourself." onclick="chooseMove('heal')">Heal</button>
+      <button class="has-tooltip" data-tooltip="Defend: brace and gain a small defense increase for the next enemy attack." onclick="chooseMove('defend')">Defend</button>
+      <button class="has-tooltip" data-tooltip="Prepare: gain a temporary attack boost for the next 1–2 turns." onclick="chooseMove('prepare')">Prepare</button>
       <button id="toggle-inventory-btn" type="button">Items</button>
     </div>
 

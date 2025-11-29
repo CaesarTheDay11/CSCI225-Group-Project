@@ -27,7 +27,7 @@ ABILITIES.warrior_whirlwind = { id: 'warrior_whirlwind', name: 'Whirlwind', cost
 ABILITIES.mage_arcane_burst = { id: 'mage_arcane_burst', name: 'Arcane Burst', cost: 12, cooldown: 5, desc: 'A focused magical blast that deals strong magic damage and empowers the caster with a temporary +9 attack instead of burning the foe.' };
 ABILITIES.archer_trap = { id: 'archer_trap', name: 'Trap', cost: 0, cooldown: 5, desc: 'Set a wound-trap on the enemy (applies bleeding over time).' };
 ABILITIES.cleric_shield = { id: 'cleric_shield', name: 'Sanctuary Shield', cost: 6, cooldown: 5, desc: 'Create a holy shield around yourself that raises defense for a few turns.' };
-ABILITIES.knight_bastion = { id: 'knight_bastion', name: 'Bastion', cost: 0, cooldown: 6, desc: 'Enter a bastion state: large temporary defense increase for several turns.' };
+ABILITIES.knight_bastion = { id: 'knight_bastion', name: 'Bastion', cost: 0, cooldown: 6, desc: 'Assume Bastion: gain +12 DEF for 3 turns (shield persists until it expires). Incoming damage is reduced by your increased defense while active.' };
 ABILITIES.rogue_evade = { id: 'rogue_evade', name: 'Evasive Roll', cost: 0, cooldown: 4, desc: 'Quickly reposition: grant an extra immediate action (extra turn).' };
 ABILITIES.paladin_bless = { id: 'paladin_bless', name: 'Blessing', cost: 8, cooldown: 5, desc: 'A small heal and an inspirational attack boost to yourself.' };
 ABILITIES.necro_curse = { id: 'necro_curse', name: 'Curse of Decay', cost: 10, cooldown: 5, desc: 'Afflict the target so they suffer reduced healing (slimed) and ongoing rot.' };
@@ -721,7 +721,34 @@ window.addEventListener('DOMContentLoaded', () => {
     if (eName) eName.textContent = enemy.name;
     updateUI();
     logMessage(`A ${enemy.name} appeared!`);
+        try { attachActionTooltips(); } catch (e) { /* ignore */ }
 });
+
+function attachActionTooltips() {
+    const menu = document.getElementById('menu');
+    if (!menu) return;
+    const buttons = Array.from(menu.querySelectorAll('button'));
+    buttons.forEach(btn => {
+        // determine move key from onclick or text
+        let abilityKey = btn.getAttribute('data-ability');
+        if (!abilityKey) {
+            const on = btn.getAttribute('onclick') || '';
+            const m = on.match(/chooseMove\(['"](\w+)['"]\)/);
+            if (m) abilityKey = m[1];
+        }
+        abilityKey = abilityKey || btn.textContent.trim().toLowerCase();
+
+        const handler = (evt) => {
+            const abilObj = ABILITIES[abilityKey] || ACTION_DESCS[abilityKey] || { name: abilityKey, desc: ACTION_DESCS[abilityKey]?.desc || '' };
+            _showAbilityTooltip(evt, abilObj, 0);
+        };
+        btn.addEventListener('mouseenter', handler);
+        btn.addEventListener('mousemove', handler);
+        btn.addEventListener('mouseleave', _hideAbilityTooltip);
+        btn.addEventListener('focus', handler);
+        btn.addEventListener('blur', _hideAbilityTooltip);
+    });
+}
 
 function applyDamage(target, rawDamage, opts = {}) {
     const ignoreDefense = !!opts.ignoreDefense;
