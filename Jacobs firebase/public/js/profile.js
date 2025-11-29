@@ -19,31 +19,59 @@ async function renderInventory(uid) {
       return;
     }
 
+    // Render inventory as read-only: show image, name and quantity only (no in-profile item usage)
+    const ITEM_IMAGE_MAP = {
+      potion_small: 'small potion.jpg',
+      potion_large: 'large potion.jpg',
+      bomb: 'bomb.jpg',
+      elixir: 'elixir.jpg',
+      shield_token: 'shield scroll.jpg',
+      speed_scroll: 'speed scroll.jpg',
+      strength_tonic: 'strength tonic.jpg',
+      revive_scroll: 'revive scroll.jpg'
+    };
+
+    function getItemImagePaths(itemId) {
+      const mapped = ITEM_IMAGE_MAP[itemId];
+      if (mapped) {
+        const jpg = `img/${mapped}`;
+        const svg = mapped.endsWith('.jpg') ? `img/${mapped.slice(0, -4)}.svg` : `img/${mapped}.svg`;
+        return { jpg, svg };
+      }
+      return { jpg: `img/items/${itemId}.jpg`, svg: `img/items/${itemId}.svg` };
+    }
+
     for (const key of Object.keys(items)) {
       const it = items[key];
       const row = document.createElement('div');
       row.className = 'inv-row';
-      const left = document.createElement('div'); left.textContent = `${it.name} x${it.qty}`;
-      const right = document.createElement('div');
-      const useBtn = document.createElement('button'); useBtn.textContent = 'Use'; useBtn.disabled = !(it.qty>0);
-      useBtn.addEventListener('click', async () => {
-        try {
-          if (window && window.useItemForUser) {
-            await window.useItemForUser(uid, key);
-          } else {
-            // fallback
-            const itemRef = ref(db, `users/${uid}/items/${key}`);
-            const iSnap = await get(itemRef);
-            const qty = (iSnap.exists() && iSnap.val().qty) ? Number(iSnap.val().qty) : 0;
-            if (qty <= 0) throw new Error('No item');
-            const newQty = qty - 1;
-            if (newQty <= 0) await update(itemRef, null); else await update(itemRef, { qty: newQty });
-          }
-          await renderInventory(uid);
-        } catch (e) { console.error(e); alert('Could not use item: '+(e.message||e)); }
-      });
-      right.appendChild(useBtn);
-      row.appendChild(left); row.appendChild(right);
+
+      // left: image + name/qty
+      const left = document.createElement('div');
+      left.className = 'inv-left';
+      const img = document.createElement('img');
+      img.className = 'inv-item-img';
+      // resolve image path (try JPG then SVG then fallback to inline)
+      const { jpg, svg } = getItemImagePaths(it.id || key);
+      img.onerror = function() {
+        if (!img._triedSvg) {
+          img._triedSvg = true;
+          img.src = svg;
+          return;
+        }
+        // final fallback: inline placeholder
+        const inline = `<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><rect width='100%' height='100%' fill='%23eee'/><text x='50%' y='50%' dominant-baseline='middle' text-anchor='middle' font-size='12' fill='%23666'>${(it.name||'?').slice(0,2)}</text></svg>`;
+        img.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(inline);
+        img.onerror = null;
+      };
+      img.src = jpg;
+
+      const text = document.createElement('div');
+      text.textContent = `${it.name || key} x${it.qty}`;
+      left.appendChild(img);
+      left.appendChild(text);
+
+      row.appendChild(left);
       container.appendChild(row);
     }
   } catch (e) {

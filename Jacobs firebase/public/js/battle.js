@@ -18,10 +18,10 @@ let opponentRef = null;
 let isPlayer1 = false;
 let lastProcessedMoveActor = null;
 let lastProcessedMove = null;
-// timers to debounce death checks triggered by realtime listeners to avoid races with concurrent writes
+//this debounces death checks triggered by realtime listeners to avoid races with concurrent writes
 const _deathCheckTimers = {};
 
-// --- ABILITIES metadata (ported from single-player) ---
+//this defines ABILITIES metadata
 const ABILITIES = {
   mage_fireball: { id: 'mage_fireball', name: 'Fireball', cost: 10, cooldown: 3, desc: 'Deal strong magic damage and apply burn (DOT for 3 turns).' },
   warrior_rend:  { id: 'warrior_rend',  name: 'Rend',     cost: 0,  cooldown: 3, desc: 'Powerful physical strike that ignores some defense.' },
@@ -37,14 +37,14 @@ const ABILITIES = {
 ABILITIES.cleric_heal = { id: 'cleric_heal', name: 'Divine Heal', cost: 8, cooldown: 3, desc: 'Restore a moderate amount of HP to yourself and dispel poison/burn from yourself.' };
 ABILITIES.cleric_smite = { id: 'cleric_smite', name: 'Smite', cost: 6, cooldown: 4, desc: 'Holy damage that also dispels poison/burn from yourself.' };
 
-// Third abilities added for each class
+//this adds third ability for each class
 ABILITIES.warrior_whirlwind = { id: 'warrior_whirlwind', name: 'Whirlwind', cost: 0, cooldown: 4, desc: 'Spin and strike hard, dealing physical damage and reducing the enemy attack for a short time.' };
 ABILITIES.mage_arcane_burst = { id: 'mage_arcane_burst', name: 'Arcane Burst', cost: 12, cooldown: 5, desc: 'A focused magical blast that deals strong magic damage and empowers the caster with a temporary +9 attack instead of burning the foe.' };
 ABILITIES.archer_trap = { id: 'archer_trap', name: 'Trap', cost: 0, cooldown: 5, desc: 'Set a wound-trap on the enemy (applies bleeding over time).' };
 ABILITIES.cleric_shield = { id: 'cleric_shield', name: 'Sanctuary Shield', cost: 6, cooldown: 5, desc: 'Create a holy shield around yourself that raises defense for a few turns.' };
 ABILITIES.knight_bastion = { id: 'knight_bastion', name: 'Bastion', cost: 0, cooldown: 6, desc: 'Assume Bastion: gain +12 DEF for 3 turns (shield persists until it expires). Incoming damage is reduced by your increased defense while active.' };
 ABILITIES.rogue_evade = { id: 'rogue_evade', name: 'Evasive Roll', cost: 0, cooldown: 4, desc: 'Delay your action and unleash three rapid, consecutive turns.' };
-ABILITIES.paladin_bless = { id: 'paladin_bless', name: 'Blessing', cost: 8, cooldown: 5, desc: 'A small heal and an inspirational attack boost to yourself.' };
+ABILITIES.paladin_bless = { id: 'paladin_bless', name: 'Blessing', cost: 8, cooldown: 5, desc: 'A heal 20 hp and an gain an inspirational attack boost to yourself.' };
 ABILITIES.necro_curse = { id: 'necro_curse', name: 'Curse of Decay', cost: 10, cooldown: 5, desc: 'Afflict the target so they suffer reduced healing (slimed) and ongoing rot.' };
 ABILITIES.druid_barkskin = { id: 'druid_barkskin', name: 'Barkskin', cost: 8, cooldown: 5, desc: 'Harden your skin: heal a small amount, gain +8 defense for several turns, and lash the enemy for minor damage.' };
 
@@ -59,11 +59,11 @@ ABILITIES.necro_spirit_shackles = { id: 'necro_spirit_shackles', name: 'Spirit S
 ABILITIES.necro_dark_inversion = { id: 'necro_dark_inversion', name: 'Dark Inversion', cost: 12, cooldown: 8, desc: 'For 3 turns, damage heals you and healing damages you (reverse HP effects).' };
 
 // Wild Magic Sorcerer abilities
-ABILITIES.wild_attack = { id: 'wild_attack', name: 'Wild Magic: Attack', cost: 10, cooldown: 4, desc: 'Unleash chaotic magic (d20): effects range from caster backlash to debuffs, burn, stuns, or extra damage. Use when you accept variable risk for high upside.' };
+ABILITIES.wild_attack = { id: 'wild_attack', name: 'Wild Magic: Attack', cost: 10, cooldown: 4, desc: 'Unleash chaotic magic (d20): effects range from caster backlash to debuffs, burn, stuns, or extra damage.' };
 ABILITIES.wild_buff = { id: 'wild_buff', name: 'Wild Magic: Buff', cost: 8, cooldown: 5, desc: 'Invoke chaotic boons (d20): may curse you, heal a little, grant attack buffs, mana, or a powerful boon on a high roll.' };
-ABILITIES.wild_arcanum = { id: 'wild_arcanum', name: 'Wild Magic: Arcanum', cost: 14, cooldown: 6, desc: 'High-variance arcane nuke (d20): can deal massive damage, sometimes backfires and harms the caster; best used when you can tolerate risk.' };
+ABILITIES.wild_arcanum = { id: 'wild_arcanum', name: 'Wild Magic: Arcanum', cost: 14, cooldown: 6, desc: 'High-variance arcane nuke (d20): can deal massive damage, sometimes backfires and harms the caster.' };
 
-ABILITIES.knight_guard = { id: 'knight_guard', name: 'Guard Stance', cost: 0, cooldown: 4, desc: 'Increase defense with a shield for 2 turns.' };
+ABILITIES.knight_guard = { id: 'knight_guard', name: 'Shield Bash', cost: 0, cooldown: 4, desc: 'Strike with your shield to deal damage and increase defense for 2 turns.' };
 ABILITIES.knight_charge = { id: 'knight_charge', name: 'Mounted Charge', cost: 0, cooldown: 3, desc: 'Powerful charge that may stun.' };
 
 ABILITIES.rogue_backstab = { id: 'rogue_backstab', name: 'Backstab', cost: 0, cooldown: 3, desc: 'High damage attack that ignores some defense.' };
@@ -102,7 +102,7 @@ CLASS_STATS.necromancer = { name: 'Necromancer', hp: 80, maxHp: 80, baseAtk: 10,
 CLASS_STATS.monk = { name: 'Monk', hp: 105, maxHp: 105, baseAtk: 13, defense: 3, attackBoost: 0, fainted: false, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 };
 // Wild Magic Sorcerer
 CLASS_STATS.wild_sorcerer = { name: 'Wild Magic Sorcerer', hp: 85, maxHp: 85, baseAtk: 14, defense: 1, attackBoost: 0, fainted: false, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 };
-// Increased Druid health per balance request
+//this increased Druid health (balance)
 CLASS_STATS.druid = { name: 'Druid', hp: 100, maxHp: 100, baseAtk: 12, defense: 2, attackBoost: 0, fainted: false, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 };
 
 // Mapping for item image filenames in this project's public/img directory.
@@ -116,7 +116,6 @@ const ITEM_IMAGE_MAP = {
   speed_scroll: 'speed scroll.jpg',
   strength_tonic: 'strength tonic.jpg',
   revive_scroll: 'revive scroll.jpg',
-  // (removed legacy 'jps' stray token mapping per request)
 };
 
 function getItemImagePaths(itemId) {
@@ -211,14 +210,32 @@ function applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates =
       if (!updatesObj || typeof updatesObj.hp === 'undefined' || !targetStats) return updatesObj;
       const cur = Number(targetStats.hp || 0);
       const newHp = Number(updatesObj.hp || 0);
-      console.debug('[darkInversion] target before:', { cur, newHp, dark_inversion: !!(targetStats.status && targetStats.status.dark_inversion) });
-      if (newHp < cur && targetStats.status && targetStats.status.dark_inversion) {
+      const hasInvert = !!(targetStats.status && targetStats.status.dark_inversion);
+      console.debug('[darkInversion] target before:', { cur, newHp, dark_inversion: hasInvert });
+
+      if (!hasInvert) return updatesObj;
+
+      // If the new HP is lower than current => original effect is damage. Invert to heal.
+      if (newHp < cur) {
         const damage = cur - newHp;
         const maxHp = Number(targetStats.maxHp || targetStats.maxHP || cur || 100);
         updatesObj.hp = Math.min(maxHp, cur + damage);
         if (updatesObj.hp > 0 && updatesObj.fainted) updatesObj.fainted = false;
         console.debug('[darkInversion] inverted damage -> heal', { damage, healedTo: updatesObj.hp });
+        return updatesObj;
       }
+
+      // If the new HP is greater than current => original effect is healing. Invert to damage.
+      if (newHp > cur) {
+        const heal = newHp - cur;
+        const dmg = heal; // treat heal amount as damage amount
+        updatesObj.hp = Math.max(0, cur - dmg);
+        // If HP drops to 0 or below set fainted flag
+        if (updatesObj.hp <= 0) updatesObj.fainted = true;
+        console.debug('[darkInversion] inverted heal -> damage', { heal, damagedTo: updatesObj.hp });
+        return updatesObj;
+      }
+
       return updatesObj;
     };
 
@@ -523,7 +540,8 @@ const abilityHandlers = {
   warrior_shout(user, target) {
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'warrior_shout') };
     const newStatus = Object.assign({}, user.status || {});
-  newStatus.shout = { turns: 2, amount: 8 };
+  //this gives a longer shout buff so attack persists across more turns
+  newStatus.shout = { turns: 3, amount: 8 };
   playerUpdates.status = newStatus;
   playerUpdates.attackBoost = (user.attackBoost || 0) + 8;
     return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_warrior_shout' }, message: `${user.name || 'You'} shouts and increases their attack!` };
@@ -656,9 +674,11 @@ const abilityHandlers = {
     const amt = 6;
     const defAdd = 5;
     const newStatus = Object.assign({}, user.status || {});
-    newStatus.shout = { turns: 2, amount: amt };
+    //this aura should persist across multiple turns: use shout for attack and shield for defense
+    newStatus.shout = { turns: 3, amount: amt };
+    newStatus.shield = { turns: 3, amount: defAdd };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'paladin_aura'), attackBoost: (user.attackBoost || 0) + amt, defense: (user.defense || 0) + defAdd, status: newStatus };
-    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_paladin_aura' }, message: `${user.name || 'You'} radiates an Aura of Valor, increasing attack by ${amt} and defense by ${defAdd} for a short time.` };
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_paladin_aura' }, message: `${user.name || 'You'} radiates an Aura of Valor, increasing attack by ${amt} and defense by ${defAdd} for several turns.` };
   },
 
   paladin_holy_strike(user, target) {
@@ -822,22 +842,23 @@ const abilityHandlers = {
   },
 
   rogue_evade(user, target) {
-    // Grant multiple immediate actions: give two extraTurns so the player gets 3 consecutive turns total.
+    //this grants extraTurns so the player gets 3 consecutive turns total
     const newStatus = Object.assign({}, user.status || {});
     newStatus.extraTurns = (newStatus.extraTurns || 0) + 2; // two extra turns (current action + 2 = 3 total)
     const playerUpdates = { status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'rogue_evade') };
-    // Keep the current turn with the acting player so they can act immediately
+  //this keeps the current turn with the acting player so they can act immediately
     const matchUpdates = { lastMove: 'special_rogue_evade', currentTurn: currentUserId };
     return { playerUpdates, opponentUpdates: {}, matchUpdates, message: `${user.name || 'You'} performs an evasive roll and gains multiple rapid actions!` };
   },
 
   paladin_bless(user, target) {
-    const baseHeal = 20; // stronger heal as requested
+    const baseHeal = 20; //this baseHeal does stronger heal
     const actualHeal = (user.status && user.status.slimed) ? Math.floor(baseHeal / 2) : baseHeal;
     const newHp = Math.min(user.maxHp || 100, (user.hp || 0) + actualHeal);
     const amt = 8; // stronger attack boost
     const newStatus = Object.assign({}, user.status || {});
-    newStatus.shout = { turns: 2, amount: amt };
+    //this blessing should last multiple turns
+    newStatus.shout = { turns: 3, amount: amt };
     const playerUpdates = { hp: newHp, attackBoost: (user.attackBoost || 0) + amt, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'paladin_bless'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.paladin_bless.cost || 0)) };
     return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_paladin_bless' }, message: `${user.name || 'You'} calls a Blessing, healing ${actualHeal} HP and gaining +${amt} attack for a short time.`, lastMoveHeal: actualHeal };
   },
@@ -868,12 +889,11 @@ const abilityHandlers = {
   },
 
   druid_barkskin(user, target) {
-    // Barkskin: grant a short defensive shield, heal a bit, and also deal a small lash of damage
-    // Fix: when applying a shield we must also increase the actor's defense property so that
-    // the shield expiration can safely subtract it without resulting in net negative defense.
+    //this grants a short defensive shield, heals a bit, and deals a small lash of damage
+    //this ensures shield increases defense property so expiry can reset safely
     const immediate = 6;
     const newHp = Math.min(user.maxHp || 100, (user.hp || 0) + immediate);
-  const shieldAmount = 8; // increased defense boost per request
+  const shieldAmount = 8; //this shieldAmount does increased defense boost
   const newStatus = Object.assign({}, user.status || {});
   newStatus.shield = { turns: 3, amount: shieldAmount };
   try { console.debug('[ability] druid_barkskin applied', { caster: user?.name, amount: shieldAmount, turns: newStatus.shield.turns }); console.log('[ability] druid_barkskin applied', { caster: user?.name, amount: shieldAmount, turns: newStatus.shield.turns }); } catch (e) {}
@@ -958,13 +978,16 @@ const abilityHandlers = {
     const newStatus = Object.assign({}, user.status || {});
     const atkAdd = 5;
     const defAdd = 5;
-    newStatus.summon = { turns: 3, atk: atkAdd, def: defAdd };
+    // Use shout for attack boosts so processStatusEffectsLocal handles expiry correctly
+    // and use shield for defense so shield expiry resets defense to class baseline.
+    newStatus.shout = { turns: 3, amount: atkAdd };
+    newStatus.shield = { turns: 3, amount: defAdd };
     playerUpdates.attackBoost = (user.attackBoost || 0) + atkAdd;
     playerUpdates.defense = (user.defense || 0) + defAdd;
     playerUpdates.status = newStatus;
     // poison the enemy lightly
     const oppStatus = Object.assign({}, target.status || {});
-    const incoming = { turns: 3, dmg: Math.max(1, Math.floor((user.baseAtk || 8) / 3)) };
+    const incoming = { turns: 3, dmg: Math.max(1, Math.floor((user.baseAtk * 2 || 8) / 3)) };
     if (oppStatus.poison) {
       oppStatus.poison.dmg = Math.max(oppStatus.poison.dmg || 0, incoming.dmg);
       oppStatus.poison.turns = Math.max(oppStatus.poison.turns || 0, incoming.turns);
@@ -1091,8 +1114,7 @@ const abilityHandlers = {
   }
 
   ,wild_arcanum(user, target) {
-    // Amplified wild arcanum per user's tuning request: larger baseline and variance,
-    // with stronger mid-tier and critical outcomes.
+  //this amplifies wild arcanum baseline and variance with stronger mid-tier and critical outcomes.
     const roll = Math.floor(Math.random() * 20) + 1;
     const base = getEffectiveBaseAtk(user, 18);
     // larger variance and higher baseline
@@ -1229,11 +1251,7 @@ window.initializeBattle = async function(mId, userId) {
   try { attachActionTooltips(); } catch (e) { /* ignore */ }
   onValue(playerRef, () => { renderSpecialButtons().catch(console.error); });
   onValue(currentTurnRef, () => { renderSpecialButtons().catch(console.error); });
-  // Render inventory and re-render on player/opponent changes
-  try { await renderInventory(); } catch (e) { /* ignore */ }
-  onValue(playerRef, () => { renderInventory().catch(console.error); });
-  onValue(opponentRef, () => { renderInventory().catch(console.error); });
-  // Render inventory and re-render on player/opponent changes
+  //this renderInventory and re-render on player/opponent changes
   try { await renderInventory(); } catch (e) { /* ignore */ }
   onValue(playerRef, () => { renderInventory().catch(console.error); });
   onValue(opponentRef, () => { renderInventory().catch(console.error); });
@@ -2149,8 +2167,13 @@ async function chooseMove(move) {
   let turnCounter = (matchData?.turnCounter || 0) + 1;
   
   if (turnCounter % 3 === 0 && turnCounter > 0) {
-    playerUpdates.attackBoost = 0;
-    opponentUpdates.attackBoost = 0;
+    // Only clear periodic boosts if there isn't an active shout/prepare status
+    if (!(playerStats.status && (playerStats.status.shout || playerStats.status.prepare))) {
+      playerUpdates.attackBoost = 0;
+    }
+    if (!(opponentStats.status && (opponentStats.status.shout || opponentStats.status.prepare))) {
+      opponentUpdates.attackBoost = 0;
+    }
   }
 
   // Reset player's defense at the start of their turn (defense from previous turn expires)
