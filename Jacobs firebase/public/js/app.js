@@ -18,6 +18,7 @@ import {
 
 import {
   onAuthStateChanged,
+  signOut,
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js";
 
 // setup connection listener
@@ -26,75 +27,113 @@ onValue(connectedRef, (snap) => {
   console.log("connected:", snap.val());
 });
 
-var uid
-var queueRef;
+let uid;
+let queueRef;
+let detachMatchListener = null;
+let detachProfileListener = null;
+
+// Ensure login/signup handlers are loaded anywhere app.js runs
+import("./login.js").catch((err) => {
+  console.error("[app] failed to load login module", err);
+});
 
 onAuthStateChanged(auth, async (user) => {
+  // Use the more robust sign-in UI logic (nav links, signout button, presence) while
+  // preserving the existing game logic in this file.
+  const userDisplay = document.getElementById("user") || document.getElementById("user-display");
+  const battleElement = document.getElementById("battle");
+  const queueBtnEl = document.getElementById("queueBtn") || document.querySelector('.queueBtn');
+  const signOutBtn = document.getElementById("signOutBtn");
+  const navAuthLinks = document.querySelectorAll('.nav-auth-link');
+  const navProtectedLinks = document.querySelectorAll('.nav-protected-link');
+
+  // detach any existing listeners when auth state changes
+  if (detachMatchListener) {
+    try { detachMatchListener(); } catch (e) { /* ignore */ }
+    detachMatchListener = null;
+  }
+  if (detachProfileListener) {
+    try { detachProfileListener(); } catch (e) { /* ignore */ }
+    detachProfileListener = null;
+  }
+
   if (user) {
-    document.getElementById("user").textContent =
-      `Signed in as ${user.displayName || user.email}`;
-    document.getElementById("queueBtn").style = "display: inline;";
-    writeUserData(user.uid, user.displayName);
     uid = user.uid;
-    // sync any locally selected class into the user's DB record so functions can read it
-    try {
-      const local = (typeof localStorage !== 'undefined') ? localStorage.getItem('selectedClass') : null;
-      if (local) {
-        // write selectedClass to user node
-        await update(ref(db, `users/${uid}`), { selectedClass: local });
-      }
-    } catch (err) {
-      console.error('Error syncing local selectedClass to DB on sign-in', err);
-    }
-    const matchRef = ref(db, "users/" + uid + "/currentMatch");
-    queueRef = ref(db, 'queue/' + uid);
+    // write a minimal profile if missing
+    try { await writeUserData(user.uid, user.displayName || user.email); } catch (e) { console.error('writeUserData failed', e); }
+
+    // show/hide nav links and signout
+    if (userDisplay) userDisplay.textContent = `Signed in as ${user.displayName || user.email}`;
+    if (signOutBtn) signOutBtn.style.display = 'inline-flex';
+    navAuthLinks.forEach((link) => (link.style.display = 'none'));
+    navProtectedLinks.forEach((link) => (link.style.display = ''));
+
+    // listen for profile updates
+    const userProfileRef = ref(db, `users/${uid}`);
+    detachProfileListener = onValue(userProfileRef, (snap) => {
+      const data = snap.val() || {};
+      const name = data.displayName || user.displayName || user.email;
+      const classLabel = data.class ? ` (${capitalize(data.class)})` : "";
+      if (userDisplay) userDisplay.textContent = `Signed in as ${name}${classLabel}`;
+    });
+
+    // ensure presence/queue behavior
+    queueRef = ref(db, `queue/${uid}`);
     onDisconnect(queueRef).remove();
+    if (queueBtnEl) queueBtnEl.style.display = 'inline';
+    document.querySelectorAll('.not-logged-in-vis').forEach((el) => (el.style.display = 'none'));
 
-    document.querySelectorAll('.not-logged-in-vis')
-      .forEach(el => el.style.display = 'none');
-
-    // Ensure battle UI is hidden initially when user logs in
-    document.getElementById("battle").style.display = "none";
-
-    console.log(user);
-
-    // Ensure starter items exist for this user (do not overwrite existing items)
+    // apply any pending signup profile info stored transiently
     try {
-      await seedStarterItemsIfMissing(uid);
+      const pendingDisplayName = (typeof localStorage !== 'undefined') ? localStorage.getItem('pendingDisplayName') : null;
+      const pendingClass = (typeof localStorage !== 'undefined') ? localStorage.getItem('selectedClass') : null;
+      const updates = {};
+      if (pendingDisplayName) updates.displayName = pendingDisplayName;
+      // Persist under selectedClass to match server-side expectations
+      if (pendingClass) updates.selectedClass = pendingClass;
+      if (Object.keys(updates).length > 0) {
+        await update(ref(db, `users/${uid}`), updates);
+        try { localStorage.removeItem('pendingDisplayName'); } catch (e) {}
+      }
     } catch (e) {
-      console.error('Error seeding starter items for user', e);
+      console.error('Error applying pending signup profile to DB', e);
     }
 
+    // seed starter items if necessary
+    try { await seedStarterItemsIfMissing(uid); } catch (e) { console.error('Error seeding starter items for user', e); }
 
-    onValue(matchRef, snap => {
+    // match listener
+    const matchRef = ref(db, `users/${uid}/currentMatch`);
+    detachMatchListener = onValue(matchRef, (snap) => {
       if (snap.exists()) {
         const matchId = snap.val();
-        document.getElementById("queueBtn").style.display = "none"; // Hide match button when in match
-          document.getElementById("battle").style.display = "block";
-          // hide class selector when in a match
-          const cs = document.getElementById('class-select'); if (cs) cs.style.display = 'none';
-        console.log("Matched! Match ID:", matchId);
-        // Initialize battle when match is found
-        // Wait a bit for battle.js to load if it hasn't yet
+        if (queueBtnEl) queueBtnEl.style.display = 'none';
+        if (battleElement) battleElement.style.display = 'block';
+        // hide class selector when in a match
+        const cs = document.getElementById('class-select'); if (cs) cs.style.display = 'none';
+        console.log('Matched! Match ID:', matchId);
         setTimeout(() => {
           if (typeof window.initializeBattle === 'function') {
             window.initializeBattle(matchId, uid);
           } else {
-            console.error("initializeBattle function not found!");
+            console.error('initializeBattle function not found!');
           }
         }, 100);
       } else {
-        document.getElementById("queueBtn").style.display = "inline"; // Show match button when not in match
-        document.getElementById("battle").style.display = "none";
-        // show class selector when not in a match
+        if (queueBtnEl) queueBtnEl.style.display = 'inline';
+        if (battleElement) battleElement.style.display = 'none';
         const cs2 = document.getElementById('class-select'); if (cs2) cs2.style.display = '';
       }
     });
 
-
   } else {
-    document.getElementById("user").textContent = "Not signed in";
-    document.getElementById("battle").style.display = "none";
+    // signed out
+    if (userDisplay) userDisplay.textContent = 'Not signed in';
+    if (battleElement) battleElement.style.display = 'none';
+    if (signOutBtn) signOutBtn.style.display = 'none';
+    navAuthLinks.forEach((link) => (link.style.display = ''));
+    navProtectedLinks.forEach((link) => (link.style.display = 'none'));
+    document.querySelectorAll('.not-logged-in-vis').forEach((el) => (el.style.display = ''));
   }
 });
 
@@ -103,6 +142,30 @@ function writeUserData(userId, name) {
   update(ref(db, 'users/' + userId), {
     displayName: name,
   });
+}
+
+// Capture signup form inputs so app.js can persist them on auth state change.
+// We don't perform auth here (login.js handles that); we only store transient inputs.
+try {
+  const signupForm = document.getElementById('signup-form');
+  if (signupForm) {
+    signupForm.addEventListener('submit', (ev) => {
+      try {
+        const fd = new FormData(signupForm);
+        const displayName = fd.get('displayName')?.toString().trim();
+        const playerClass = fd.get('playerClass')?.toString();
+        if (typeof localStorage !== 'undefined') {
+          if (displayName) localStorage.setItem('pendingDisplayName', displayName);
+          if (playerClass) localStorage.setItem('selectedClass', playerClass);
+        }
+      } catch (e) {
+        console.error('Error capturing signup form values', e);
+      }
+      // allow the form to continue (login.js will handle createUserWithEmailAndPassword)
+    }, false);
+  }
+} catch (e) {
+  console.error('Signup form listener setup failed', e);
 }
 
 async function updateQueueData() {
@@ -173,7 +236,8 @@ function initClassSelector() {
   // If no buttons are present (HTML not updated or cached), create fallback buttons dynamically
   if (!classButtons || classButtons.length === 0) {
     console.warn('[class-select] no class buttons found in DOM — creating fallback buttons');
-    const classes = ['warrior','mage','archer','cleric','knight','rogue','paladin','necromancer','druid'];
+  // Use the same class set exposed in signup.html
+  const classes = ['warrior','mage','archer','cleric','rogue','dark_mage','necromancer','paladin','druid','knight','monk','wild_sorcerer'];
     let grid = container.querySelector('.class-grid');
     if (!grid) {
       grid = document.createElement('div');
@@ -193,12 +257,16 @@ function initClassSelector() {
         mage: 'Mage — powerful spellcaster with mana and area damage',
         archer: 'Archer — ranged DPS, balanced attack and accuracy',
         cleric: 'Cleric — divine healer, can restore HP and remove DOTs',
-        knight: 'Knight — heavy tank, strong defense and crowd control',
-        rogue: 'Rogue — high single-target damage, stealthy strikes',
-        paladin: 'Paladin — hybrid support with heals and offensive strikes',
-        necromancer: 'Necromancer — deals necrotic damage and siphons life',
-        druid: 'Druid — nature caster: heal-over-time and control'
+        rogue: 'Rogue — agile striker who deals burst damage and evades',
+        dark_mage: 'Dark Mage — former necromantic arts focused on life-siphon and rot',
+        necromancer: 'Necromancer — summoner and debuffer: skeletons, shackles, and inversion magic',
+        paladin: 'Paladin — holy warrior with support and offense',
+        druid: 'Druid — nature caster: heal-over-time and control',
+        knight: 'Knight — heavy tank, strong defense and crowd control'
       };
+      // add descriptions for newly added classes
+      descMap.monk = 'Monk — quick martial artist: flurries, stuns, and powerful finishing blows.';
+      descMap.wild_sorcerer = 'Wild Magic Sorcerer — unpredictable caster with random d20-driven effects.';
       if (descMap[cid]) {
         b.classList.add('has-tooltip');
         b.setAttribute('data-tooltip', descMap[cid]);
@@ -219,7 +287,11 @@ function initClassSelector() {
   });
 
   // initialize label from localStorage
-  const existing = (typeof localStorage !== 'undefined') ? localStorage.getItem('selectedClass') : null;
+  // initialize label from localStorage; default to 'warrior' if not set
+  let existing = (typeof localStorage !== 'undefined') ? localStorage.getItem('selectedClass') : null;
+  if (!existing) {
+    try { localStorage.setItem('selectedClass', 'warrior'); existing = 'warrior'; } catch (e) { /* ignore */ }
+  }
   if (existing && label) label.textContent = `Selected: ${existing}`;
   // mark active button visually
   try { markActive(existing); } catch (e) { /* ignore */ }
@@ -353,8 +425,6 @@ const ITEM_CATALOG = {
   speed_scroll: { id: 'speed_scroll', name: 'Speed Scroll', desc: 'Next turn acts first.' },
   strength_tonic: { id: 'strength_tonic', name: 'Strength Tonic', desc: 'Temporarily increases attack for 1 turn.' },
   revive_scroll: { id: 'revive_scroll', name: 'Revive Scroll', desc: 'Revives with 30% HP once.' }
-  ,
-  jps: { id: 'jps', name: 'JPS Token', desc: 'A mysterious token — appears in inventory for testing.' }
 };
 
 window.getItemCatalog = () => ITEM_CATALOG;

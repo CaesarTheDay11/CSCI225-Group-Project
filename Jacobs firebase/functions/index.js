@@ -17,8 +17,14 @@ CLASS_STATS.cleric = { hp: 90, maxHp: 90, baseAtk: 8, defense: 2, abilities: ['c
 CLASS_STATS.knight = { hp: 140, maxHp: 140, baseAtk: 13, defense: 6, abilities: ['knight_guard', 'knight_charge', 'knight_bastion'], mana: 0 };
 CLASS_STATS.rogue = { hp: 85, maxHp: 85, baseAtk: 18, defense: 1, abilities: ['rogue_backstab', 'rogue_poisoned_dagger', 'rogue_evade'], mana: 0 };
 CLASS_STATS.paladin = { hp: 130, maxHp: 130, baseAtk: 11, defense: 5, abilities: ['paladin_aura', 'paladin_holy_strike', 'paladin_bless'], mana: 15 };
-CLASS_STATS.necromancer = { hp: 75, maxHp: 75, baseAtk: 12, defense: 1, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 };
-CLASS_STATS.druid = { hp: 100, maxHp: 100, baseAtk: 12, defense: 2, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 25 };
+// Keep server-side necromancer/druid templates in sync with client `public/js/battle.js`
+CLASS_STATS.necromancer = { hp: 80, maxHp: 80, baseAtk: 10, defense: 2, abilities: ['necro_summon_skeleton', 'necro_spirit_shackles', 'necro_dark_inversion'], mana: 40 };
+CLASS_STATS.druid = { hp: 100, maxHp: 100, baseAtk: 12, defense: 2, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 };
+
+// Keep server-side templates in sync with client additions
+CLASS_STATS.dark_mage = { hp: 75, maxHp: 75, baseAtk: 12, defense: 1, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 };
+CLASS_STATS.monk = { hp: 105, maxHp: 105, baseAtk: 13, defense: 3, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 };
+CLASS_STATS.wild_sorcerer = { hp: 85, maxHp: 85, baseAtk: 14, defense: 1, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 };
 
 exports.onQueueJoin = onValueCreated("/queue/{uid}", async (event) => {
   const joiningUid = event.params.uid;

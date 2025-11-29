@@ -46,6 +46,21 @@ ABILITIES.paladin_bless = { id: 'paladin_bless', name: 'Blessing', cost: 8, cool
 ABILITIES.necro_curse = { id: 'necro_curse', name: 'Curse of Decay', cost: 10, cooldown: 5, desc: 'Afflict the target so they suffer reduced healing (slimed) and ongoing rot.' };
 ABILITIES.druid_barkskin = { id: 'druid_barkskin', name: 'Barkskin', cost: 8, cooldown: 5, desc: 'Harden your skin: heal a small amount, gain +8 defense for several turns, and lash the enemy for minor damage.' };
 
+// New Monk abilities
+ABILITIES.monk_flurry = { id: 'monk_flurry', name: 'Flurry', cost: 4, cooldown: 3, desc: 'Three rapid strikes that together deal good damage and inflict Weaken. Costs 4 mana.' };
+ABILITIES.monk_stunning_blow = { id: 'monk_stunning_blow', name: 'Stunning Blow', cost: 0, cooldown: 4, desc: 'A heavy strike that has a 50% chance to stun the target.' };
+ABILITIES.monk_quivering_palm = { id: 'monk_quivering_palm', name: 'Quivering Palm', cost: 10, cooldown: 6, desc: 'Inflicts bleeding (5% max HP per turn for 4 turns). If the target is at <=20% max HP when this hits they die instantly.' };
+
+// New Necromancer (summoner support spellset)
+ABILITIES.necro_summon_skeleton = { id: 'necro_summon_skeleton', name: 'Summon Skeleton', cost: 8, cooldown: 5, desc: 'Summon a skeleton: gain +5 ATK and +5 DEF for a few turns and poison the enemy.' };
+ABILITIES.necro_spirit_shackles = { id: 'necro_spirit_shackles', name: 'Spirit Shackles', cost: 10, cooldown: 6, desc: 'Shackle the enemy: -5 ATK for 4 turns, reduce their defense by 75% and prevent item use.' };
+ABILITIES.necro_dark_inversion = { id: 'necro_dark_inversion', name: 'Dark Inversion', cost: 12, cooldown: 8, desc: 'For 3 turns, damage heals you and healing damages you (reverse HP effects).' };
+
+// Wild Magic Sorcerer abilities
+ABILITIES.wild_attack = { id: 'wild_attack', name: 'Wild Magic: Attack', cost: 10, cooldown: 4, desc: 'Unleash chaotic magic: a d20 roll determines many possible effects on the enemy.' };
+ABILITIES.wild_buff = { id: 'wild_buff', name: 'Wild Magic: Buff', cost: 8, cooldown: 5, desc: 'A chaotic buff — roll a d20 for one of many random boons or banes.' };
+ABILITIES.wild_arcanum = { id: 'wild_arcanum', name: 'Wild Magic: Arcanum', cost: 14, cooldown: 6, desc: 'High-damage unpredictable arcane burst with wild side effects determined by a d20 roll.' };
+
 ABILITIES.knight_guard = { id: 'knight_guard', name: 'Guard Stance', cost: 0, cooldown: 4, desc: 'Increase defense with a shield for 2 turns.' };
 ABILITIES.knight_charge = { id: 'knight_charge', name: 'Mounted Charge', cost: 0, cooldown: 3, desc: 'Powerful charge that may stun.' };
 
@@ -71,7 +86,14 @@ CLASS_STATS.cleric = { name: 'Cleric', hp: 90, maxHp: 90, baseAtk: 8, defense: 2
 CLASS_STATS.knight = { name: 'Knight', hp: 140, maxHp: 140, baseAtk: 13, defense: 6, attackBoost: 0, fainted: false, abilities: ['knight_guard', 'knight_charge', 'knight_bastion'], mana: 0 };
 CLASS_STATS.rogue = { name: 'Rogue', hp: 85, maxHp: 85, baseAtk: 18, defense: 1, attackBoost: 0, fainted: false, abilities: ['rogue_backstab', 'rogue_poisoned_dagger', 'rogue_evade'], mana: 0 };
 CLASS_STATS.paladin = { name: 'Paladin', hp: 130, maxHp: 130, baseAtk: 11, defense: 5, attackBoost: 0, fainted: false, abilities: ['paladin_aura', 'paladin_holy_strike', 'paladin_bless'], mana: 15 };
-CLASS_STATS.necromancer = { name: 'Necromancer', hp: 75, maxHp: 75, baseAtk: 12, defense: 1, attackBoost: 0, fainted: false, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 };
+// Rename old necromancer -> Dark Mage (inherits existing necro_* abilities)
+CLASS_STATS.dark_mage = { name: 'Dark Mage', hp: 75, maxHp: 75, baseAtk: 12, defense: 1, attackBoost: 0, fainted: false, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 };
+// New Necromancer class (summoner / debuffer)
+CLASS_STATS.necromancer = { name: 'Necromancer', hp: 80, maxHp: 80, baseAtk: 10, defense: 2, attackBoost: 0, fainted: false, abilities: ['necro_summon_skeleton', 'necro_spirit_shackles', 'necro_dark_inversion'], mana: 40 };
+// New Monk class — give monks a mana pool so their mana-cost abilities work
+CLASS_STATS.monk = { name: 'Monk', hp: 105, maxHp: 105, baseAtk: 13, defense: 3, attackBoost: 0, fainted: false, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 };
+// Wild Magic Sorcerer
+CLASS_STATS.wild_sorcerer = { name: 'Wild Magic Sorcerer', hp: 85, maxHp: 85, baseAtk: 14, defense: 1, attackBoost: 0, fainted: false, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 };
 // Increased Druid health per balance request
 CLASS_STATS.druid = { name: 'Druid', hp: 100, maxHp: 100, baseAtk: 12, defense: 2, attackBoost: 0, fainted: false, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 };
 
@@ -131,6 +153,43 @@ function regenManaValue(actor, amount = 2) {
   const max = actor?.maxMana || 0;
   if (max <= 0) return actor?.mana || 0;
   return Math.min(max, (actor.mana || 0) + amount);
+}
+
+// If a player has dark_inversion status, HP changes should be inverted
+// This helper expects absolute HP values in updates (e.g., { hp: 50 }) and
+// will convert them by computing the delta relative to the current stats and
+// inverting that delta when dark_inversion is present on the relevant actor.
+// actingIsPlayer: true when the actor performing the move is the 'playerStats' (currentUser).
+// When true, only invert hp changes that affect the acting player (incoming effects to player).
+// This ensures attacks made by the acting player on opponents do not heal them.
+function applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates = {}, opponentUpdates = {}, actingIsPlayer = true) {
+  // Symmetric dark inversion: if a given target (player or opponent) has status.dark_inversion
+  // then any HP-decrease targeting them is converted into healing instead. This lets an acting
+  // client invert the appropriate target's update regardless of which side is acting.
+  const p = Object.assign({}, playerUpdates);
+  const o = Object.assign({}, opponentUpdates);
+
+  try {
+    const invertIfNeeded = (updatesObj, targetStats) => {
+      if (!updatesObj || typeof updatesObj.hp === 'undefined' || !targetStats) return updatesObj;
+      const cur = Number(targetStats.hp || 0);
+      const newHp = Number(updatesObj.hp || 0);
+      if (newHp < cur && targetStats.status && targetStats.status.dark_inversion) {
+        const damage = cur - newHp;
+        const maxHp = Number(targetStats.maxHp || targetStats.maxHP || cur || 100);
+        updatesObj.hp = Math.min(maxHp, cur + damage);
+        if (updatesObj.hp > 0 && updatesObj.fainted) updatesObj.fainted = false;
+      }
+      return updatesObj;
+    };
+
+    invertIfNeeded(p, playerStats);
+    invertIfNeeded(o, opponentStats);
+  } catch (e) {
+    console.error('applyDarkInversionToUpdates failed', e);
+  }
+
+  return { playerUpdates: p, opponentUpdates: o };
 }
 
 function canUseAbilityLocal(actorStats, abilityId) {
@@ -220,6 +279,24 @@ function processStatusEffectsLocal(actorStats) {
       }
       delete status.weaken;
     }
+  }
+
+  // No-items / item-lock (e.g., Spirit Shackles)
+  if (status.no_items) {
+    status.no_items.turns = (status.no_items.turns || 0) - 1;
+    if (status.no_items.turns <= 0) delete status.no_items;
+  }
+
+  // Summon buff entries (expire cleanly)
+  if (status.summon) {
+    status.summon.turns = (status.summon.turns || 0) - 1;
+    if (status.summon.turns <= 0) delete status.summon;
+  }
+
+  // Dark inversion: expire after its turns
+  if (status.dark_inversion) {
+    status.dark_inversion.turns = (status.dark_inversion.turns || 0) - 1;
+    if (status.dark_inversion.turns <= 0) delete status.dark_inversion;
   }
 
   // Shout: decrease turns and remove effect when expired
@@ -733,6 +810,247 @@ const abilityHandlers = {
 
     return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_druid_barkskin' }, message: `${user.name || 'You'} hardens skin and lashes out, healing ${immediate} HP, gaining +${shieldAmount} defense and dealing ${damage} damage to the foe.`, lastMoveHeal: immediate, lastMoveDamage: damage };
   }
+
+  // ---- Monk ability handlers ----
+  ,monk_flurry(user, target) {
+    // Three quick strikes; total damage summed. Apply a weaken on the target.
+    const base = getEffectiveBaseAtk(user, 12);
+    let total = 0;
+    for (let i = 0; i < 3; i++) total += Math.floor(Math.random() * 6) + Math.floor(base / 2);
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, total);
+    const opponentUpdates = { hp: newHp };
+    const newStatus = Object.assign({}, target.status || {});
+    const weakenAmt = 4;
+    if (!newStatus.weaken) {
+      newStatus.weaken = { turns: 2, amount: weakenAmt, prevBoost: (target.attackBoost || 0) };
+    } else {
+      newStatus.weaken.amount = (newStatus.weaken.amount || 0) + weakenAmt;
+      newStatus.weaken.turns = Math.max(newStatus.weaken.turns || 0, 2);
+    }
+    opponentUpdates.status = newStatus;
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'monk_flurry'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.monk_flurry.cost || 0)) };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_monk_flurry' }, message: `${user.name || 'You'} strikes in a flurry for ${damage} total damage and weakens the enemy!`, lastMoveDamage: damage };
+  }
+
+  ,monk_stunning_blow(user, target) {
+    const base = getEffectiveBaseAtk(user, 14);
+    const raw = Math.floor(Math.random() * 12) + base;
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+    const opponentUpdates = { hp: newHp };
+    if (Math.random() < 0.5) {
+      const s = Object.assign({}, target.status || {});
+      s.stun = { turns: 1 };
+      opponentUpdates.status = s;
+    }
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'monk_stunning_blow') };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_monk_stunning_blow' }, message: `${user.name || 'You'} delivers a Stunning Blow for ${damage} damage${opponentUpdates.status && opponentUpdates.status.stun ? ' and stuns the foe!' : '!'}`, lastMoveDamage: damage };
+  }
+
+  ,monk_quivering_palm(user, target) {
+    // If enemy is already at <=20% max HP when this hits, they die instantly.
+    const maxHpT = target.maxHp || target.maxHP || 100;
+    const threshold = Math.floor(maxHpT * 0.2);
+    if ((target.hp || 0) <= threshold) {
+      const opponentUpdates = { hp: 0, fainted: true };
+      const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'monk_quivering_palm') };
+      return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_monk_quivering_palm' }, message: `${user.name || 'You'} strikes a Quivering Palm and collapses the enemy instantly!` };
+    }
+    // Otherwise apply bleed: 5% max HP per turn for 4 turns
+    const base = getEffectiveBaseAtk(user, 12);
+    const raw = Math.floor(Math.random() * 10) + Math.floor(base / 2);
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+    const opponentUpdates = { hp: newHp };
+    const newStatus = Object.assign({}, target.status || {});
+    const incoming = { turns: 4, pct: 0.05 };
+    if (newStatus.bleed) {
+      newStatus.bleed.pct = Math.max(newStatus.bleed.pct || 0, incoming.pct);
+      newStatus.bleed.turns = Math.max(newStatus.bleed.turns || 0, incoming.turns);
+    } else {
+      newStatus.bleed = incoming;
+    }
+    opponentUpdates.status = newStatus;
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'monk_quivering_palm'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.monk_quivering_palm.cost || 0)) };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_monk_quivering_palm' }, message: `${user.name || 'You'} uses Quivering Palm dealing ${damage} damage and inflicting deep bleeding!`, lastMoveDamage: damage };
+  }
+
+  // ---- New Necromancer handlers (summoner / debuff focused) ----
+  ,necro_summon_skeleton(user, target) {
+    const playerUpdates = {};
+    // grant temporary attack/defense via status so it expires cleanly
+    const newStatus = Object.assign({}, user.status || {});
+    const atkAdd = 5;
+    const defAdd = 5;
+    newStatus.summon = { turns: 3, atk: atkAdd, def: defAdd };
+    playerUpdates.attackBoost = (user.attackBoost || 0) + atkAdd;
+    playerUpdates.defense = (user.defense || 0) + defAdd;
+    playerUpdates.status = newStatus;
+    // poison the enemy lightly
+    const oppStatus = Object.assign({}, target.status || {});
+    const incoming = { turns: 3, dmg: Math.max(1, Math.floor((user.baseAtk || 8) / 3)) };
+    if (oppStatus.poison) {
+      oppStatus.poison.dmg = Math.max(oppStatus.poison.dmg || 0, incoming.dmg);
+      oppStatus.poison.turns = Math.max(oppStatus.poison.turns || 0, incoming.turns);
+    } else {
+      oppStatus.poison = incoming;
+    }
+    const opponentUpdates = { status: oppStatus };
+    playerUpdates.abilityCooldowns = startAbilityCooldownLocal(user.abilityCooldowns, 'necro_summon_skeleton');
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_necro_summon_skeleton' }, message: `${user.name || 'You'} summons a skeleton, gaining +${atkAdd} ATK and +${defAdd} DEF while poisoning the foe.` };
+  }
+
+  ,necro_spirit_shackles(user, target) {
+    const oppStatus = Object.assign({}, target.status || {});
+    // apply -5 attack for 4 turns
+    const weakenAmt = 5;
+    if (!oppStatus.weaken) {
+      oppStatus.weaken = { turns: 4, amount: weakenAmt, prevBoost: (target.attackBoost || 0) };
+    } else {
+      oppStatus.weaken.amount = (oppStatus.weaken.amount || 0) + weakenAmt;
+      oppStatus.weaken.turns = Math.max(oppStatus.weaken.turns || 0, 4);
+    }
+    // remove 75% of defense (leave 25%)
+    const reducedDef = Math.floor((target.defense || 0) * 0.25);
+    const opponentUpdates = { status: oppStatus, defense: reducedDef };
+    // prevent item usage
+    oppStatus.no_items = { turns: 4 };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'necro_spirit_shackles') };
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_necro_spirit_shackles' }, message: `${user.name || 'You'} binds the enemy with Spirit Shackles: -${weakenAmt} ATK, defense heavily reduced and items disabled.` };
+  }
+
+  ,necro_dark_inversion(user, target) {
+    // For 3 turns invert healing/damage for the caster only (do not apply to the enemy)
+    const playerStatus = Object.assign({}, user.status || {});
+    playerStatus.dark_inversion = { turns: 3 };
+    const playerUpdates = { status: playerStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'necro_dark_inversion'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.necro_dark_inversion.cost || 0)) };
+    // do not set dark_inversion on opponent
+    const opponentUpdates = {};
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_necro_dark_inversion' }, message: `${user.name || 'You'} twists life into unlife: for 3 turns, healing becomes harmful and damage becomes restorative.` };
+  }
+
+  // ---- Wild Magic Sorcerer handlers ----
+  ,wild_attack(user, target) {
+    // roll a d20 and pick an effect set (1 worst ... 20 best)
+    const roll = Math.floor(Math.random() * 20) + 1;
+    const base = getEffectiveBaseAtk(user, 16);
+    let damage = Math.floor(Math.random() * 16) + base + 4;
+    const opponentUpdates = { hp: Math.max(0, (target.hp || 0) - Math.max(0, damage - (target.defense || 0))) };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'wild_attack'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.wild_attack.cost || 0)) };
+    let message = `${user.name || 'You'} triggers Wild Attack (d20=${roll})`; 
+    // sample effects mapping (not exhaustive but varied)
+    if (roll <= 3) {
+      // small backlash: caster takes a bit of damage
+      const backlash = Math.floor(damage * 0.4);
+      const pHp = Math.max(0, (user.hp || 0) - backlash);
+      playerUpdates.hp = pHp;
+      message += ` — chaotic backlash! You suffer ${backlash} damage.`;
+    } else if (roll <= 8) {
+      // apply random debuff to opponent (stronger)
+      const s = Object.assign({}, target.status || {});
+      s.weaken = { turns: 2, amount: 4, prevBoost: (target.attackBoost || 0) };
+      opponentUpdates.status = s;
+      message += ` — the enemy is weakened.`;
+    } else if (roll <= 15) {
+      // normal damage + burn (stronger)
+      const s = Object.assign({}, target.status || {});
+      s.burn = { turns: 3, dmg: Math.max(3, Math.floor(base / 3)) };
+      opponentUpdates.status = s;
+      message += ` — the enemy is scorched.`;
+    } else if (roll <= 19) {
+      // strong hit + stun
+      const extra = Math.floor(Math.random() * 14) + 10;
+      const newHp = Math.max(0, (opponentUpdates.hp || target.hp) - extra);
+      opponentUpdates.hp = newHp;
+      const s = Object.assign({}, opponentUpdates.status || target.status || {});
+      s.stun = { turns: 1 };
+      opponentUpdates.status = s;
+      message += ` — a powerful surge stuns the opponent!`;
+    } else {
+      // 20: best-case: big damage + buff the caster
+      const extra = Math.floor(Math.random() * 26) + 18;
+      const newHp = Math.max(0, (opponentUpdates.hp || target.hp) - extra);
+      opponentUpdates.hp = newHp;
+      const pS = Object.assign({}, user.status || {});
+      pS.shout = { turns: 3, amount: 12 };
+      playerUpdates.status = pS;
+      playerUpdates.attackBoost = (user.attackBoost || 0) + 12;
+      message += ` — critical wild surge! Massive damage and you're empowered.`;
+    }
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_wild_attack' }, message, lastMoveDamage: damage };
+  }
+
+  ,wild_buff(user, target) {
+    const roll = Math.floor(Math.random() * 20) + 1;
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'wild_buff'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.wild_buff.cost || 0)) };
+    const pS = Object.assign({}, user.status || {});
+    let message = `${user.name || 'You'} invoke Wild Buff (d20=${roll})`;
+    if (roll <= 4) {
+      // curse: reduce own attack
+      pS.weaken = { turns: 3, amount: 4, prevBoost: (user.attackBoost || 0) };
+      message += ` — misfired and you feel weaker.`;
+    } else if (roll <= 10) {
+      // small heal
+      const heal = 10;
+      playerUpdates.hp = Math.min(user.maxHp || 100, (user.hp || 0) + heal);
+      message += ` — minor regenerative pulse heals ${heal} HP.`;
+    } else if (roll <= 16) {
+      // small buff
+      pS.shout = { turns: 2, amount: 6 };
+      playerUpdates.attackBoost = (user.attackBoost || 0) + 6;
+      message += ` — arcane winds bolster your strength.`;
+    } else if (roll <= 19) {
+      // mana surge
+      playerUpdates.mana = Math.min(user.maxMana || (user.mana || 0), (user.mana || 0) + 12);
+      message += ` — mana surges through you.`;
+    } else {
+      // 20: best-case: big heal + strong buff
+      playerUpdates.hp = Math.min(user.maxHp || 100, (user.hp || 0) + 25);
+      pS.shout = { turns: 3, amount: 12 };
+      playerUpdates.attackBoost = (user.attackBoost || 0) + 12;
+      message += ` — incredible boon: large heal and huge strength.`;
+    }
+    playerUpdates.status = Object.keys(pS).length ? pS : null;
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_wild_buff' }, message };
+  }
+
+  ,wild_arcanum(user, target) {
+    // Amplified wild arcanum per user's tuning request: larger baseline and variance,
+    // with stronger mid-tier and critical outcomes.
+    const roll = Math.floor(Math.random() * 20) + 1;
+    const base = getEffectiveBaseAtk(user, 18);
+    // larger variance and higher baseline
+    let raw = Math.floor(Math.random() * 24) + base + 12;
+    const opponentUpdates = { hp: Math.max(0, (target.hp || 0) - Math.max(0, raw - (target.defense || 0))) };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'wild_arcanum'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.wild_arcanum.cost || 0)) };
+    let message = `${user.name || 'You'} cast Wild Arcanum (d20=${roll})`;
+    if (roll <= 4) {
+      // significant backlash: caster takes a larger chunk of damage
+      const back = Math.floor(raw * 0.5);
+      playerUpdates.hp = Math.max(0, (user.hp || 0) - back);
+      message += ` — chaotic backlash! You suffer ${back} damage.`;
+    } else if (roll <= 12) {
+      // moderate effect: moderate extra damage
+      const extra = Math.floor(Math.random() * 12) + 8;
+      opponentUpdates.hp = Math.max(0, (opponentUpdates.hp || target.hp) - extra);
+      message += ` — arcane surge deals extra damage.`;
+    } else if (roll <= 19) {
+      // strong hit + lifesteal on the caster
+      const extra = Math.floor(Math.random() * 20) + 12;
+      opponentUpdates.hp = Math.max(0, (opponentUpdates.hp || target.hp) - extra);
+      playerUpdates.hp = Math.min(user.maxHp || 100, (user.hp || 0) + Math.floor(extra * 0.4));
+      message += ` — wild arcanum hits hard and you siphon some life.`;
+    }
+    if (roll === 20) {
+      // critical: very large nuke and an empowering buff
+      const nuke = Math.floor(Math.random() * 36) + 36;
+      opponentUpdates.hp = Math.max(0, (opponentUpdates.hp || target.hp) - nuke);
+      const pS = Object.assign({}, user.status || {});
+      pS.shout = { turns: 3, amount: 14 };
+      playerUpdates.status = pS;
+      playerUpdates.attackBoost = (user.attackBoost || 0) + 14;
+      message += ` Critical wild arcanum! Massive surge and you are empowered.`;
+    }
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_wild_arcanum' }, message, lastMoveDamage: raw };
+  }
 };
 
 // Initialize battle when match is found
@@ -766,19 +1084,28 @@ window.initializeBattle = async function(mId, userId) {
   // Get existing player node to avoid overwriting any existing server values
   const existingPlayerSnap = await get(playerRef);
   const existing = existingPlayerSnap.exists() ? existingPlayerSnap.val() : {};
-  // Merge abilities: preserve existing customizations but ensure any newly added class-template
-  // abilities are included (so players see the 3rd ability added in code updates).
+  // Decide which class to seed for this player. Use the selectedClass (from users node or localStorage)
+  // and avoid carrying over abilities from a different existing class. If an existing player node
+  // belongs to a different class, overwrite abilities with the templateAbilities for the selectedClass.
+  // Only grant abilities that belong to the selected class's template.
+  // This prevents retention of abilities from previously-assigned different classes (e.g., Dark Mage)
+  // which could otherwise leak into a newly-selected class like Necromancer.
   const templateAbilities = Array.isArray(classTemplate.abilities) ? classTemplate.abilities : [];
   let resolvedAbilities = templateAbilities.slice();
-  if (existing && Array.isArray(existing.abilities) && existing.abilities.length) {
-    // Merge unique entries, keeping existing ones first
-    const set = new Set([...(existing.abilities || []), ...templateAbilities]);
-    resolvedAbilities = Array.from(set);
-  }
+
+  // Determine mana/maxMana to seed: if the existing node already belonged to the same class
+  // preserve its mana (if present). If it's a different class or missing, use the class template.
+  const manaVal = (existing && existing.classId === selectedClass)
+    ? (typeof existing.mana !== 'undefined' && existing.mana !== null ? existing.mana : (classTemplate.mana || 0))
+    : (classTemplate.mana || 0);
+  const maxManaVal = (existing && existing.classId === selectedClass)
+    ? (typeof existing.maxMana !== 'undefined' && existing.maxMana !== null ? existing.maxMana : (classTemplate.mana || 0))
+    : (classTemplate.mana || 0);
 
   const seed = {
     name: userName,
-    classId: existing.classId || selectedClass,
+    // force the seeded classId to selectedClass so client/server are in agreement
+    classId: selectedClass,
     baseAtk: existing.baseAtk ?? classTemplate.baseAtk,
     hp: existing.hp ?? classTemplate.hp,
     maxHp: existing.maxHp ?? classTemplate.maxHp,
@@ -788,8 +1115,8 @@ window.initializeBattle = async function(mId, userId) {
     abilityCooldowns: existing.abilityCooldowns ?? {},
     status: existing.status ?? {},
     abilities: resolvedAbilities,
-    mana: existing.mana ?? (classTemplate.mana || 0),
-    maxMana: existing.maxMana ?? (classTemplate.mana || 0)
+    mana: manaVal,
+    maxMana: maxManaVal
   };
 
   await update(playerRef, seed);
@@ -1634,7 +1961,9 @@ async function chooseMove(move) {
     const statusRes = processStatusEffectsLocal(playerStats);
     if (statusRes.messages && statusRes.messages.length) statusRes.messages.forEach(m => logMessage(m));
     if (statusRes.updates && Object.keys(statusRes.updates).length) {
-      await update(playerRef, statusRes.updates);
+      // Respect dark_inversion when applying status tick updates (e.g., regen, burn, poison)
+  const adjustedStatus = applyDarkInversionToUpdates(playerStats, opponentStats, statusRes.updates, {}, true);
+      await update(playerRef, adjustedStatus.playerUpdates);
       const refreshed = await get(playerRef);
       Object.assign(playerStats, refreshed.val());
     }
@@ -1774,14 +2103,18 @@ async function chooseMove(move) {
   }
 
   // Apply all updates atomically using Promise.all
+  // Apply dark inversion if present on either actor before writing
+  // actingIsPlayer = true (current user acting)
+  const adjusted = applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates, opponentUpdates, true);
+
   const updatePromises = [];
   
-  if (Object.keys(playerUpdates).length > 0) {
-    updatePromises.push(update(playerRef, playerUpdates));
+  if (Object.keys(adjusted.playerUpdates).length > 0) {
+    updatePromises.push(update(playerRef, adjusted.playerUpdates));
   }
   
-  if (Object.keys(opponentUpdates).length > 0) {
-    updatePromises.push(update(opponentRef, opponentUpdates));
+  if (Object.keys(adjusted.opponentUpdates).length > 0) {
+    updatePromises.push(update(opponentRef, adjusted.opponentUpdates));
   }
   
   if (Object.keys(matchUpdates).length > 0) {
@@ -1875,9 +2208,13 @@ async function chooseSpecial(abilityId) {
     matchUpdates.currentTurn = opponentId;
   }
 
+  // Apply dark inversion to any hp changes before writing
+  // actingIsPlayer = true (current user is the actor)
+  const adjusted = applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates, opponentUpdates, true);
+
   const updatePromises = [];
-  if (Object.keys(playerUpdates).length) updatePromises.push(update(playerRef, playerUpdates));
-  if (Object.keys(opponentUpdates).length) updatePromises.push(update(opponentRef, opponentUpdates));
+  if (Object.keys(adjusted.playerUpdates).length) updatePromises.push(update(playerRef, adjusted.playerUpdates));
+  if (Object.keys(adjusted.opponentUpdates).length) updatePromises.push(update(opponentRef, adjusted.opponentUpdates));
   if (Object.keys(matchUpdates).length) updatePromises.push(update(matchRef, matchUpdates));
 
   await Promise.all(updatePromises);
@@ -1990,19 +2327,26 @@ async function useItem(itemId) {
   if (!playerStats || playerStats.fainted) { logMessage('You cannot use items; you have fainted'); return; }
   if (!opponentStats || opponentStats.fainted) { logMessage('Opponent has fainted'); return; }
 
+  // Prevent item usage if a status effect forbids it (e.g., Spirit Shackles)
+  if (playerStats.status && playerStats.status.no_items) {
+    logMessage('Your items are currently locked and cannot be used!');
+    return;
+  }
+
   // Consume item in user's profile (window.useItemForUser was added in app.js)
   try {
     if (!window.useItemForUser) throw new Error('useItemForUser helper not available');
     const item = await window.useItemForUser(currentUserId, itemId);
-    // Apply effects based on item id
-    const updates = [];
+    // Apply effects based on item id — collect structured updates then apply inversion helper
+    const playerUpdates = {};
+    const opponentUpdates = {};
     const matchUpdates = {};
 
     if (itemId === 'potion_small') {
       const heal = 20;
       const actualHeal = (playerStats.status && playerStats.status.slimed) ? Math.floor(heal / 2) : heal;
       const newHp = Math.min(playerStats.maxHp || 100, (playerStats.hp || 0) + actualHeal);
-      updates.push(update(playerRef, { hp: newHp }));
+      playerUpdates.hp = newHp;
       matchUpdates.lastMove = 'use_item_potion_small';
       matchUpdates.lastMoveActor = currentUserId;
       matchUpdates.lastMoveHeal = actualHeal;
@@ -2010,7 +2354,7 @@ async function useItem(itemId) {
       const heal = 50;
       const actualHeal = (playerStats.status && playerStats.status.slimed) ? Math.floor(heal / 2) : heal;
       const newHp = Math.min(playerStats.maxHp || 100, (playerStats.hp || 0) + actualHeal);
-      updates.push(update(playerRef, { hp: newHp }));
+      playerUpdates.hp = newHp;
       matchUpdates.lastMove = 'use_item_potion_large';
       matchUpdates.lastMoveActor = currentUserId;
       matchUpdates.lastMoveHeal = actualHeal;
@@ -2018,7 +2362,7 @@ async function useItem(itemId) {
       const dmg = 20;
       const actual = Math.max(0, dmg - (opponentStats.defense || 0));
       const newOppHp = Math.max(0, (opponentStats.hp || 0) - actual);
-      updates.push(update(opponentRef, { hp: newOppHp }));
+      opponentUpdates.hp = newOppHp;
       matchUpdates.lastMove = 'use_item_bomb';
       matchUpdates.lastMoveActor = currentUserId;
       matchUpdates.lastMoveDamage = actual;
@@ -2029,7 +2373,8 @@ async function useItem(itemId) {
       const newStatus = Object.assign({}, playerStats.status || {});
       // temporary attack buff for 2 turns
       newStatus.strength = { turns: 2, amount: 4 };
-      updates.push(update(playerRef, { mana: newMana, status: newStatus }));
+      playerUpdates.mana = newMana;
+      playerUpdates.status = newStatus;
       matchUpdates.lastMove = 'use_item_elixir';
       matchUpdates.lastMoveActor = currentUserId;
     } else if (itemId === 'shield_token') {
@@ -2038,28 +2383,29 @@ async function useItem(itemId) {
       const newDefense = (playerStats.defense || 0) + add;
       const newStatus = Object.assign({}, playerStats.status || {});
       newStatus.shield = { turns: 1, amount: add };
-      updates.push(update(playerRef, { defense: newDefense, status: newStatus }));
+      playerUpdates.defense = newDefense;
+      playerUpdates.status = newStatus;
       matchUpdates.lastMove = 'use_item_shield_token';
       matchUpdates.lastMoveActor = currentUserId;
     } else if (itemId === 'speed_scroll') {
       // grant an extra action: increment player's extraTurns status and keep current turn
       const newStatus = Object.assign({}, playerStats.status || {});
       newStatus.extraTurns = (newStatus.extraTurns || 0) + 1;
-      updates.push(update(playerRef, { status: newStatus }));
+      playerUpdates.status = newStatus;
       matchUpdates.lastMove = 'use_item_speed_scroll';
       matchUpdates.lastMoveActor = currentUserId;
       // keep currentTurn with the player so they can act again immediately
       matchUpdates.currentTurn = currentUserId;
     } else if (itemId === 'strength_tonic') {
-        // temporary improvement only: +10 strength for 1 turn (no permanent baseAtk increase)
-        const newStatus = Object.assign({}, playerStats.status || {});
-        newStatus.strength_boost = { turns: 1, amount: 10 };
-        updates.push(update(playerRef, { status: newStatus }));
+      // temporary improvement only: +10 strength for 1 turn (no permanent baseAtk increase)
+      const newStatus = Object.assign({}, playerStats.status || {});
+      newStatus.strength_boost = { turns: 1, amount: 10 };
+      playerUpdates.status = newStatus;
       matchUpdates.lastMove = 'use_item_strength_tonic';
       matchUpdates.lastMoveActor = currentUserId;
     } else if (itemId === 'revive_scroll') {
       // set a one-time revive flag on the player's match node so death handler consumes it
-      updates.push(update(playerRef, { has_revive: true }));
+      playerUpdates.has_revive = true;
       matchUpdates.lastMove = 'use_item_revive_scroll';
       matchUpdates.lastMoveActor = currentUserId;
       logMessage('Revive Scroll prepared: you will be revived automatically if you fall.');
@@ -2078,8 +2424,16 @@ async function useItem(itemId) {
       matchUpdates.turnCounter = turnCounter;
     }
 
-    updates.push(update(matchRef, matchUpdates));
-    await Promise.all(updates);
+    // Apply dark inversion transformations if present
+  // actingIsPlayer = true since currentUser is acting here; only invert incoming effects to the player
+  const adjusted = applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates, opponentUpdates, true);
+
+    const promises = [];
+    if (Object.keys(adjusted.playerUpdates || {}).length) promises.push(update(playerRef, adjusted.playerUpdates));
+    if (Object.keys(adjusted.opponentUpdates || {}).length) promises.push(update(opponentRef, adjusted.opponentUpdates));
+    if (Object.keys(matchUpdates).length) promises.push(update(matchRef, matchUpdates));
+
+    await Promise.all(promises);
 
     logMessage(`Used ${item.name || itemId}`);
     // re-render inventory
