@@ -2031,13 +2031,6 @@ async function chooseMove(move) {
     const newOpponentHp = Math.max(0, (opponentStats.hp || 100) - actualDamage);
     
     opponentUpdates.hp = newOpponentHp;
-    if (newOpponentHp <= 0) {
-      opponentUpdates.fainted = true;
-      matchUpdates.status = "finished";
-      matchUpdates.winner = currentUserId;
-      matchUpdates.message = `You defeated ${opponentStats.name || "your opponent"}!`;
-      gameOver = true;
-    }
   } else if (move === "heal") {
     moveHeal = Math.floor(Math.random() * 15) + 5;
     const currentHp = playerStats.hp || 100;
@@ -2102,24 +2095,33 @@ async function chooseMove(move) {
     matchUpdates.lastMoveHeal = moveHeal;
   }
 
-  // Apply all updates atomically using Promise.all
   // Apply dark inversion if present on either actor before writing
   // actingIsPlayer = true (current user acting)
   const adjusted = applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates, opponentUpdates, true);
 
+  // Re-evaluate fainting / game over based on adjusted HP values (post-inversion)
+  const postPlayerHp = (typeof adjusted.playerUpdates.hp !== 'undefined') ? adjusted.playerUpdates.hp : playerStats.hp;
+  const postOpponentHp = (typeof adjusted.opponentUpdates.hp !== 'undefined') ? adjusted.opponentUpdates.hp : opponentStats.hp;
+
+  if (postOpponentHp <= 0) {
+    adjusted.opponentUpdates.fainted = true;
+    matchUpdates.status = "finished";
+    matchUpdates.winner = currentUserId;
+    matchUpdates.message = `You defeated ${opponentStats.name || "your opponent"}!`;
+    gameOver = true;
+  }
+  if (postPlayerHp <= 0) {
+    adjusted.playerUpdates.fainted = true;
+    matchUpdates.status = "finished";
+    matchUpdates.winner = opponentId;
+    matchUpdates.message = `${opponentStats.name || 'Opponent'} defeated you!`;
+    gameOver = true;
+  }
+
   const updatePromises = [];
-  
-  if (Object.keys(adjusted.playerUpdates).length > 0) {
-    updatePromises.push(update(playerRef, adjusted.playerUpdates));
-  }
-  
-  if (Object.keys(adjusted.opponentUpdates).length > 0) {
-    updatePromises.push(update(opponentRef, adjusted.opponentUpdates));
-  }
-  
-  if (Object.keys(matchUpdates).length > 0) {
-    updatePromises.push(update(matchRef, matchUpdates));
-  }
+  if (Object.keys(adjusted.playerUpdates).length > 0) updatePromises.push(update(playerRef, adjusted.playerUpdates));
+  if (Object.keys(adjusted.opponentUpdates).length > 0) updatePromises.push(update(opponentRef, adjusted.opponentUpdates));
+  if (Object.keys(matchUpdates).length > 0) updatePromises.push(update(matchRef, matchUpdates));
 
   await Promise.all(updatePromises);
 
@@ -2211,6 +2213,23 @@ async function chooseSpecial(abilityId) {
   // Apply dark inversion to any hp changes before writing
   // actingIsPlayer = true (current user is the actor)
   const adjusted = applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates, opponentUpdates, true);
+
+  // Re-evaluate fainting / game over based on adjusted HP values (post-inversion)
+  const postPlayerHp = (typeof adjusted.playerUpdates.hp !== 'undefined') ? adjusted.playerUpdates.hp : playerStats.hp;
+  const postOpponentHp = (typeof adjusted.opponentUpdates.hp !== 'undefined') ? adjusted.opponentUpdates.hp : opponentStats.hp;
+
+  if (postOpponentHp <= 0) {
+    adjusted.opponentUpdates.fainted = true;
+    matchUpdates.status = matchUpdates.status || "finished";
+    matchUpdates.winner = matchUpdates.winner || currentUserId;
+    matchUpdates.message = matchUpdates.message || `You defeated ${opponentStats.name || "your opponent"}!`;
+  }
+  if (postPlayerHp <= 0) {
+    adjusted.playerUpdates.fainted = true;
+    matchUpdates.status = matchUpdates.status || "finished";
+    matchUpdates.winner = matchUpdates.winner || opponentId;
+    matchUpdates.message = matchUpdates.message || `${opponentStats.name || 'Opponent'} defeated you!`;
+  }
 
   const updatePromises = [];
   if (Object.keys(adjusted.playerUpdates).length) updatePromises.push(update(playerRef, adjusted.playerUpdates));
@@ -2425,8 +2444,23 @@ async function useItem(itemId) {
     }
 
     // Apply dark inversion transformations if present
-  // actingIsPlayer = true since currentUser is acting here; only invert incoming effects to the player
-  const adjusted = applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates, opponentUpdates, true);
+    // actingIsPlayer = true since currentUser is acting here; only invert incoming effects to the player
+    const adjusted = applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates, opponentUpdates, true);
+
+    // Re-evaluate fainting / game over based on adjusted HP values (post-inversion)
+    const postPlayerHp = (typeof adjusted.playerUpdates.hp !== 'undefined') ? adjusted.playerUpdates.hp : playerStats.hp;
+    const postOpponentHp = (typeof adjusted.opponentUpdates.hp !== 'undefined') ? adjusted.opponentUpdates.hp : opponentStats.hp;
+
+    if (postOpponentHp <= 0) {
+      adjusted.opponentUpdates.fainted = true;
+      matchUpdates.status = matchUpdates.status || 'finished';
+      matchUpdates.winner = matchUpdates.winner || currentUserId;
+    }
+    if (postPlayerHp <= 0) {
+      adjusted.playerUpdates.fainted = true;
+      matchUpdates.status = matchUpdates.status || 'finished';
+      matchUpdates.winner = matchUpdates.winner || opponentId;
+    }
 
     const promises = [];
     if (Object.keys(adjusted.playerUpdates || {}).length) promises.push(update(playerRef, adjusted.playerUpdates));
