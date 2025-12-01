@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory - Arena Battlegrounds</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a class="nav-logo" href="index.html">Arena Battlegrounds</a>
+
+    <ul class="nav-links">
+      <li class="nav-protected-link"><a href="battle.html">Battle</a></li>
+      <li class="nav-protected-link"><a href="profile.html">Profile</a></li>
+      <li class="nav-protected-link"><a href="inventory.html">Inventory</a></li>
+      <li class="nav-auth-link"><a href="index.html">Login</a></li>
+      <li class="nav-auth-link"><a href="signup.html">Sign up</a></li>
+    </ul>
+
+    <div class="nav-right">
+      <div class="user" id="user-display">Not Signed In</div>
+      <button id="signOutBtn" class="secondary-btn nav-signout" type="button" style="display: none;">Sign out</button>
+    </div>
+  </nav>
+
+  <main class="page container">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Bag</p>
+        <h1>Your Inventory</h1>
+        <p class="lede">Items earned from victories. Use them in battle.</p>
+      </div>
+    </header>
+
+    <section id="inventory-unauth" class="profile-card" style="display: none;">
+      <p>You aren't currently logged in. Please <a href="index.html">log in</a> or <a href="signup.html">sign up</a> to view your inventory.</p>
+    </section>
+
+    <section id="inventory-card" class="profile-card" style="display: none;">
+      <div id="inventory-list" class="items-list"></div>
+    </section>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/inventory.js"></script>
+</body>
+</html>

@@ -13,6 +13,7 @@ import {
   set,
   onDisconnect,
   update,
+  get,
 } from "https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js"
 
 import {
@@ -40,6 +41,7 @@ onValue(connectedRef, (snap) => {
 
 let uid;
 let queueRef;
+let presenceRef;
 let detachMatchListener = null;
 let detachProfileListener = null;
 
@@ -57,6 +59,10 @@ onAuthStateChanged(auth, async (user) => {
 
   if (user) {
     await writeUserData(user.uid, user.displayName || user.email);
+    presenceRef = ref(db, `presence/${user.uid}`);
+    onDisconnect(presenceRef).set({ online: false, lastSeen: Date.now() });
+    set(presenceRef, { online: true, lastSeen: Date.now() });
+
     const userProfileRef = ref(db, `users/${uid}`);
     detachProfileListener = onValue(userProfileRef, (snap) => {
       const data = snap.val() || {};
@@ -89,22 +95,35 @@ onAuthStateChanged(auth, async (user) => {
     detachMatchListener = onValue(matchRef, (snap) => {
       if (snap.exists()) {
         const matchId = snap.val();
-        if (queueBtn) queueBtn.style.display = "none";
-        if (battleElement) battleElement.style.display = "block";
-        console.log("Matched! Match ID:", matchId);
-        setTimeout(() => {
-          if (typeof window.initializeBattle === "function") {
-            window.initializeBattle(matchId, uid);
-          } else {
-            console.error("initializeBattle function not found!");
+        (async () => {
+          const matchSnap = await get(ref(db, `matches/${matchId}`));
+          if (!matchSnap.exists()) {
+            await set(matchRef, null);
+            if (queueBtn) queueBtn.style.display = "inline";
+            if (battleElement) battleElement.style.display = "none";
+            return;
           }
-        }, 100);
+          if (queueBtn) queueBtn.style.display = "none";
+          if (battleElement) battleElement.style.display = "block";
+          console.log("Matched! Match ID:", matchId);
+          setTimeout(() => {
+            if (typeof window.initializeBattle === "function") {
+              window.initializeBattle(matchId, uid);
+            } else {
+              console.error("initializeBattle function not found!");
+            }
+          }, 100);
+        })();
       } else {
         if (queueBtn) queueBtn.style.display = "inline";
         if (battleElement) battleElement.style.display = "none";
       }
     });
   } else {
+    if (presenceRef) {
+      set(presenceRef, { online: false, lastSeen: Date.now() }).catch(() => {});
+      presenceRef = null;
+    }
     if (userDisplay) userDisplay.textContent = "Not signed in";
     if (battleElement) battleElement.style.display = "none";
     if (signOutBtn) signOutBtn.style.display = "none";

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Profile - Arena Battlegrounds</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a class="nav-logo" href="index.html">Arena Battlegrounds</a>
+
+    <ul class="nav-links">
+      <li class="nav-protected-link"><a href="battle.html">Battle</a></li>
+      <li class="nav-protected-link"><a href="profile.html">Profile</a></li>
+      <li class="nav-protected-link"><a href="inventory.html">Inventory</a></li>
+      <li class="nav-auth-link"><a href="index.html">Login</a></li>
+      <li class="nav-auth-link"><a href="signup.html">Sign up</a></li>
+    </ul>
+
+    <div class="nav-right">
+      <div class="user" id="user-display">Not Signed In</div>
+      <button id="signOutBtn" class="secondary-btn nav-signout" type="button" style="display: none;">Sign out</button>
+    </div>
+  </nav>
+
+  <main class="page container">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Player Overview</p>
+        <h1>Your Profile</h1>
+        <p class="lede">Review your class, base stats, and win/loss record.</p>
+      </div>
+    </header>
+
+    <section id="profile-unauth" class="profile-card" style="display: none;">
+      <p>You aren't currently logged in. Please <a href="index.html">log in</a> or <a href="signup.html">sign up</a> to view your profile.</p>
+    </section>
+
+    <section id="profile-card" class="profile-card" style="display: none;">
+      <div class="profile-top">
+        <div>
+          <p class="eyebrow" id="profile-class-pill">Class</p>
+          <h2 id="profile-name">Player</h2>
+          <p id="profile-email" class="muted">Email</p>
+        </div>
+        <div class="record-card">
+          <div>
+            <div class="record-label">Wins</div>
+            <div class="record-value" id="profile-wins">0</div>
+          </div>
+          <div>
+            <div class="record-label">Losses</div>
+            <div class="record-value" id="profile-losses">0</div>
+          </div>
+          <div>
+            <div class="record-label">W/L Ratio</div>
+            <div class="record-value" id="profile-ratio">0.00</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-grid profile-stats">
+        <div class="statline compact">
+          <span>Max HP</span>
+          <span id="stat-maxhp">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Physical Attack</span>
+          <span id="stat-phys-atk">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Magic Attack</span>
+          <span id="stat-mag-atk">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Physical Defense</span>
+          <span id="stat-phys-def">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Magic Defense</span>
+          <span id="stat-mag-def">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Guard (Base)</span>
+          <span id="stat-guard">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Speed</span>
+          <span id="stat-speed">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Crit Chance</span>
+          <span id="stat-crit">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Evasion</span>
+          <span id="stat-evasion">--</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+  <script type="module" src="js/profile.js"></script>
+</body>
+</html>

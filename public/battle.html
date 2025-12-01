@@ -15,6 +15,7 @@
     <ul class="nav-links">
       <li class="nav-protected-link"><a href="battle.html">Battle</a></li>
       <li class="nav-protected-link"><a href="profile.html">Profile</a></li>
+      <li class="nav-protected-link"><a href="inventory.html">Inventory</a></li>
       <li class="nav-auth-link"><a href="index.html">Login</a></li>
       <li class="nav-auth-link"><a href="signup.html">Sign up</a></li>
     </ul>
@@ -28,31 +29,156 @@
   <p class="not-logged-in-vis"> You aren't currently logged in. Please <a href="index.html">log in</a> or <a href="signup.html">sign up</a>.</p>
 
   <div id="battle">
+    <div id="turn-timer" class="turn-timer turn-timer-global"></div>
     <div id="enemy" class="player-card">
       <div class="player-label">Opponent</div>
-      <h2 id="enemy-name">Gladiator</h2>
+      <div class="player-header">
+        <h2 id="enemy-name">Gladiator</h2>
+        <span id="enemy-class" class="class-pill">Class</span>
+      </div>
       <div class="hp-bar">
         <div id="enemy-hp" class="hp-fill"></div>
       </div>
+      <div class="statline">
+        <span>HP</span>
+        <span id="enemy-hp-value">-- / --</span>
+      </div>
+      <div class="stat-grid">
+        <div class="statline compact">
+          <span>Attack Boost</span>
+          <span id="enemy-atk">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Guard</span>
+          <span id="enemy-guard">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Physical Atk</span>
+          <span id="enemy-phys-atk">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Magic Atk</span>
+          <span id="enemy-mag-atk">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Physical Def</span>
+          <span id="enemy-phys-def">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Magic Def</span>
+          <span id="enemy-mag-def">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Crit Chance</span>
+          <span id="enemy-crit">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Evasion</span>
+          <span id="enemy-evasion">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Speed</span>
+          <span id="enemy-speed">--</span>
+        </div>
+      </div>
+      <div class="status-tags" id="enemy-status"></div>
+      <div class="status-changes" id="enemy-changes"></div>
       <div class="turn-indicator" id="enemy-turn-indicator">OPPONENT'S TURN</div>
     </div>
 
     <div id="player" class="player-card">
       <div class="player-label">You</div>
-      <h2 id="player-name">Hero</h2>
+      <div class="player-header">
+        <h2 id="player-name">Hero</h2>
+        <span id="player-class" class="class-pill">Class</span>
+      </div>
       <div class="hp-bar">
         <div id="player-hp" class="hp-fill"></div>
       </div>
+      <div class="statline">
+        <span>HP</span>
+        <span id="player-hp-value">-- / --</span>
+      </div>
+      <div class="stat-grid">
+        <div class="statline compact">
+          <span>Attack Boost</span>
+          <span id="player-atk">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Guard</span>
+          <span id="player-guard">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Physical Atk</span>
+          <span id="player-phys-atk">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Magic Atk</span>
+          <span id="player-mag-atk">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Physical Def</span>
+          <span id="player-phys-def">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Magic Def</span>
+          <span id="player-mag-def">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Crit Chance</span>
+          <span id="player-crit">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Evasion</span>
+          <span id="player-evasion">--</span>
+        </div>
+        <div class="statline compact">
+          <span>Speed</span>
+          <span id="player-speed">--</span>
+        </div>
+      </div>
+      <div class="status-tags" id="player-status"></div>
+      <div class="status-changes" id="player-changes"></div>
       <div class="turn-indicator" id="player-turn-indicator">YOUR TURN</div>
     </div>
 
-    <div id="menu">
-      <button onclick="chooseMove('attack')">Attack</button>
-      <button onclick="chooseMove('heal')">Heal</button>
-      <button onclick="chooseMove('defend')">Defend</button>
-      <button onclick="chooseMove('prepare')">Prepare</button>
+    <div id="menu" class="move-menu">
+      <div class="menu-header">
+        <h3>Choose Your Move</h3>
+        <p class="menu-subtitle">Abilities change with your class.</p>
+      </div>
+      <div id="move-buttons" class="move-grid"></div>
     </div>
 
+    <div class="dev-panel" id="class-test-panel">
+      <div class="dev-panel-header">
+        <div>
+          <h4>Testing: Swap Your Class</h4>
+          <p>Quickly switch classes to try different move sets.</p>
+        </div>
+        <span class="dev-tag">Test Only</span>
+      </div>
+      <div class="dev-panel-body">
+        <label>
+          <span>Select class</span>
+          <select id="class-test-select"></select>
+        </label>
+        <button type="button" id="class-test-apply" class="secondary-btn small">Apply</button>
+        <div class="dev-hint">Changes affect your current match and profile for testing.</div>
+      </div>
+    </div>
+
+    <div id="turn-timer" class="turn-timer"></div>
+    <div class="forfeit-row">
+      <button type="button" id="forfeit-btn" class="secondary-btn danger">Forfeit Match</button>
+    </div>
+    <div class="items-panel">
+      <div class="items-header">
+        <h3>Items</h3>
+        <p class="menu-subtitle">Use an item on your turn.</p>
+      </div>
+      <div id="items-list" class="items-list"></div>
+    </div>
     <div id="message"></div>
     
     <!-- End Game Overlay -->
