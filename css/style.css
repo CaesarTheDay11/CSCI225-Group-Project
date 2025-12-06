@@ -81,8 +81,8 @@ body {
 }
 
 .avatar {
-    width: 200px;
-    height: 200px;
+    width: 96px;
+    height: 96px;
     object-fit:contain;
     border:2px solid #fff;
     border-radius:8px;

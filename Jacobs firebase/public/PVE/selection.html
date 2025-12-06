@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Select Class & Enemy</title>
+  <link rel="stylesheet" href="css/style.css">
+  <!-- include shared styles (class selector, buttons, modals) from root css -->
+  <link rel="stylesheet" href="../css/styles.css">
+</head>
+<body>
+  <div class="select-wrap">
+    <h1 style="text-align:center">Choose your class & enemy</h1>
+
+  <div id="selected-class-display" style="text-align:center; margin-top:6px; color:#ddd; font-weight:700">Selected class: Warrior</div>
+
+    <h2 style="font-size:1rem; margin-top:0.6rem">Pick a class</h2>
+    <div id="class-row" class="class-grid" role="list">
+  <button type="button" data-class="warrior" class="class-btn has-tooltip" data-tooltip="Warrior — High HP & strong defense"><img class="class-icon" src="../img/warrior.jpg" width="80" height="80" alt="Warrior"><br>Warrior</button>
+  <button type="button" data-class="mage" class="class-btn has-tooltip" data-tooltip="Mage — High magic damage, lower HP"><img class="class-icon" src="../img/mage.jpg" width="80" height="80" alt="Mage"><br>Mage</button>
+  <button type="button" data-class="archer" class="class-btn has-tooltip" data-tooltip="Archer — Ranged DPS with precision"><img class="class-icon" src="../img/archer.jpg" width="80" height="80" alt="Archer"><br>Archer</button>
+  <button type="button" data-class="cleric" class="class-btn has-tooltip" data-tooltip="Cleric — Heals and dispels DOTs"><img class="class-icon" src="../img/cleric.jpg" width="80" height="80" alt="Cleric"><br>Cleric</button>
+  <button type="button" data-class="rogue" class="class-btn has-tooltip" data-tooltip="Rogue — High single-target burst"><img class="class-icon" src="../img/rogue.jpg" width="80" height="80" alt="Rogue"><br>Rogue</button>
+  <button type="button" data-class="dark_mage" class="class-btn has-tooltip" data-tooltip="Dark Mage — Corrupt magics & siphon"><img class="class-icon" src="../img/dark_mage.jpg" width="80" height="80" alt="Dark Mage"><br>Dark Mage</button>
+  <button type="button" data-class="necromancer" class="class-btn has-tooltip" data-tooltip="Necromancer — Summons and curses"><img class="class-icon" src="../img/necromancer.jpg" width="80" height="80" alt="Necromancer"><br>Necromancer</button>
+  <button type="button" data-class="paladin" class="class-btn has-tooltip" data-tooltip="Paladin — Tanky support"><img class="class-icon" src="../img/paladin.jpg" width="80" height="80" alt="Paladin"><br>Paladin</button>
+  <button type="button" data-class="druid" class="class-btn has-tooltip" data-tooltip="Druid — Nature heals & control"><img class="class-icon" src="../img/druid.jpg" width="80" height="80" alt="Druid"><br>Druid</button>
+  <button type="button" data-class="knight" class="class-btn has-tooltip" data-tooltip="Knight — Heavy armor & crowd control"><img class="class-icon" src="../img/knight.jpg" width="80" height="80" alt="Knight"><br>Knight</button>
+  <button type="button" data-class="monk" class="class-btn has-tooltip" data-tooltip="Monk — Fast strikes & stuns"><img class="class-icon" src="../img/monk.jpg" width="80" height="80" alt="Monk"><br>Monk</button>
+  <button type="button" data-class="wild_magic_sorcerer" class="class-btn has-tooltip" data-tooltip="Wild Magic Sorcerer — Chaotic d20 effects"><img class="class-icon" src="../img/wild_magic_sorcerer.jpg" width="80" height="80" alt="Wild Magic Sorcerer"><br>Wild Magic Sorcerer</button>
+    </div>
+
+    <h2 style="font-size:1rem; margin-top:0.6rem">Pick an enemy</h2>
+    <div id="enemy-row" class="class-grid" role="list">
+  <div class="class-card card" style="text-align:center;">
+        <button type="button" class="class-btn select-enemy has-tooltip" data-enemy="slime" data-tooltip="Slime — Weak enemy, easy match">
+          <img class="class-icon" src="../img/slime.jpg" width="80" height="80" alt="Slime"><br>Slime<br><small style="font-weight:400;color:#ddd;">Weak and squishy</small>
+  </button>
+      </div>
+
+  <div class="class-card card" style="text-align:center;">
+        <button type="button" class="class-btn select-enemy has-tooltip" data-enemy="gladiator" data-tooltip="Gladiator — Balanced fighter">
+          <img class="class-icon" src="../img/gladiator.jpg" width="80" height="80" alt="Gladiator"><br>Gladiator<br><small style="font-weight:400;color:#ddd;">Balanced foe</small>
+  </button>
+      </div>
+
+  <div class="class-card card" style="text-align:center;">
+        <button type="button" class="class-btn select-enemy has-tooltip" data-enemy="boss" data-tooltip="Boss — High HP and damage">
+          <img class="class-icon" src="../img/boss.jpg" width="80" height="80" alt="Boss"><br>Boss<br><small style="font-weight:400;color:#ddd;">Tough challenge</small>
+  </button>
+      </div>
+    </div>
+    
+    <div style="text-align:center; margin-top:0.6rem">
+      <h3 style="margin-bottom:0.4rem">Wave Builder</h3>
+      <div id="wave-list" style="min-height:2.2rem; margin-bottom:0.6rem;"></div>
+        <button id="clearWaveBtn" class="class-btn">Clear Wave</button>
+        <button id="removeLastBtn" class="class-btn">Remove Last</button>
+    </div>
+
+    <h2 style="font-size:1rem; margin-top:0.6rem">Pick allies (optional)</h2>
+    <div id="ally-row" class="class-grid">
+  <button type="button" class="class-btn has-tooltip" data-tooltip="Warrior Ally — sturdy frontline" data-add-ally="warrior"><img class="class-icon" src="../img/warrior.jpg" width="80" height="80" alt="Warrior"><br>Warrior<br><small style="color:#ddd">Frontline</small></button>
+  <button type="button" class="class-btn has-tooltip" data-tooltip="Cleric Ally — heals allies" data-add-ally="cleric"><img class="class-icon" src="../img/cleric.jpg" width="80" height="80" alt="Cleric"><br>Cleric<br><small style="color:#ddd">Healer</small></button>
+  <button type="button" class="class-btn has-tooltip" data-tooltip="Rogue Ally — single-target burst" data-add-ally="rogue"><img class="class-icon" src="../img/rogue.jpg" width="80" height="80" alt="Rogue"><br>Rogue<br><small style="color:#ddd">Burst</small></button>
+  <button type="button" class="class-btn has-tooltip" data-tooltip="Dark Mage Ally — leeches life" data-add-ally="dark_mage"><img class="class-icon" src="../img/dark_mage.jpg" width="80" height="80" alt="Dark Mage"><br>Dark Mage<br><small style="color:#ddd">Debuffer</small></button>
+  <button type="button" class="class-btn has-tooltip" data-tooltip="Necromancer Ally — summons" data-add-ally="necromancer"><img class="class-icon" src="../img/necromancer.jpg" width="80" height="80" alt="Necromancer"><br>Necromancer<br><small style="color:#ddd">Summoner</small></button>
+  <button type="button" class="class-btn has-tooltip" data-tooltip="Paladin Ally — support/tank" data-add-ally="paladin"><img class="class-icon" src="../img/paladin.jpg" width="80" height="80" alt="Paladin"><br>Paladin<br><small style="color:#ddd">Support</small></button>
+  <button type="button" class="class-btn has-tooltip" data-tooltip="Druid Ally — nature caster" data-add-ally="druid"><img class="class-icon" src="../img/druid.jpg" width="80" height="80" alt="Druid"><br>Druid<br><small style="color:#ddd">Utility</small></button>
+  <button type="button" class="class-btn has-tooltip" data-tooltip="Knight Ally — heavy armor" data-add-ally="knight"><img class="class-icon" src="../img/knight.jpg" width="80" height="80" alt="Knight"><br>Knight<br><small style="color:#ddd">Tank</small></button>
+  <button type="button" class="class-btn has-tooltip" data-tooltip="Monk Ally — fast strikes" data-add-ally="monk"><img class="class-icon" src="../img/monk.jpg" width="80" height="80" alt="Monk"><br>Monk<br><small style="color:#ddd">Striker</small></button>
+  <button type="button" class="class-btn has-tooltip" data-tooltip="Wild Magic Ally — chaotic effects" data-add-ally="wild_magic_sorcerer"><img class="class-icon" src="../img/wild_magic_sorcerer.jpg" width="80" height="80" alt="Wild Magic"><br>Wild Magic<br><small style="color:#ddd">Chaos</small></button>
+  <button type="button" class="class-btn has-tooltip" data-tooltip="Mage Ally — magic support" data-add-ally="mage"><img class="class-icon" src="../img/mage.jpg" width="80" height="80" alt="Mage"><br>Mage<br><small style="color:#ddd">Caster</small></button>
+  <button type="button" class="class-btn has-tooltip" data-tooltip="Archer Ally — ranged support" data-add-ally="archer"><img class="class-icon" src="../img/archer.jpg" width="80" height="80" alt="Archer"><br>Archer<br><small style="color:#ddd">Ranged</small></button>
+    </div>
+
+    <div style="text-align:center; margin-top:0.6rem">
+      <h3 style="margin-bottom:0.4rem">Ally Roster</h3>
+      <div id="ally-list" style="min-height:2.2rem; margin-bottom:0.6rem;"></div>
+      <button id="clearAllyBtn" class="class-btn">Clear Allies</button>
+      <button id="removeLastAllyBtn" class="class-btn">Remove Last Ally</button>
+    </div>
+
+
+    <div class="actions">
+      <button id="startBtn" class="class-btn">Start Battle</button>
+      <button id="backBtn" class="class-btn" onclick="location.href='../TitleScreen.html'">Back</button>
+    </div>
+  </div>
+
+  <script>
+    //this sets up grid-style selection for buttons (class-grid)
+    function setupGridSelection(rowId, attrName) {
+      const row = document.getElementById(rowId);
+      if (!row) return;
+      // find items that carry the specified attribute (e.g. data-class or data-enemy)
+      const nodeList = row.querySelectorAll(`[${attrName}]`);
+      const items = Array.from(nodeList);
+      items.forEach(item => {
+        item.addEventListener('click', (ev) => {
+          // ignore clicks on possible nested ally-add controls
+          if (ev.target && (ev.target.closest && ev.target.closest('[data-add-ally]'))) return;
+          // remove previous selection marks from any element in the row
+          row.querySelectorAll('.selected').forEach(c => c.classList.remove('selected'));
+          // mark both the button and its surrounding card (if present) so CSS shows selection
+          item.classList.add('selected');
+          const wrapper = item.closest('.class-card');
+          if (wrapper) wrapper.classList.add('selected');
+
+          // If this was a class selection, update the selected-class display
+          if (attrName === 'data-class') {
+            try {
+              const display = document.getElementById('selected-class-display');
+              const sel = item.getAttribute('data-class') || item.getAttribute('data-value') || item.textContent.trim();
+              if (display) display.textContent = `Selected class: ${sel}`;
+            } catch (e) { /* ignore */ }
+          }
+
+          // If this is the enemy grid, treat clicks as "add to wave" action as well
+          if (attrName === 'data-enemy') {
+            const id = item.getAttribute('data-enemy') || item.getAttribute('data-value');
+            if (id && typeof addEnemyToWave === 'function') {
+              addEnemyToWave(id);
+            }
+          }
+        });
+      });
+    }
+  setupGridSelection('class-row', 'data-class');
+  // Also handle select-enemy buttons specifically (they carry data-enemy attribute)
+  setupGridSelection('enemy-row', 'data-enemy');
+
+    // Enemy wave builder (re-enabled): supports adding enemies to a wave up to 5 entries
+    let enemyWave = JSON.parse(localStorage.getItem('enemyQueue') || '[]');
+
+    function renderWaveList() {
+      const el = document.getElementById('wave-list');
+      if (!el) return;
+      if (!enemyWave || enemyWave.length === 0) {
+        el.textContent = 'Wave empty — add enemies to build a sequence.';
+        return;
+      }
+      el.textContent = enemyWave.map((id, i) => `${i+1}. ${id}`).join('  —  ');
+    }
+
+    function addEnemyToWave(id) {
+      if (!enemyWave) enemyWave = [];
+      if (enemyWave.length >= 5) { alert('Enemy wave limit reached (max 5).'); return; }
+      enemyWave.push(id);
+      localStorage.setItem('enemyQueue', JSON.stringify(enemyWave));
+      renderWaveList();
+    }
+
+    function clearWave() {
+      enemyWave = [];
+      localStorage.removeItem('enemyQueue');
+      renderWaveList();
+    }
+
+    function removeLastFromWave() {
+      enemyWave.pop();
+      localStorage.setItem('enemyQueue', JSON.stringify(enemyWave));
+      renderWaveList();
+    }
+
+    // Allies (max 2 allies -> party size max 3 including main player)
+    let allyQueue = JSON.parse(localStorage.getItem('allyQueue') || '[]');
+
+    function renderAllyList() {
+      const el = document.getElementById('ally-list');
+      if (!el) return;
+      if (!allyQueue || allyQueue.length === 0) {
+        el.textContent = 'No allies added.';
+        return;
+      }
+      el.textContent = allyQueue.map((id, i) => `${i+1}. ${id}`).join('  —  ');
+    }
+
+    function addAllyToRoster(id) {
+      if (!allyQueue) allyQueue = [];
+      if (allyQueue.length >= 2) { alert('Ally limit reached (max 2 allies).'); return; }
+      allyQueue.push(id);
+      localStorage.setItem('allyQueue', JSON.stringify(allyQueue));
+      renderAllyList();
+    }
+
+    function clearAllies() {
+      allyQueue = [];
+      localStorage.removeItem('allyQueue');
+      renderAllyList();
+    }
+
+    function removeLastAlly() {
+      allyQueue.pop();
+      localStorage.setItem('allyQueue', JSON.stringify(allyQueue));
+      renderAllyList();
+    }
+
+    document.querySelectorAll('[data-add-ally]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = btn.getAttribute('data-add-ally');
+        addAllyToRoster(id);
+        e.stopPropagation();
+      });
+    });
+
+  document.getElementById('clearWaveBtn').addEventListener('click', clearWave);
+  document.getElementById('removeLastBtn').addEventListener('click', removeLastFromWave);
+  document.getElementById('clearAllyBtn').addEventListener('click', clearAllies);
+  document.getElementById('removeLastAllyBtn').addEventListener('click', removeLastAlly);
+
+  renderWaveList();
+  renderAllyList();
+
+    document.getElementById('startBtn').addEventListener('click', () => {
+      const chosenBtn = document.querySelector('#class-row .selected');
+      const chosenClass = chosenBtn ? (chosenBtn.getAttribute('data-class') || chosenBtn.getAttribute('data-value')) : null;
+      const chosenEnemyBtn = document.querySelector('#enemy-row .selected');
+      const chosenEnemy = chosenEnemyBtn ? (chosenEnemyBtn.getAttribute('data-enemy') || chosenEnemyBtn.getAttribute('data-value')) : null;
+      if (!chosenClass) {
+        alert('Please pick a class.');
+        return;
+      }
+      localStorage.setItem('selectedClass', chosenClass);
+      if (enemyWave && enemyWave.length > 0) {
+        localStorage.setItem('enemyQueue', JSON.stringify(enemyWave));
+      } else if (chosenEnemy) {
+        localStorage.setItem('selectedEnemy', chosenEnemy);
+        localStorage.removeItem('enemyQueue');
+      }
+      if (allyQueue && allyQueue.length > 0) {
+        localStorage.setItem('allyQueue', JSON.stringify(allyQueue));
+      } else {
+        localStorage.removeItem('allyQueue');
+      }
+      localStorage.removeItem('battleState');
+      location.href = 'PVEbattle.html';
+    });
+
+    // initialize defaults: mark warrior and gladiator as selected visually if none chosen
+    (function initDefaults(){
+      const existingClass = localStorage.getItem('selectedClass');
+      const classToMark = existingClass || 'warrior';
+      const btn = document.querySelector(`#class-row [data-class='${classToMark}']`);
+      if (btn) {
+        btn.classList.add('selected');
+        const wrap = btn.closest('.class-card'); if (wrap) wrap.classList.add('selected');
+        // update the selected class display
+        try { const disp = document.getElementById('selected-class-display'); if (disp) disp.textContent = `Selected class: ${classToMark}`; } catch(e){}
+      }
+      const existingEnemy = localStorage.getItem('selectedEnemy');
+      const enemyToMark = existingEnemy || 'gladiator';
+      const eb = document.querySelector(`#enemy-row [data-enemy='${enemyToMark}']`);
+      if (eb) {
+        eb.classList.add('selected');
+        const ewrap = eb.closest('.class-card'); if (ewrap) ewrap.classList.add('selected');
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -28,7 +28,9 @@ async function renderInventory(uid) {
       shield_token: 'shield scroll.jpg',
       speed_scroll: 'speed scroll.jpg',
       strength_tonic: 'strength tonic.jpg',
-      revive_scroll: 'revive scroll.jpg'
+      revive_scroll: 'revive scroll.jpg',
+      swift_boots: 'swift boots.jpg',
+      focus_charm: 'focus charm.jpg'
     };
 
     function getItemImagePaths(itemId) {
@@ -137,6 +139,8 @@ onAuthStateChanged(auth, async (user) => {
   await renderStats(uid);
   await renderInventory(uid);
   await renderPlayedClasses(uid);
+
+  
 
   // Hook add-test-potion button
   const addBtn = el('add-test-potion');

@@ -18,7 +18,7 @@ const statusEl = document.getElementById("auth-status");
 const signupForm = document.getElementById("signup-form");
 const loginForm = document.getElementById("login-form");
 
-const validClasses = ["warrior", "mage", "archer", "cleric", "knight", "rogue", "paladin", "dark_mage", "necromancer", "druid", "monk", "wild_sorcerer"];
+const validClasses = ["warrior", "mage", "archer", "cleric", "knight", "rogue", "paladin", "dark_mage", "necromancer", "druid", "monk", "wild_magic_sorcerer"];
 
 function setStatus(message, type = "info") {
   if (!statusEl) return;
@@ -40,10 +40,14 @@ async function saveUserProfile(user, playerClass) {
   const userRef = ref(db, `users/${user.uid}`);
   const snap = await get(userRef);
 
+  // No longer persist a 'mode' field; the app uses separate pages for PvE/PvP.
+
   if (!snap.exists()) {
     await set(userRef, profile);
   } else {
-    await update(userRef, profile);
+    // Preserve existing fields but ensure mode is present/updated from client if available
+    const updates = Object.assign({}, profile);
+    await update(userRef, updates);
   }
 }
 
@@ -70,9 +74,10 @@ if (signupForm) {
         await updateProfile(credential.user, { displayName });
       }
       await saveUserProfile(credential.user, playerClass);
-      setStatus("Account created. You're ready to battle!", "success");
+  setStatus("Account created. You're ready to battle!", "success");
       signupForm.reset();
-      window.location.href = "battle.html";
+  // After signup, redirect players to the Title Screen
+  window.location.href = "TitleScreen.html";
     } catch (err) {
       console.error(err);
       setStatus(err.message || 'Signup failed', "error");
@@ -96,9 +101,10 @@ if (loginForm) {
     try {
       const credential = await signInWithEmailAndPassword(auth, email, password);
       await saveUserProfile(credential.user);
-      setStatus("Signed in. Queue up when you're ready.", "success");
+  setStatus("Signed in. Queue up when you're ready.", "success");
       loginForm.reset();
-      window.location.href = "battle.html";
+  // After sign-in, redirect players to the Title Screen
+  window.location.href = "TitleScreen.html";
     } catch (err) {
       console.error(err);
       setStatus(err.message || 'Sign in failed', "error");

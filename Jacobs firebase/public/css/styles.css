@@ -538,3 +538,22 @@ body {
 .class-options label { background:#1b1b1b; padding:10px; border:1px solid #333; border-radius:8px; cursor:pointer; }
 
 /* end appended auth styles */
+
+/* JS-inserted ability tooltip (matches multiplayer) */
+.ability-tooltip {
+  position: fixed;
+  z-index: 1000;
+  background: rgba(20,20,20,0.95);
+  color: #fff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.6);
+  font-size: 0.9rem;
+  max-width: 260px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.ability-tooltip.visible { opacity: 1; }
+.ability-tooltip .title { font-weight: 800; margin-bottom: 4px; }
+.ability-tooltip .meta { font-size: 0.85rem; opacity: 0.9; margin-top: 6px; }

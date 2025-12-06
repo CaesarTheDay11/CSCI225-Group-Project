@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arena BattleGrounds</title>
+    <!-- shared multiplayer styles for selectors, buttons, and modals -->
+    <link rel="stylesheet" href="../css/styles.css">
+        <!-- Keep the PVE battle visible even when app-level scripts toggle display for multiplayer pages -->
+        <style>
+            /* app.js hides #battle for unsigned users on some pages; force PVE to remain visible */
+            #battle { display: block !important; }
+        </style>
+</head>
+
+<body>
+    <div id="battle" style="display:block">
+        <div id="enemy">
+            <h2 id="enemy-name">Gladiator</h2>
+
+            <div class="avatar-wrap">
+                <img id="enemy-sprite" class="avatar" src="../img/gladiator.jpg" width="100px" height="100px" alt="Enemy">
+                <div class="status-icons" id="enemy-status"></div>
+            </div>
+
+            <div class="hp-row">
+                <div class="hp-bar">
+                    <div id="enemy-hp" class="hp-fill"></div>
+                </div>
+
+                <div class="stats">
+                    <span id="enemy-hp-text">HP: 80/80</span>
+                    <span id="enemy-atk-text">ATK: +0</span>
+                        <span id="enemy-def-text">DEF: +0</span>
+                        <span id="enemy-speed-text">SPD: --</span>
+                        <span id="enemy-crit-text">CRIT: --</span>
+                        <span id="enemy-evasion-text">EVA: --</span>
+                </div>
+            </div>
+        </div>
+
+        <div id="player">
+            <h2 id="player-name">Hero</h2>
+
+            <div class="avatar-wrap">
+                <img id="player-sprite" class="avatar" src="../img/warrior.jpg" width="100px" height="100px" alt="Player">
+                <div class="status-icons" id="player-status"></div>
+            </div>
+
+            <div class="hp-row">
+                <div class="hp-bar">
+                    <div id="player-hp" class="hp-fill"></div>
+                </div>
+
+                <div class="stats">
+                    <span id="player-hp-text">HP: 100/100</span>
+                    <span id="player-atk-text">ATK: +0</span>
+                    <span id="player-def-text">DEF: +0</span>
+                    <span id="player-speed-text">SPD: --</span>
+                    <span id="player-crit-text">CRIT: --</span>
+                    <span id="player-evasion-text">EVA: --</span>
+                    <span id="player-mana-text"></span>
+                    <div class="mana-bar-outer" style="margin-top:6px;">
+                        <div id="player-mana" class="mana-fill"></div>
+                    </div>
+                    <span id="player-cd-text"></span>
+                </div>
+            </div>
+        </div>
+
+            <div id="menu">
+            <button onclick="chooseMove('attack')">Attack</button>
+            <button onclick="chooseMove('heal')">Heal</button>
+            <button onclick="chooseMove('defend')">Defend</button>
+            <button onclick="chooseMove('prepare')">Prepare</button>
+            <button id="toggle-inventory-btn" type="button">Items</button>
+            <div id="specials" style="display:inline-block"></div>
+        </div>
+
+        <div id="message"></div>
+    </div>
+
+        <!-- Inventory panel for PVE battle (hidden until Items button clicked) -->
+        <div id="inventory" class="inventory-panel hidden" style="margin-top:12px; max-width:520px; margin-left:auto; margin-right:auto;">
+            <h3>Inventory</h3>
+            <div id="inventory-list">(loading...)</div>
+        </div>
+
+        <script type="module" src="../js/app.js"></script>
+        <script type="module">
+            // expose current signed-in uid for non-module scripts (PVEbattle.js) to use
+            import { auth } from '../js/firebase.js';
+            import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js';
+            onAuthStateChanged(auth, (user) => { window.currentUserUid = user ? user.uid : null; });
+        </script>
+        <script src="PVEbattle.js"></script>
+</body>
+
+</html>

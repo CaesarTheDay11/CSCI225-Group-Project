@@ -5,8 +5,8 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>Arena BattleGrounds</title>
-        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-        <link rel="stylesheet" href="css/style.css">
+    <!-- Use the shared site stylesheet to match global styles -->
+    <link rel="stylesheet" href="css/styles.css">
         <style>
             /* small layout touch */
             .title-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; margin-top: 28px; }
@@ -22,22 +22,23 @@
             <div class="title-grid">
                 <div class="title-card">
                     <h3>Multiplayer</h3>
-                    <p>Play against another human player online. Create or join a lobby to start.</p>
-                    <button class="btn btn-primary" onclick="location.href='multiplayer.html'">Go to Multiplayer</button>
+                    <p>Play against another human player online. Start a match</p>
+                    <button class="primary-btn" onclick="location.href='battle.html'">Go to Multiplayer Battle</button>
                 </div>
 
                 <div class="title-card">
                     <h3>Simulator</h3>
                     <p>Run single-player battles and tune your abilities. Great for testing and practice.</p>
-                    <button class="btn btn-secondary" onclick="location.href='Battle.html'">Open Simulator</button>
+                    <button class="secondary-btn" onclick="location.href='PVE/selection.html'">Open Simulator</button>
                 </div>
 
                 <div class="title-card">
                     <h3>Story</h3>
                     <p>Play through the single-player campaign and narrative encounters.</p>
-                    <button class="btn btn-info" onclick="location.href='story.html'">Play Story</button>
+                    <button class="secondary-btn" onclick="location.href='PVE/story.html'">Play Story</button>
                 </div>
             </div>
         </div>
     </body>
+    <script type="module" src="js/app.js"></script>
 </html>

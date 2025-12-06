@@ -1,30 +1,42 @@
 const { setGlobalOptions } = require("firebase-functions/v2/options");
 setGlobalOptions({ maxInstances: 10 });
 
-const { onValueCreated } = require("firebase-functions/v2/database");
+const { onValueCreated, onValueWritten } = require("firebase-functions/v2/database");
 const admin = require("firebase-admin");
 admin.initializeApp();
 
 // Minimal class templates so the function can seed matches with class-specific stats
 const CLASS_STATS = {
-  warrior: { hp: 120, maxHp: 120, baseAtk: 12, defense: 4, abilities: ['warrior_rend', 'warrior_shout', 'warrior_whirlwind'], mana: 0 },
-  mage:    { hp: 80,  maxHp: 80,  baseAtk: 16, defense: 1, abilities: ['mage_fireball', 'mage_iceblast', 'mage_arcane_burst'], mana: 30 },
-  archer:  { hp: 95,  maxHp: 95,  baseAtk: 14, defense: 2, abilities: ['archer_volley', 'archer_poison', 'archer_trap'], mana: 0 }
+  warrior: { hp: 120, maxHp: 120, baseAtk: 12, defense: 4, speed: 5, critChance: 0.04, evasion: 0.02, abilities: ['warrior_rend', 'warrior_shout', 'warrior_whirlwind'], mana: 0 },
+  mage:    { hp: 80,  maxHp: 80,  baseAtk: 16, defense: 1, speed: 6, critChance: 0.06, evasion: 0.03, abilities: ['mage_fireball', 'mage_iceblast', 'mage_arcane_burst'], mana: 30 },
+  archer:  { hp: 95,  maxHp: 95,  baseAtk: 14, defense: 2, speed: 8, critChance: 0.12, evasion: 0.06, abilities: ['archer_volley', 'archer_poison', 'archer_trap'], mana: 0 },
+  cleric:  { hp: 90,  maxHp: 90,  baseAtk: 8,  defense: 2, speed: 5, critChance: 0.03, evasion: 0.02, abilities: ['cleric_heal', 'cleric_smite', 'cleric_shield'], mana: 30 },
+  knight:  { hp: 140, maxHp: 140, baseAtk: 13, defense: 6, speed: 4, critChance: 0.03, evasion: 0.01, abilities: ['knight_guard', 'knight_charge', 'knight_bastion'], mana: 0 },
+  rogue:   { hp: 85,  maxHp: 85,  baseAtk: 18, defense: 1, speed: 9, critChance: 0.15, evasion: 0.08, abilities: ['rogue_backstab', 'rogue_poisoned_dagger', 'rogue_evade'], mana: 0 },
+  paladin: { hp: 130, maxHp: 130, baseAtk: 11, defense: 5, speed: 5, critChance: 0.04, evasion: 0.02, abilities: ['paladin_aura', 'paladin_holy_strike', 'paladin_bless'], mana: 15 },
+  necromancer: { hp: 80, maxHp: 80, baseAtk: 10, defense: 2, speed: 6, critChance: 0.05, evasion: 0.03, abilities: ['necro_summon_skeleton', 'necro_spirit_shackles', 'necro_dark_inversion'], mana: 40 },
+  druid:   { hp: 100, maxHp: 100, baseAtk: 12, defense: 2, speed: 6, critChance: 0.05, evasion: 0.04, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 },
+  dark_mage: { hp: 75, maxHp: 75, baseAtk: 12, defense: 1, speed: 6, critChance: 0.05, evasion: 0.03, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 },
+  monk:    { hp: 105, maxHp: 105, baseAtk: 13, defense: 3, speed: 8, critChance: 0.07, evasion: 0.05, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 },
+  wild_magic_sorcerer: { hp: 85, maxHp: 85, baseAtk: 14, defense: 1, speed: 6, critChance: 0.06, evasion: 0.03, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 }
 };
 
-// New class templates added to keep server-side seeding in sync with client
-CLASS_STATS.cleric = { hp: 90, maxHp: 90, baseAtk: 8, defense: 2, abilities: ['cleric_heal', 'cleric_smite', 'cleric_shield'], mana: 30 };
-CLASS_STATS.knight = { hp: 140, maxHp: 140, baseAtk: 13, defense: 6, abilities: ['knight_guard', 'knight_charge', 'knight_bastion'], mana: 0 };
-CLASS_STATS.rogue = { hp: 85, maxHp: 85, baseAtk: 18, defense: 1, abilities: ['rogue_backstab', 'rogue_poisoned_dagger', 'rogue_evade'], mana: 0 };
-CLASS_STATS.paladin = { hp: 130, maxHp: 130, baseAtk: 11, defense: 5, abilities: ['paladin_aura', 'paladin_holy_strike', 'paladin_bless'], mana: 15 };
-// Keep server-side necromancer/druid templates in sync with client `public/js/battle.js`
-CLASS_STATS.necromancer = { hp: 80, maxHp: 80, baseAtk: 10, defense: 2, abilities: ['necro_summon_skeleton', 'necro_spirit_shackles', 'necro_dark_inversion'], mana: 40 };
-CLASS_STATS.druid = { hp: 100, maxHp: 100, baseAtk: 12, defense: 2, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 };
+// A small item pool used to award winners with a chance to receive an item.
+// Kept in sync with server-side reward logic introduced in the NewJacob patch.
+const ITEM_POOL = [
+  { id: "swift_boots", label: "Swift Boots", type: "speed", speed: 4 },
+  { id: "focus_charm", label: "Focus Charm", type: "crit", critChance: 0.08 },
+];
 
-// Keep server-side templates in sync with client additions
-CLASS_STATS.dark_mage = { hp: 75, maxHp: 75, baseAtk: 12, defense: 1, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 };
-CLASS_STATS.monk = { hp: 105, maxHp: 105, baseAtk: 13, defense: 3, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 };
-CLASS_STATS.wild_sorcerer = { hp: 85, maxHp: 85, baseAtk: 14, defense: 1, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 };
+function pickFirstTurn(p1Id, p2Id, p1State = {}, p2State = {}) {
+  const p1Speed = (p1State.speed || p1State.baseAtk || 0) || 0;
+  const p2Speed = (p2State.speed || p2State.baseAtk || 0) || 0;
+  if (p1Speed > p2Speed) return p1Id;
+  if (p2Speed > p1Speed) return p2Id;
+  return Math.random() < 0.5 ? p1Id : p2Id;
+}
+
+// (CLASS_STATS values are defined in the main object above)
 
 exports.onQueueJoin = onValueCreated("/queue/{uid}", async (event) => {
   const joiningUid = event.params.uid;
@@ -51,11 +63,10 @@ exports.onQueueJoin = onValueCreated("/queue/{uid}", async (event) => {
     // TODO: match based on time waiting, rank, etc
     opponentUid = waiting[0];
 
-    // capture payloads from the queue entries (if present) so we can read selectedClass deterministically
     try {
       joiningPayload = queue[joiningUid] || null;
       opponentPayload = queue[opponentUid] || null;
-    } catch (e) {
+    } catch {
       joiningPayload = null;
       opponentPayload = null;
     }
@@ -77,12 +88,14 @@ exports.onQueueJoin = onValueCreated("/queue/{uid}", async (event) => {
   const matchRef = db.ref("matches").push();
   const matchId = matchRef.key;
 
-  // Initialize match with game state
+  // Initialize match with game state. Set a safe default for currentTurn
+  // (joining player) and then adjust it after seeding player stats so we can
+  // decide first turn based on speeds without referencing undefined values.
   await matchRef.set({
     p1: joiningUid,
     p2: opponentUid,
     createdAt: Date.now(),
-    currentTurn: joiningUid, // First player to join goes first
+    currentTurn: joiningUid,
     turnCounter: 0,
     status: "active",
     lastMove: null,
@@ -116,6 +129,15 @@ exports.onQueueJoin = onValueCreated("/queue/{uid}", async (event) => {
 
   const t1 = CLASS_STATS[class1] || CLASS_STATS.warrior;
   const t2 = CLASS_STATS[class2] || CLASS_STATS.warrior;
+
+  // Now that we know class templates (and their speeds), pick who goes first and
+  // update the match node accordingly.
+  try {
+    const firstTurn = pickFirstTurn(joiningUid, opponentUid, t1, t2);
+    await db.ref(`matches/${matchId}/currentTurn`).set(firstTurn);
+  } catch (e) {
+    console.error('Could not pick first turn based on stats, keeping default:', e);
+  }
 
   await db.ref(`matches/${matchId}/players/${joiningUid}`).set({
     hp: t1.hp,
@@ -152,5 +174,64 @@ exports.onQueueJoin = onValueCreated("/queue/{uid}", async (event) => {
   // set match on both users
   await db.ref(`users/${joiningUid}/currentMatch`).set(matchId);
   await db.ref(`users/${opponentUid}/currentMatch`).set(matchId);
+});
+
+// When a match status transitions to 'finished', record wins/losses and
+// optionally award the winner with an item drawn from ITEM_POOL.
+exports.onMatchFinished = onValueWritten("/matches/{matchId}/status", async (event) => {
+  const prev = event.data?.before?.val();
+  const next = event.data?.after?.val();
+  if (prev === "finished" || next !== "finished") {
+    return;
+  }
+
+  const matchId = event.params.matchId;
+  const db = admin.database();
+  const matchSnap = await db.ref(`matches/${matchId}`).get();
+  const match = matchSnap.val() || {};
+
+  if (match.winRecorded) return;
+
+  const winner = match.winner;
+  const p1 = match.p1;
+  const p2 = match.p2;
+  if (!winner || !p1 || !p2) return;
+
+  const loser = winner === p1 ? p2 : p1;
+
+  await Promise.all([
+    db.ref(`users/${winner}/wins`).transaction((current) => {
+      const value = typeof current === "number" ? current : 0;
+      return value + 1;
+    }),
+    db.ref(`users/${loser}/losses`).transaction((current) => {
+      const value = typeof current === "number" ? current : 0;
+      return value + 1;
+    }),
+  ]);
+
+  // Chance to award an item to the winner (60%)
+  // Write awards using the semantic item id as the child key so client
+  // inventory UI (which expects items keyed by id) continues to work.
+  if (Math.random() < 0.6) {
+    const item = ITEM_POOL[Math.floor(Math.random() * ITEM_POOL.length)];
+    if (item && item.id) {
+      const itemPath = `users/${winner}/items/${item.id}`;
+      try {
+        const itemSnap = await db.ref(itemPath).once('value');
+        if (itemSnap.exists()) {
+          const existing = itemSnap.val() || {};
+          const newQty = (existing.qty || 0) + 1;
+          await db.ref(itemPath).update({ qty: newQty, name: item.label || existing.name || item.id, awardedAt: Date.now() });
+        } else {
+          await db.ref(itemPath).set({ id: item.id, name: item.label || item.id, qty: 1, awardedAt: Date.now() });
+        }
+      } catch (e) {
+        console.error('Error awarding item to user', winner, item, e);
+      }
+    }
+  }
+
+  await db.ref(`matches/${matchId}/winRecorded`).set(true);
 });
 

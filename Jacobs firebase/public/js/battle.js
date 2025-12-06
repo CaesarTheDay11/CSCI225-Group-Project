@@ -85,25 +85,19 @@ ABILITIES.defend = { id: 'defend', name: 'Defend', desc: 'Defend: brace and gain
 ABILITIES.prepare = { id: 'prepare', name: 'Prepare', desc: 'Prepare: gain a temporary attack boost for the next 1–2 turns.' };
 
 const CLASS_STATS = {
-  warrior: { name: 'Warrior', hp: 120, maxHp: 120, baseAtk: 12, defense: 4, attackBoost: 0, fainted: false, abilities: ['warrior_rend', 'warrior_shout', 'warrior_whirlwind'] },
-  mage:    { name: 'Mage',    hp: 80,  maxHp: 80,  baseAtk: 16, defense: 1, attackBoost: 0, fainted: false, abilities: ['mage_fireball', 'mage_iceblast', 'mage_arcane_burst'], mana: 30 },
-  archer:  { name: 'Archer',  hp: 95,  maxHp: 95,  baseAtk: 14, defense: 2, attackBoost: 0, fainted: false, abilities: ['archer_volley', 'archer_poison', 'archer_trap'] }
+  warrior: { name: 'Warrior', hp: 120, maxHp: 120, baseAtk: 12, defense: 4, speed: 5, critChance: 0.04, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['warrior_rend', 'warrior_shout', 'warrior_whirlwind'] },
+  mage:    { name: 'Mage',    hp: 80,  maxHp: 80,  baseAtk: 16, defense: 1, speed: 6, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['mage_fireball', 'mage_iceblast', 'mage_arcane_burst'], mana: 30 },
+  archer:  { name: 'Archer',  hp: 95,  maxHp: 95,  baseAtk: 14, defense: 2, speed: 8, critChance: 0.12, evasion: 0.06, attackBoost: 0, fainted: false, abilities: ['archer_volley', 'archer_poison', 'archer_trap'] },
+  cleric:  { name: 'Cleric',  hp: 90,  maxHp: 90,  baseAtk: 8,  defense: 2, speed: 5, critChance: 0.03, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['cleric_heal', 'cleric_smite', 'cleric_shield'], mana: 30 },
+  knight:  { name: 'Knight',  hp: 140, maxHp: 140, baseAtk: 13, defense: 6, speed: 4, critChance: 0.03, evasion: 0.01, attackBoost: 0, fainted: false, abilities: ['knight_guard', 'knight_charge', 'knight_bastion'], mana: 0 },
+  rogue:   { name: 'Rogue',   hp: 85,  maxHp: 85,  baseAtk: 18, defense: 1, speed: 9, critChance: 0.15, evasion: 0.08, attackBoost: 0, fainted: false, abilities: ['rogue_backstab', 'rogue_poisoned_dagger', 'rogue_evade'], mana: 0 },
+  paladin: { name: 'Paladin', hp: 130, maxHp: 130, baseAtk: 11, defense: 5, speed: 5, critChance: 0.04, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['paladin_aura', 'paladin_holy_strike', 'paladin_bless'], mana: 15 },
+  dark_mage: { name: 'Dark Mage', hp: 75, maxHp: 75, baseAtk: 12, defense: 1, speed: 6, critChance: 0.05, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 },
+  necromancer: { name: 'Necromancer', hp: 80, maxHp: 80, baseAtk: 10, defense: 2, speed: 6, critChance: 0.05, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['necro_summon_skeleton', 'necro_spirit_shackles', 'necro_dark_inversion'], mana: 40 },
+  monk:    { name: 'Monk',    hp: 105, maxHp: 105, baseAtk: 13, defense: 3, speed: 8, critChance: 0.07, evasion: 0.05, attackBoost: 0, fainted: false, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 },
+  wild_magic_sorcerer: { name: 'Wild Magic Sorcerer', hp: 85, maxHp: 85, baseAtk: 14, defense: 1, speed: 6, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 },
+  druid:   { name: 'Druid',   hp: 100, maxHp: 100, baseAtk: 12, defense: 2, speed: 6, critChance: 0.05, evasion: 0.04, attackBoost: 0, fainted: false, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 }
 };
-
-CLASS_STATS.cleric = { name: 'Cleric', hp: 90, maxHp: 90, baseAtk: 8, defense: 2, attackBoost: 0, fainted: false, abilities: ['cleric_heal', 'cleric_smite', 'cleric_shield'], mana: 30 };
-CLASS_STATS.knight = { name: 'Knight', hp: 140, maxHp: 140, baseAtk: 13, defense: 6, attackBoost: 0, fainted: false, abilities: ['knight_guard', 'knight_charge', 'knight_bastion'], mana: 0 };
-CLASS_STATS.rogue = { name: 'Rogue', hp: 85, maxHp: 85, baseAtk: 18, defense: 1, attackBoost: 0, fainted: false, abilities: ['rogue_backstab', 'rogue_poisoned_dagger', 'rogue_evade'], mana: 0 };
-CLASS_STATS.paladin = { name: 'Paladin', hp: 130, maxHp: 130, baseAtk: 11, defense: 5, attackBoost: 0, fainted: false, abilities: ['paladin_aura', 'paladin_holy_strike', 'paladin_bless'], mana: 15 };
-// Rename old necromancer -> Dark Mage (inherits existing necro_* abilities)
-CLASS_STATS.dark_mage = { name: 'Dark Mage', hp: 75, maxHp: 75, baseAtk: 12, defense: 1, attackBoost: 0, fainted: false, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 };
-// New Necromancer class (summoner / debuffer)
-CLASS_STATS.necromancer = { name: 'Necromancer', hp: 80, maxHp: 80, baseAtk: 10, defense: 2, attackBoost: 0, fainted: false, abilities: ['necro_summon_skeleton', 'necro_spirit_shackles', 'necro_dark_inversion'], mana: 40 };
-// New Monk class — give monks a mana pool so their mana-cost abilities work
-CLASS_STATS.monk = { name: 'Monk', hp: 105, maxHp: 105, baseAtk: 13, defense: 3, attackBoost: 0, fainted: false, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 };
-// Wild Magic Sorcerer
-CLASS_STATS.wild_sorcerer = { name: 'Wild Magic Sorcerer', hp: 85, maxHp: 85, baseAtk: 14, defense: 1, attackBoost: 0, fainted: false, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 };
-//this increased Druid health (balance)
-CLASS_STATS.druid = { name: 'Druid', hp: 100, maxHp: 100, baseAtk: 12, defense: 2, attackBoost: 0, fainted: false, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 };
 
 // Mapping for item image filenames in this project's public/img directory.
 // Prefer these filenames (they exist under Jacobs firebase/public/img). Fall back to img/items/<id>.jpg/svg when missing.
@@ -116,6 +110,9 @@ const ITEM_IMAGE_MAP = {
   speed_scroll: 'speed scroll.jpg',
   strength_tonic: 'strength tonic.jpg',
   revive_scroll: 'revive scroll.jpg',
+  // Additions from NewJacob: keep existing items and add these new reward/utility items
+  swift_boots: 'swift boots.jpg',
+  focus_charm: 'focus charm.jpg',
 };
 
 function getItemImagePaths(itemId) {
@@ -161,11 +158,39 @@ function attachActionTooltips() {
 }
 
 function applyDamageToObject(targetObj, rawDamage, opts = {}) {
+  // opts: { ignoreDefense: bool, attacker: { critChance, ... }, considerHit: bool }
   const ignoreDefense = !!opts.ignoreDefense;
+  const attacker = opts.attacker || null;
+  const considerHit = typeof opts.considerHit === 'boolean' ? opts.considerHit : !!attacker;
+
+  // Evasion check (target may dodge entirely)
+  const targetEvasion = Number(targetObj.evasion || 0) || 0;
+  if (considerHit && targetEvasion > 0) {
+    try {
+      if (Math.random() < targetEvasion) {
+        // Dodge: no damage dealt
+        return { damage: 0, newHp: targetObj.hp || 0, dodged: true, isCrit: false };
+      }
+    } catch (e) { /* ignore RNG errors */ }
+  }
+
   const defense = ignoreDefense ? 0 : (targetObj.defense || 0);
-  const final = Math.max(0, Math.round(rawDamage - defense));
+  let final = Math.max(0, Math.round(rawDamage - defense));
+
+  // Crit check (attacker may deal increased damage)
+  let isCrit = false;
+  const critChance = attacker ? Number(attacker.critChance || 0) : 0;
+  if (considerHit && critChance > 0) {
+    try {
+      if (Math.random() < critChance) {
+        isCrit = true;
+        final = Math.max(1, Math.round(final * 1.5)); // crit = +50% damage
+      }
+    } catch (e) { /* ignore RNG errors */ }
+  }
+
   const newHp = Math.max(0, (targetObj.hp || 0) - final);
-  return { damage: final, newHp };
+  return { damage: final, newHp, isCrit, dodged: false };
 }
 
 // Effective attack includes baseAtk plus any one-turn strength boosts
@@ -436,7 +461,7 @@ const abilityHandlers = {
   mage_fireball(user, target) {
     const base = getEffectiveBaseAtk(user, 10);
     const raw = Math.floor(Math.random() * 8) + base + 8;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw, { ignoreDefense: true });
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { ignoreDefense: true, attacker: user });
     const opponentUpdates = { hp: newHp };
     const newStatus = Object.assign({}, target.status || {});
     newStatus.burn = { turns: 3, dmg: Math.max(2, Math.floor(base / 3)) };
@@ -450,7 +475,7 @@ const abilityHandlers = {
     const raw = Math.floor(Math.random() * 10) + base + 6;
     const effectiveDefense = (target.defense || 0) / 2;
     const final = Math.max(0, Math.round(raw - effectiveDefense));
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: effectiveDefense }, final, { ignoreDefense: true });
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: effectiveDefense, evasion: target.evasion || 0 }, final, { ignoreDefense: true, attacker: user });
     const opponentUpdates = { hp: newHp };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'warrior_rend') };
     return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_warrior_rend' }, message: `${user.name || 'You'} rends ${target.name || 'the enemy'} for ${damage} damage!`, lastMoveDamage: damage };
@@ -460,7 +485,7 @@ const abilityHandlers = {
     const base = getEffectiveBaseAtk(user, 14);
     let total = 0;
     for (let i = 0; i < 3; i++) total += Math.floor(Math.random() * 6) + Math.floor(base / 2);
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, total);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, total, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const newStatus = Object.assign({}, target.status || {});
     const amount = 2;
@@ -480,7 +505,7 @@ const abilityHandlers = {
   slime_splatter(user, target) {
     const base = getEffectiveBaseAtk(user, 6);
     const raw = Math.floor(Math.random() * 6) + base;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const newStatus = Object.assign({}, target.status || {});
     newStatus.slimed = { turns: 3, effect: 'reduce-heal' };
@@ -492,7 +517,7 @@ const abilityHandlers = {
   gladiator_charge(user, target) {
     const base = getEffectiveBaseAtk(user, 11);
     const raw = Math.floor(Math.random() * 12) + base + 4;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'gladiator_charge') };
     let message = `${user.name || 'Enemy'} charges for ${damage} damage!`;
@@ -508,7 +533,7 @@ const abilityHandlers = {
   boss_earthquake(user, target) {
     const base = getEffectiveBaseAtk(user, 18);
     const raw = Math.floor(Math.random() * 18) + base + 8;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const newStatus = Object.assign({}, target.status || {});
     newStatus.stun = { turns: 1 };
@@ -520,7 +545,7 @@ const abilityHandlers = {
   mage_iceblast(user, target) {
     const base = getEffectiveBaseAtk(user, 10);
     const raw = Math.floor(Math.random() * 6) + base + 6;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const amount = Math.max(1, Math.floor(base / 4));
     const newStatus = Object.assign({}, target.status || {});
@@ -550,7 +575,7 @@ const abilityHandlers = {
   archer_poison(user, target) {
     const base = getEffectiveBaseAtk(user, 14);
     const raw = Math.floor(Math.random() * 6) + base;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     // merge poison with existing poison if present (refresh turns and keep higher dmg)
     const newStatus = Object.assign({}, target.status || {});
@@ -593,7 +618,7 @@ const abilityHandlers = {
   cleric_smite(user, target) {
     const base = getEffectiveBaseAtk(user, 8);
     const raw = Math.floor(Math.random() * 8) + base + 6;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw, { ignoreDefense: false });
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { ignoreDefense: false, attacker: user });
     const opponentUpdates = { hp: newHp };
     // inflict burn on the enemy
     const oppStatus = Object.assign({}, target.status || {});
@@ -613,7 +638,7 @@ const abilityHandlers = {
     // Make Guard distinct from Bastion: small immediate strike + a short defensive buff
     const base = getEffectiveBaseAtk(user, 10);
     const raw = Math.floor(Math.random() * 6) + base + 4;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
 
     const add = 5; // smaller, short-lived defense increase
@@ -628,7 +653,7 @@ const abilityHandlers = {
   knight_charge(user, target) {
     const base = getEffectiveBaseAtk(user, 13);
     const raw = Math.floor(Math.random() * 14) + base + 6;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+      const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'knight_charge') };
     let message = `${user.name || 'You'} charges for ${damage} damage!`;
@@ -645,7 +670,7 @@ const abilityHandlers = {
     const base = getEffectiveBaseAtk(user, 16);
     const raw = Math.floor(Math.random() * 12) + base + 8;
     // backstab ignores defense partially
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: Math.floor((target.defense || 0) / 3) }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: Math.floor((target.defense || 0) / 3), evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'rogue_backstab') };
     return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_rogue_backstab' }, message: `${user.name || 'You'} backstabs ${target.name || 'the enemy'} for ${damage} damage!`, lastMoveDamage: damage };
@@ -654,7 +679,7 @@ const abilityHandlers = {
   rogue_poisoned_dagger(user, target) {
     const base = getEffectiveBaseAtk(user, 12);
     const raw = Math.floor(Math.random() * 8) + base;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     // merge poison with any existing poison
     const newStatus = Object.assign({}, target.status || {});
@@ -684,7 +709,7 @@ const abilityHandlers = {
   paladin_holy_strike(user, target) {
     const base = getEffectiveBaseAtk(user, 11);
     const raw = Math.floor(Math.random() * 10) + base + 6;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
   const heal = Math.floor(damage * 0.4);
   const actualHeal = (user.status && user.status.slimed) ? Math.floor(heal / 2) : heal;
   const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'paladin_holy_strike'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.paladin_holy_strike.cost || 0)) };
@@ -699,7 +724,7 @@ const abilityHandlers = {
     // If target has healing reduction (slimed), siphon does double damage
     const hasHealingReduction = !!(target.status && target.status.slimed);
     if (hasHealingReduction) raw = raw * 2;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
   let healAmt = Math.floor(damage * 0.6);
   // If caster is slimed (healing reduction), reduce siphon heal
   if (user.status && user.status.slimed) healAmt = Math.floor(healAmt / 2);
@@ -742,7 +767,7 @@ const abilityHandlers = {
     // increased immediate damage
     const base = getEffectiveBaseAtk(user, 10);
     const raw = Math.floor(Math.random() * 10) + Math.floor(base / 2);
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { status: newStatus, hp: newHp };
     opponentUpdates.attackBoost = Math.max(0, (target.attackBoost || 0) - amount);
     // 15% chance to stun
@@ -773,7 +798,7 @@ const abilityHandlers = {
   warrior_whirlwind(user, target) {
     const base = getEffectiveBaseAtk(user, 12);
     const raw = Math.floor(Math.random() * 12) + base + 6;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     // apply a weaken to reduce enemy attack for 2 turns
     const newStatus = Object.assign({}, target.status || {});
@@ -792,7 +817,7 @@ const abilityHandlers = {
   mage_arcane_burst(user, target) {
     const base = getEffectiveBaseAtk(user, 14);
     const raw = Math.floor(Math.random() * 14) + base + 8;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw, { ignoreDefense: true });
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { ignoreDefense: true, attacker: user });
     const opponentUpdates = { hp: newHp };
     // Instead of burning the target, empower the caster with a temporary attack boost
     const playerStatus = Object.assign({}, user.status || {});
@@ -805,7 +830,7 @@ const abilityHandlers = {
   archer_trap(user, target) {
     const base = getEffectiveBaseAtk(user, 12);
     const raw = Math.floor(Math.random() * 8) + base + 4;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     // Apply bleeding as the trap effect (3 turns, 5% of target max HP per turn)
     const newStatus = Object.assign({}, target.status || {});
@@ -903,7 +928,7 @@ const abilityHandlers = {
     // small damaging lash to the target
     const base = getEffectiveBaseAtk(user, 10);
     const raw = Math.floor(Math.random() * 6) + Math.floor(base / 2);
-    const { damage, newHp: oppNewHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp: oppNewHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: oppNewHp };
 
     return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_druid_barkskin' }, message: `${user.name || 'You'} hardens skin and lashes out, healing ${immediate} HP, gaining +${shieldAmount} defense and dealing ${damage} damage to the foe.`, lastMoveHeal: immediate, lastMoveDamage: damage };
@@ -915,7 +940,7 @@ const abilityHandlers = {
     const base = getEffectiveBaseAtk(user, 12);
     let total = 0;
     for (let i = 0; i < 3; i++) total += Math.floor(Math.random() * 6) + Math.floor(base / 2);
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, total);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, total, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const newStatus = Object.assign({}, target.status || {});
     const weakenAmt = 4;
@@ -933,7 +958,7 @@ const abilityHandlers = {
   ,monk_stunning_blow(user, target) {
     const base = getEffectiveBaseAtk(user, 14);
     const raw = Math.floor(Math.random() * 12) + base;
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     if (Math.random() < 0.5) {
       const s = Object.assign({}, target.status || {});
@@ -956,7 +981,7 @@ const abilityHandlers = {
     // Otherwise apply bleed: 5% max HP per turn for 4 turns
     const base = getEffectiveBaseAtk(user, 12);
     const raw = Math.floor(Math.random() * 10) + Math.floor(base / 2);
-    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0 }, raw);
+  const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const newStatus = Object.assign({}, target.status || {});
     const incoming = { turns: 4, pct: 0.05 };
@@ -1210,6 +1235,11 @@ window.initializeBattle = async function(mId, userId) {
     hp: existing.hp ?? classTemplate.hp,
     maxHp: existing.maxHp ?? classTemplate.maxHp,
     defense: existing.defense ?? classTemplate.defense ?? 0,
+    // Ensure speed/crit/evasion are present on the match player node so UI and combat
+    // mechanics can read them reliably. Preserve any existing custom values when present.
+    speed: (typeof existing.speed !== 'undefined' ? existing.speed : classTemplate.speed),
+    critChance: (typeof existing.critChance !== 'undefined' ? existing.critChance : classTemplate.critChance),
+    evasion: (typeof existing.evasion !== 'undefined' ? existing.evasion : classTemplate.evasion),
     attackBoost: existing.attackBoost ?? classTemplate.attackBoost ?? 0,
     fainted: existing.fainted ?? false,
     abilityCooldowns: existing.abilityCooldowns ?? {},
@@ -1620,6 +1650,16 @@ async function initiateRewardPhase(winnerUid, loserUid) {
   chooser.style.display = 'none';
   status.textContent = '';
 
+  // Ensure chooser and status are readable: use dark background with light text
+  try {
+    chooser.style.backgroundColor = '#000';
+    chooser.style.color = '#fff';
+    chooser.style.padding = chooser.style.padding || '12px';
+    status.style.backgroundColor = '#000';
+    status.style.color = '#fff';
+    status.style.padding = status.style.padding || '8px';
+  } catch (e) { /* ignore styling errors */ }
+
   // get catalog
   const catalog = (window.getItemCatalog) ? window.getItemCatalog() : {};
   // filter out any legacy/removed tokens (e.g., 'jps') so they don't surface in the chooser
@@ -1658,30 +1698,50 @@ async function initiateRewardPhase(winnerUid, loserUid) {
   }
 
   if (currentUserId === winnerUid) {
-    // render choices
-    chooser.innerHTML = '<div style="margin-bottom:8px;">Pick your reward:</div>';
-    const grid = document.createElement('div'); grid.style.display = 'flex'; grid.style.flexWrap = 'wrap'; grid.style.justifyContent = 'center'; grid.style.gap = '8px';
-    itemKeys.forEach(k => {
-      const meta = catalog[k];
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.textContent = meta.name;
-      if (meta && meta.desc) {
-        b.classList.add('has-tooltip');
-        b.setAttribute('data-tooltip', meta.desc);
-      }
-      b.addEventListener('click', async () => {
+    // render choices as image cards for clarity (limit to 12 items)
+    chooser.innerHTML = '';
+    const header = document.createElement('div'); header.style.marginBottom = '8px'; header.textContent = 'Pick your reward:';
+    chooser.appendChild(header);
+  const grid = document.createElement('div');
+  // Use CSS grid to present items in 3 columns for a cleaner selector layout
+  grid.style.display = 'grid';
+  grid.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
+  grid.style.gap = '12px';
+  grid.style.justifyItems = 'center';
+    const visibleKeys = itemKeys.slice(0, 12);
+    visibleKeys.forEach(k => {
+      const meta = catalog[k] || { id: k, name: k };
+      const card = document.createElement('div');
+  card.style.width = '100%'; card.style.maxWidth = '220px'; card.style.border = '1px solid #ccc'; card.style.borderRadius = '6px'; card.style.overflow = 'hidden';
+                // dark card to match chooser panel and ensure text contrast
+                card.style.background = '#111'; card.style.color = '#fff'; card.style.boxSizing = 'border-box'; card.style.textAlign = 'center'; card.style.padding = '8px';
+
+      const img = document.createElement('img');
+      const paths = getItemImagePaths(k);
+  img.src = paths.jpg; img.alt = meta.name || k; img.style.width = '100%'; img.style.height = '96px'; img.style.objectFit = 'contain';
+      img.onerror = function() { if (!this._triedSvg) { this._triedSvg = true; this.src = paths.svg; return; } this.style.opacity = '0.6'; };
+      card.appendChild(img);
+
+      const nm = document.createElement('div'); nm.textContent = meta.name || k; nm.style.fontWeight = '700'; nm.style.margin = '8px 0 6px 0'; card.appendChild(nm);
+  if (meta && meta.desc) { const desc = document.createElement('div'); desc.textContent = meta.desc; desc.style.fontSize = '12px'; desc.style.color = '#ccc'; desc.style.minHeight = '34px'; desc.style.marginBottom = '8px'; card.appendChild(desc); }
+
+  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'primary-btn'; btn.style.width = '100%'; btn.textContent = 'Select';
+  // ensure button is visible on dark card
+  btn.style.backgroundColor = '#222'; btn.style.color = '#fff'; btn.style.border = '1px solid #333';
+      btn.addEventListener('click', async () => {
         try {
+          btn.disabled = true;
           await finalizeRewards(winnerUid, loserUid, k);
           chooser.style.display = 'none';
           status.textContent = `You received: ${meta.name}. Loser assigned a random reward.`;
-        } catch (e) {
-          console.error('finalizeRewards error', e);
-          status.textContent = '(error assigning rewards)';
-        }
+        } catch (e) { console.error('finalizeRewards error', e); status.textContent = '(error assigning rewards)'; }
       });
-      grid.appendChild(b);
+      card.appendChild(btn);
+      grid.appendChild(card);
     });
+    if (itemKeys.length > visibleKeys.length) {
+      const more = document.createElement('div'); more.style.width = '100%'; more.style.textAlign = 'center'; more.style.color = '#ccc'; more.style.marginTop = '6px'; more.textContent = `Showing ${visibleKeys.length} of ${itemKeys.length} catalog items.`; chooser.appendChild(more);
+    }
     chooser.appendChild(grid);
     chooser.style.display = '';
   } else if (currentUserId === loserUid) {
@@ -1892,11 +1952,17 @@ function updatePlayerUI(stats, isPlayer) {
     const baseAtk = Number(stats?.baseAtk ?? 0);
     const weakenAmt = Number((stats?.status && stats.status.weaken && stats.status.weaken.amount) || 0);
     const displayAtkBoost = atkBoost - weakenAmt;
-    statsText.innerHTML = `ATK: ${displayAtkBoost} (base ${baseAtk}) &nbsp; DEF: ${def}`;
+    const speed = Number(stats?.speed ?? (stats?.classId ? (CLASS_STATS[stats.classId] && CLASS_STATS[stats.classId].speed) : (CLASS_STATS[stats?.class] && CLASS_STATS[stats?.class].speed))) || 0;
+    const crit = Number(stats?.critChance ?? 0) || 0;
+    const eva = Number(stats?.evasion ?? 0) || 0;
+  // Show crit/evasion as percentages for clarity
+  const critPct = Math.round(crit * 100);
+  const evaPct = Math.round(eva * 100);
+  statsText.innerHTML = `ATK: ${displayAtkBoost} (base ${baseAtk}) &nbsp; DEF: ${def} &nbsp; SPD: ${speed} &nbsp; CRIT: ${critPct}% &nbsp; EVA: ${evaPct}%`;
     // Replace native title with styled tooltip
     try {
       statsText.classList.add('has-tooltip');
-      statsText.setAttribute('data-tooltip', `Base ATK: ${baseAtk}. Current attack boost: ${displayAtkBoost}${weakenAmt ? ` (weakened by ${weakenAmt})` : ''}.`);
+      statsText.setAttribute('data-tooltip', `Base ATK: ${baseAtk}. Current attack boost: ${displayAtkBoost}${weakenAmt ? ` (weakened by ${weakenAmt})` : ''}. Speed: ${speed}. Crit chance: ${Math.round(crit*100)}%. Evasion: ${Math.round(eva*100)}%.`);
     } catch (e) { /* ignore DOM issues */ }
   }
 
@@ -2577,6 +2643,20 @@ async function useItem(itemId) {
       matchUpdates.lastMove = 'use_item_revive_scroll';
       matchUpdates.lastMoveActor = currentUserId;
       logMessage('Revive Scroll prepared: you will be revived automatically if you fall.');
+    } else if (itemId === 'swift_boots') {
+      const newStatus = Object.assign({}, playerStats.status || {});
+      newStatus.haste = { turns: 3, amount: 4 };
+      playerUpdates.status = newStatus;
+      // if speed field exists, bump it locally; it will be used by client-side checks
+      if (typeof playerStats.speed !== 'undefined') playerUpdates.speed = (playerStats.speed || 0) + 4;
+      matchUpdates.lastMove = 'use_item_swift_boots';
+      matchUpdates.lastMoveActor = currentUserId;
+    } else if (itemId === 'focus_charm') {
+      const newStatus = Object.assign({}, playerStats.status || {});
+      newStatus.critChance = (newStatus.critChance || 0) + 0.08;
+      playerUpdates.status = newStatus;
+      matchUpdates.lastMove = 'use_item_focus_charm';
+      matchUpdates.lastMoveActor = currentUserId;
     } else {
       logMessage('Used unknown item: ' + itemId);
     }
@@ -2600,15 +2680,47 @@ async function useItem(itemId) {
     const postPlayerHp = (typeof adjusted.playerUpdates.hp !== 'undefined') ? adjusted.playerUpdates.hp : playerStats.hp;
     const postOpponentHp = (typeof adjusted.opponentUpdates.hp !== 'undefined') ? adjusted.opponentUpdates.hp : opponentStats.hp;
 
+    // If either side drops to 0 or below, prefer consuming a one-time revive
+    // flag (has_revive) if present on that player's match node. Only finish
+    // the match if no revive is available.
     if (postOpponentHp <= 0) {
-      adjusted.opponentUpdates.fainted = true;
-      matchUpdates.status = matchUpdates.status || 'finished';
-      matchUpdates.winner = matchUpdates.winner || currentUserId;
+      const opponentHasRevive = (typeof adjusted.opponentUpdates.has_revive !== 'undefined') ? adjusted.opponentUpdates.has_revive : opponentStats.has_revive;
+      if (opponentHasRevive) {
+        // Consume revive for opponent: restore to 30% HP, clear revive flag and remove dangerous DOTs
+        const newHp = Math.max(1, Math.ceil((opponentStats.maxHp || 100) * 0.3));
+        const newStatus = Object.assign({}, opponentStats.status || {});
+        if (newStatus.poison) delete newStatus.poison;
+        if (newStatus.burn) delete newStatus.burn;
+        adjusted.opponentUpdates.hp = newHp;
+        adjusted.opponentUpdates.fainted = false;
+        adjusted.opponentUpdates.has_revive = null;
+        adjusted.opponentUpdates.status = Object.keys(newStatus).length ? newStatus : null;
+        logMessage('Opponent was saved by a Revive Scroll!');
+      } else {
+        adjusted.opponentUpdates.fainted = true;
+        matchUpdates.status = matchUpdates.status || 'finished';
+        matchUpdates.winner = matchUpdates.winner || currentUserId;
+      }
     }
+
     if (postPlayerHp <= 0) {
-      adjusted.playerUpdates.fainted = true;
-      matchUpdates.status = matchUpdates.status || 'finished';
-      matchUpdates.winner = matchUpdates.winner || opponentId;
+      const playerHasRevive = (typeof adjusted.playerUpdates.has_revive !== 'undefined') ? adjusted.playerUpdates.has_revive : playerStats.has_revive;
+      if (playerHasRevive) {
+        // Consume revive for player: restore to 30% HP, clear revive flag and remove dangerous DOTs
+        const newHp = Math.max(1, Math.ceil((playerStats.maxHp || 100) * 0.3));
+        const newStatus = Object.assign({}, playerStats.status || {});
+        if (newStatus.poison) delete newStatus.poison;
+        if (newStatus.burn) delete newStatus.burn;
+        adjusted.playerUpdates.hp = newHp;
+        adjusted.playerUpdates.fainted = false;
+        adjusted.playerUpdates.has_revive = null;
+        adjusted.playerUpdates.status = Object.keys(newStatus).length ? newStatus : null;
+        logMessage('Your Revive Scroll saved you from defeat!');
+      } else {
+        adjusted.playerUpdates.fainted = true;
+        matchUpdates.status = matchUpdates.status || 'finished';
+        matchUpdates.winner = matchUpdates.winner || opponentId;
+      }
     }
 
     const promises = [];

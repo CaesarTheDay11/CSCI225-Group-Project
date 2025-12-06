@@ -32,8 +32,22 @@ const auth = getAuth(app);
 const db = getDatabase(app);
 const functions = getFunctions();
 
-connectFunctionsEmulator(functions, "localhost", 5001);
-connectAuthEmulator(auth, "http://127.0.0.1:9199");
-connectDatabaseEmulator(db, "127.0.0.1", 9009);
+// Only connect to local emulators when running on localhost (developer machines).
+// This prevents accidental use of emulators when the site is deployed to Firebase Hosting.
+try {
+  const host = (typeof window !== 'undefined' && window.location && window.location.hostname) ? window.location.hostname : '';
+  if (host === 'localhost' || host === '127.0.0.1') {
+    connectFunctionsEmulator(functions, "localhost", 5001);
+    connectAuthEmulator(auth, "http://127.0.0.1:9199");
+    connectDatabaseEmulator(db, "127.0.0.1", 9009);
+    console.debug('[firebase] connected to local emulators');
+  } else {
+    // production — don't connect to emulators
+    console.debug('[firebase] running in non-localhost environment; emulator connections skipped');
+  }
+} catch (e) {
+  // If anything goes wrong, avoid blocking app initialization; log a warning.
+  console.warn('[firebase] emulator-connection check failed', e);
+}
 
 export { app, auth, db, functions };

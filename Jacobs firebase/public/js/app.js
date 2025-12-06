@@ -169,6 +169,7 @@ try {
 }
 
 async function updateQueueData() {
+  // write queue entry and show searching state
   // TODO: store rank value later for skill based matchmaking
   document.getElementsByClassName("queueBtn")[0].textContent = "Finding a Match...";
   document.getElementById("battle").style.display = "none"; // Hide battle UI while searching
@@ -196,7 +197,12 @@ async function updateQueueData() {
   }
 }
 
-document.getElementById("queueBtn").addEventListener("click", (e) => { updateQueueData().catch(console.error); }, false);
+const _queueBtnEl = document.getElementById("queueBtn");
+if (_queueBtnEl) {
+  _queueBtnEl.addEventListener("click", (e) => { updateQueueData().catch(console.error); }, false);
+} else {
+  console.debug('[app] queueBtn not found on this page; skipping queue button wiring');
+}
 
 // Class selection UI wiring (visible before joining a match)
 function initClassSelector() {
@@ -237,7 +243,7 @@ function initClassSelector() {
   if (!classButtons || classButtons.length === 0) {
     console.warn('[class-select] no class buttons found in DOM — creating fallback buttons');
   // Use the same class set exposed in signup.html
-  const classes = ['warrior','mage','archer','cleric','rogue','dark_mage','necromancer','paladin','druid','knight','monk','wild_sorcerer'];
+  const classes = ['warrior','mage','archer','cleric','rogue','dark_mage','necromancer','paladin','druid','knight','monk','wild_magic_sorcerer'];
     let grid = container.querySelector('.class-grid');
     if (!grid) {
       grid = document.createElement('div');
@@ -266,7 +272,7 @@ function initClassSelector() {
       };
       // add descriptions for newly added classes
       descMap.monk = 'Monk — quick martial artist: flurries, stuns, and powerful finishing blows.';
-      descMap.wild_sorcerer = 'Wild Magic Sorcerer — unpredictable caster with random d20-driven effects.';
+  descMap.wild_magic_sorcerer = 'Wild Magic Sorcerer — unpredictable caster with random d20-driven effects.';
       if (descMap[cid]) {
         b.classList.add('has-tooltip');
         b.setAttribute('data-tooltip', descMap[cid]);
