@@ -21,12 +21,10 @@ const CLASS_STATS = {
   wild_magic_sorcerer: { hp: 85, maxHp: 85, baseAtk: 14, defense: 1, speed: 6, critChance: 0.06, evasion: 0.03, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 }
 };
 
-// A small item pool used to award winners with a chance to receive an item.
-// Kept in sync with server-side reward logic introduced in the NewJacob patch.
-const ITEM_POOL = [
-  { id: "swift_boots", label: "Swift Boots", type: "speed", speed: 4 },
-  { id: "focus_charm", label: "Focus Charm", type: "crit", critChance: 0.08 },
-];
+// Server no longer awards gameplay items automatically; client-side chooser
+// handles item awarding so we keep ITEM_POOL empty here to avoid duplicate
+// awards. If new server-side rewards are desired in future, add them here.
+//const ITEM_POOL = [];
 
 function pickFirstTurn(p1Id, p2Id, p1State = {}, p2State = {}) {
   const p1Speed = (p1State.speed || p1State.baseAtk || 0) || 0;
@@ -210,27 +208,9 @@ exports.onMatchFinished = onValueWritten("/matches/{matchId}/status", async (eve
     }),
   ]);
 
-  // Chance to award an item to the winner (60%)
-  // Write awards using the semantic item id as the child key so client
-  // inventory UI (which expects items keyed by id) continues to work.
-  if (Math.random() < 0.6) {
-    const item = ITEM_POOL[Math.floor(Math.random() * ITEM_POOL.length)];
-    if (item && item.id) {
-      const itemPath = `users/${winner}/items/${item.id}`;
-      try {
-        const itemSnap = await db.ref(itemPath).once('value');
-        if (itemSnap.exists()) {
-          const existing = itemSnap.val() || {};
-          const newQty = (existing.qty || 0) + 1;
-          await db.ref(itemPath).update({ qty: newQty, name: item.label || existing.name || item.id, awardedAt: Date.now() });
-        } else {
-          await db.ref(itemPath).set({ id: item.id, name: item.label || item.id, qty: 1, awardedAt: Date.now() });
-        }
-      } catch (e) {
-        console.error('Error awarding item to user', winner, item, e);
-      }
-    }
-  }
+  // Note: item awarding is intentionally handled client-side to allow the
+  // winner to choose a reward. Server will not award items here to avoid
+  // duplicate awards.
 
   await db.ref(`matches/${matchId}/winRecorded`).set(true);
 });

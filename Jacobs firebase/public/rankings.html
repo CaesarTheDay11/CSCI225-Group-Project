@@ -1,0 +1,130 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="stylesheet" type="text/css" href="css/styles.css" />
+    <title>Game Rankings</title>
+    <script
+      src="https://code.jquery.com/jquery-3.5.1.js"
+      integrity="sha256-QWo7LDvxbWT2tbbQ97B53yJnYU3WhH/C8ycbRAkjPDc="
+      crossorigin="anonymous"
+    ></script>
+    <style>
+      /* Dark theme styles consistent with site */
+      .ranking-container { max-width:900px; margin:28px auto; padding:18px; background:rgba(255,255,255,0.03); border-radius:8px; color: #fff; }
+      .ranking-table { width:100%; border-collapse:collapse; margin-top:8px; }
+      .ranking-table th, .ranking-table td { padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.04); text-align:left; }
+      .ranking-table th { background: rgba(255,255,255,0.02); color:#ddd; font-weight:700; }
+      .ranking-table tbody tr:nth-child(odd) { background: rgba(255,255,255,0.01); }
+      .ranking-table td { color: #eee; }
+      .nav-links { margin-bottom:12px; }
+      .nav-links a { margin-right:12px; color:#9ad6ff; text-decoration:none; }
+      code { background: rgba(255,255,255,0.02); padding:2px 6px; border-radius:4px; color:#cfefff; }
+    </style>
+  </head>
+  <body>
+    <div class="ranking-container">
+        <div class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="battle.html">PvP Battle</a>
+            <a href="TitleScreen.html">Title Screen</a>
+            <a href="selection.html">PVE Selection</a>
+        </div>
+        <h1>Game Rankings - Top 3 Players (by wins)</h1>
+        <table class="ranking-table">
+            <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Player Name</th>
+                    <th>Score (wins)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td id="player1-name">—</td>
+                    <td id="player1-score">0</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td id="player2-name">—</td>
+                    <td id="player2-score">0</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td id="player3-name">—</td>
+                    <td id="player3-score">0</td>
+                </tr>
+            </tbody>
+        </table>
+        <p style="margin-top:12px;color:#666;font-size:13px;">This leaderboard displays the top 3 players by number of wins. It reads Firestore collection <code>scores</code> (Score field) and falls back to Realtime Database users/* wins if Firestore is not populated.</p>
+    </div>
+
+    <script type="module">
+      // Use the site's shared Firebase initializer so the leaderboard reads from the
+      // same project/config as the rest of the app.
+      import { app, db as rdbShared } from './js/firebase.js';
+      import { getFirestore, collection, onSnapshot, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js';
+      import { ref as rtdbRef, onValue } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js';
+
+      const fs = getFirestore(app);
+      const rdb = rdbShared;
+
+      const updateDom = (rows) => {
+        // rows: array of { Name, Score }
+        for (let i = 0; i < 3; i++) {
+          const nameEl = document.getElementById(`player${i+1}-name`);
+          const scoreEl = document.getElementById(`player${i+1}-score`);
+          if (rows[i]) {
+            nameEl.innerText = rows[i].Name || rows[i].name || rows[i].displayName || 'Player';
+            scoreEl.innerText = Number(rows[i].Score || rows[i].wins || 0);
+          } else {
+            nameEl.innerText = '—'; scoreEl.innerText = '0';
+          }
+        }
+      };
+
+      // Try Firestore first (collection: scores, field: Score)
+      try {
+        const quancollection = collection(fs, 'scores');
+        const q = query(quancollection, orderBy('Score', 'desc'), limit(3));
+        onSnapshot(q, (snapshot) => {
+          const rankings = [];
+          snapshot.forEach((doc) => rankings.push(doc.data()));
+          if (rankings.length) {
+            updateDom(rankings);
+          } else {
+            // fallback to Realtime DB
+            fetchFromRealtime();
+          }
+        }, (err) => {
+          console.error('Firestore leaderboard error', err);
+          fetchFromRealtime();
+        });
+      } catch (e) {
+        console.warn('Firestore not available, falling back to Realtime DB', e);
+        fetchFromRealtime();
+      }
+
+      function fetchFromRealtime() {
+        try {
+          const usersRef = rtdbRef(rdb, 'users');
+          onValue(usersRef, (snap) => {
+            const arr = [];
+            const val = snap.exists() ? snap.val() : {};
+            Object.keys(val || {}).forEach(uid => {
+              const u = val[uid] || {};
+              const wins = Number(u.wins || 0);
+              const name = u.displayName || u.name || (u.profile && u.profile.name) || uid;
+              arr.push({ Name: name, Score: wins });
+            });
+            arr.sort((a,b) => (b.Score||0)-(a.Score||0));
+            updateDom(arr.slice(0,3));
+          }, { onlyOnce: false });
+        } catch (e) { console.error('Realtime fallback failed', e); }
+      }
+
+    </script>
+  </body>
+</html>

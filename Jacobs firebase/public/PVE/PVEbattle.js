@@ -18,6 +18,20 @@ const ENEMY_STATS = {
     slime: { name: 'Slime', hp: 40, maxHp: 40, baseAtk: 6, defense: 0, attackBoost: 0, fainted: false, abilities: ['slime_splatter'], speed: 3, critChance: 0.02, evasion: 0.01 },
     gladiator: { name: 'Gladiator', hp: 80, maxHp: 80, baseAtk: 11, defense: 2, attackBoost: 0, fainted: false, abilities: ['gladiator_charge'], speed: 5, critChance: 0.05, evasion: 0.02 },
     boss: { name: 'Boss', hp: 200, maxHp: 200, baseAtk: 18, defense: 4, attackBoost: 0, fainted: false, abilities: ['boss_earthquake'], speed: 4, critChance: 0.06, evasion: 0.03 }
+    ,
+    // New enemies added per request — each has three abilities and gradually increase in difficulty
+    // Scale new enemies up so they are boss-level or above; start ogre at 200 and increase from there
+    ogre: { name: 'Ogre', hp: 200, maxHp: 200, baseAtk: 18, defense: 5, attackBoost: 0, fainted: false, abilities: ['ogre_smash', 'ogre_roar', 'ogre_ground_stomp'], speed: 3, critChance: 0.04, evasion: 0.02 },
+    griffin: { name: 'Griffin', hp: 220, maxHp: 220, baseAtk: 20, defense: 5, attackBoost: 0, fainted: false, abilities: ['griffin_dive', 'griffin_talon_rake', 'griffin_wing_gust'], speed: 8, critChance: 0.10, evasion: 0.10 },
+    werewolf: { name: 'Werewolf', hp: 240, maxHp: 240, baseAtk: 22, defense: 6, attackBoost: 0, fainted: false, abilities: ['werewolf_frenzy', 'werewolf_howl', 'werewolf_feral_leap'], speed: 10, critChance: 0.11, evasion: 0.07 },
+    serpent: { name: 'Serpent', hp: 260, maxHp: 260, baseAtk: 18, defense: 4, attackBoost: 0, fainted: false, abilities: ['serpent_bite', 'serpent_coil', 'serpent_venom_spit'], speed: 9, critChance: 0.07, evasion: 0.14 },
+    centaur: { name: 'Centaur', hp: 280, maxHp: 280, baseAtk: 20, defense: 6, attackBoost: 0, fainted: false, abilities: ['centaur_trample', 'centaur_arch_shot', 'centaur_charge'], speed: 8, critChance: 0.08, evasion: 0.06 },
+    // Turtle removed — tortoise absorbed defensive abilities; boost tortoise stats to match new difficulty
+    tortoise: { name: 'Tortoise', hp: 300, maxHp: 300, baseAtk: 16, defense: 14, attackBoost: 0, fainted: false, abilities: ['tortoise_shell_guard', 'turtle_withdraw', 'turtle_rolling_charge'], speed: 2, critChance: 0.02, evasion: 0.01 },
+    phoenix: { name: 'Phoenix', hp: 320, maxHp: 320, baseAtk: 24, defense: 6, attackBoost: 0, fainted: false, abilities: ['phoenix_ember', 'phoenix_wingstorm', 'phoenix_rebirth'], speed: 11, critChance: 0.14, evasion: 0.09 },
+    dragon: { name: 'Dragon', hp: 340, maxHp: 340, baseAtk: 36, defense: 10, attackBoost: 0, fainted: false, abilities: ['dragon_fire_breath', 'dragon_claw', 'dragon_roar'], speed: 6, critChance: 0.16, evasion: 0.05 },
+    // Final story antagonist (the Stranger) — base stats; health may be adjusted by campaign choices
+    stranger: { name: 'Stranger', hp: 420, maxHp: 420, baseAtk: 32, defense: 9, attackBoost: 0, fainted: false, abilities: ['dragon_fire_breath','dragon_claw','dragon_roar'], speed: 7, critChance: 0.12, evasion: 0.04 }
 };
 
 const ABILITIES = {
@@ -93,6 +107,51 @@ ABILITIES.heal = ABILITIES.heal || { id: 'heal', name: 'Rest', desc: 'Basic heal
 ABILITIES.defend = ABILITIES.defend || { id: 'defend', name: 'Defend', desc: 'Defend: brace and gain a small defense increase that helps against the next enemy attack.' };
 ABILITIES.prepare = ABILITIES.prepare || { id: 'prepare', name: 'Prepare', desc: 'Prepare: gain a temporary attack boost for the next 1–2 turns.' };
 
+// New enemy ability metadata
+ABILITIES.ogre_smash = { id: 'ogre_smash', name: 'Ogre Smash', cost: 0, cooldown: 3, desc: 'A heavy smash that deals strong physical damage.' };
+ABILITIES.ogre_roar = { id: 'ogre_roar', name: 'Ogre Roar', cost: 0, cooldown: 5, desc: 'A bellow that reduces enemy attack and may stun.' };
+ABILITIES.ogre_ground_stomp = { id: 'ogre_ground_stomp', name: 'Ground Stomp', cost: 0, cooldown: 4, desc: 'Stomps the ground — can stun the player and deals area-like damage.' };
+
+ABILITIES.griffin_dive = { id: 'griffin_dive', name: 'Dive Bomb', cost: 0, cooldown: 3, desc: 'A high-speed dive that deals heavy damage and has an increased crit chance.' };
+ABILITIES.griffin_talon_rake = { id: 'griffin_talon_rake', name: 'Talon Rake', cost: 0, cooldown: 4, desc: 'Rakes the foe, dealing damage and causing bleeding.' };
+ABILITIES.griffin_wing_gust = { id: 'griffin_wing_gust', name: 'Wing Gust', cost: 0, cooldown: 4, desc: 'A gust that can lower evasion or displace the player.' };
+
+ABILITIES.werewolf_frenzy = { id: 'werewolf_frenzy', name: 'Frenzy', cost: 0, cooldown: 4, desc: 'Unleash multiple rapid strikes for moderate total damage.' };
+ABILITIES.werewolf_howl = { id: 'werewolf_howl', name: 'Howl', cost: 0, cooldown: 5, desc: 'A fearsome howl that increases own attack and may terrify the foe.' };
+ABILITIES.werewolf_feral_leap = { id: 'werewolf_feral_leap', name: 'Feral Leap', cost: 0, cooldown: 3, desc: 'A leaping strike that deals damage and may stun.' };
+
+ABILITIES.serpent_bite = { id: 'serpent_bite', name: 'Venom Bite', cost: 0, cooldown: 3, desc: 'A bite that deals damage and applies poison.' };
+ABILITIES.serpent_coil = { id: 'serpent_coil', name: 'Coil', cost: 0, cooldown: 4, desc: 'Wraps around the foe, dealing damage and reducing attack.' };
+ABILITIES.serpent_venom_spit = { id: 'serpent_venom_spit', name: 'Venom Spit', cost: 0, cooldown: 4, desc: 'Spits venom at range, applying a poison DOT and dealing damage.' };
+
+ABILITIES.centaur_trample = { id: 'centaur_trample', name: 'Trample', cost: 0, cooldown: 4, desc: 'A heavy multi-hoof strike that damages and may stun.' };
+ABILITIES.centaur_arch_shot = { id: 'centaur_arch_shot', name: 'Arc Shot', cost: 0, cooldown: 3, desc: 'A precise ranged shot with good damage.' };
+ABILITIES.centaur_charge = { id: 'centaur_charge', name: 'Centaur Charge', cost: 0, cooldown: 4, desc: 'A mounted charge that can knock the player down.' };
+
+ABILITIES.turtle_shell_bash = { id: 'turtle_shell_bash', name: 'Shell Bash', cost: 0, cooldown: 4, desc: 'Bashes the enemy while withdrawing into a defensive shell.' };
+ABILITIES.turtle_withdraw = { id: 'turtle_withdraw', name: 'Withdraw', cost: 0, cooldown: 5, desc: 'Withdraw into shell: gain heavy defense and small heal.' };
+ABILITIES.turtle_rolling_charge = { id: 'turtle_rolling_charge', name: 'Rolling Charge', cost: 0, cooldown: 5, desc: 'Roll forward and slam the target; damage scales with defense.' };
+
+ABILITIES.tortoise_shell_guard = { id: 'tortoise_shell_guard', name: 'Shell Guard', cost: 0, cooldown: 6, desc: 'Massive defensive shell: greatly increases defense for several turns.' };
+ABILITIES.tortoise_tail_sweep = { id: 'tortoise_tail_sweep', name: 'Tail Sweep', cost: 0, cooldown: 4, desc: 'A sweeping tail strike that can trip the foe.' };
+ABILITIES.tortoise_stone_spit = { id: 'tortoise_stone_spit', name: 'Stone Spit', cost: 0, cooldown: 4, desc: 'Hurls gravel and small stones to damage and slow the foe.' };
+
+ABILITIES.phoenix_ember = { id: 'phoenix_ember', name: 'Ember', cost: 0, cooldown: 3, desc: 'Scorches the enemy and applies burn; heals the phoenix slightly.' };
+ABILITIES.phoenix_wingstorm = { id: 'phoenix_wingstorm', name: 'Wingstorm', cost: 0, cooldown: 4, desc: 'A flurry of flames and wings that deals heavy damage and grants a small healing-over-time.' };
+ABILITIES.phoenix_rebirth = { id: 'phoenix_rebirth', name: 'Rebirth', cost: 0, cooldown: 999, desc: 'When used the phoenix marks itself to be reborn on death (one-time revival).' };
+
+ABILITIES.dragon_fire_breath = { id: 'dragon_fire_breath', name: 'Fire Breath', cost: 0, cooldown: 4, desc: 'Cone of fire that deals heavy damage and applies burn.' };
+ABILITIES.dragon_claw = { id: 'dragon_claw', name: 'Dragon Claw', cost: 0, cooldown: 3, desc: 'A brutal claw strike that deals high physical damage.' };
+ABILITIES.dragon_roar = { id: 'dragon_roar', name: 'Dragon Roar', cost: 0, cooldown: 6, desc: 'A terrifying roar that reduces the player\'s attack and may stun.' };
+// Stranger-unique abilities (created specially for the final antagonist)
+ABILITIES.stranger_shadow_lunge = { id: 'stranger_shadow_lunge', name: 'Shadow Lunge', cost: 0, cooldown: 3, desc: 'A swift, strange lunge that rends the target and applies a stacking instability debuff.' };
+ABILITIES.stranger_mind_shatter = { id: 'stranger_mind_shatter', name: 'Mind Shatter', cost: 0, cooldown: 6, desc: 'A psychic cry that reduces the player\'s attack and may confuse (apply weaken + short stun chance).' };
+// Wrapper ability: when executed it will pick a different boss third-ability at runtime
+// and execute it immediately. The wrapper itself has its own cooldown so the
+// stranger cannot spam the wrapper too frequently, but the inner effect will
+// vary each time it is used (even multiple uses in the same round will choose
+// a different inner ability than the previous use).
+ABILITIES.stranger_unstable_third = { id: 'stranger_unstable_third', name: 'Unstable Echo', cost: 0, cooldown: 4, desc: 'Shifts between manifestations — each use executes a different boss third-ability.' };
 // Ensure every ability referenced by classes/enemies has a metadata entry
 // Missing ABILITIES entries were causing canUseAbility(...) to return false
 // (because canUseAbility checks for ABILITIES[abilityId] existence). Create
@@ -627,7 +686,10 @@ const abilityHandlers = {
     monk_stunning_blow(user, target) {
         const base = user.baseAtk || 14; const raw = Math.floor(Math.random()*12) + base;
     const dealt = applyDamage(target, raw, { attacker: user });
-        if (Math.random() < 0.5) target.status = target.status || {}, target.status.stun = { turns: 1 };
+        if (Math.random() < 0.5) {
+            target.status = target.status || {};
+            target.status.stun = { turns: 1 };
+        }
         user.mana = Math.max(0, (user.mana || 0) - (ABILITIES.monk_stunning_blow ? ABILITIES.monk_stunning_blow.cost : 0));
         return `${user.name} delivers a Stunning Blow for ${dealt} damage!`;
     },
@@ -675,6 +737,327 @@ const abilityHandlers = {
     if (roll <=12) { const extra = Math.floor(Math.random()*12)+8; applyDamage(target, extra, { attacker: user }); return `${user.name} cast Wild Arcanum (d20=${roll}) — arcane surge deals extra damage.`; }
     if (roll <=19) { const extra = Math.floor(Math.random()*20)+12; applyDamage(target, extra, { attacker: user }); user.hp = Math.min(user.maxHp||(100),(user.hp||0)+Math.floor(extra*0.4)); return `${user.name} cast Wild Arcanum (d20=${roll}) — hits hard and you siphon life.`; }
     const nuke = Math.floor(Math.random()*36)+36; applyDamage(target, nuke, { attacker: user }); user.status = user.status || {}; user.status.shout = { turns:3, amount:14 }; user.attackBoost = (user.attackBoost||0)+14; return `${user.name} cast Wild Arcanum (d20=${roll}) — Critical wild arcanum! Massive surge.`;
+    },
+
+    /* Ogre abilities */
+    ogre_smash(user, target) {
+        const base = user.baseAtk || 14;
+        const raw = Math.floor(Math.random() * 12) + base + 8;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        if (Math.random() < 0.18) { target.status = target.status || {}; target.status.stun = { turns: 1 }; }
+        return `${user.name} smashes the enemy for ${dealt} damage!`;
+    },
+    ogre_roar(user, target) {
+        const amount = 4;
+        target.status = target.status || {};
+        if (!target.status.weaken) target.status.weaken = { turns: 3, amount: amount, prevBoost: (target.attackBoost || 0) };
+        else { target.status.weaken.amount = (target.status.weaken.amount || 0) + amount; target.status.weaken.turns = Math.max(target.status.weaken.turns || 0, 3); }
+        if (Math.random() < 0.25) target.status.stun = { turns: 1 };
+        return `${user.name} bellows an Ogre Roar, reducing the foe's attack!`;
+    },
+    ogre_ground_stomp(user, target) {
+        const base = user.baseAtk || 14;
+        const raw = Math.floor(Math.random() * 10) + Math.floor(base * 0.8);
+        const dealt = applyDamage(target, raw, { attacker: user });
+        if (Math.random() < 0.2) {
+            target.status = target.status || {};
+            target.status.stun = { turns: 1 };
+        }
+        return `${user.name} pounds the ground for ${dealt} damage and may stagger the foe.`;
+    },
+
+    /* Griffin abilities */
+    griffin_dive(user, target) {
+        const base = user.baseAtk || 15;
+        const raw = Math.floor(Math.random() * 14) + base + 6;
+        const crit = Math.random() < 0.18;
+        const dealt = applyDamage(target, raw + (crit ? Math.floor(raw * 0.5) : 0), { attacker: user });
+        return `${user.name} dives from above for ${dealt} damage${crit ? ' (critical strike)!' : '!'} `;
+    },
+    griffin_talon_rake(user, target) {
+        const base = user.baseAtk || 15;
+        const raw = Math.floor(Math.random() * 10) + Math.floor(base / 2);
+        const dealt = applyDamage(target, raw, { attacker: user });
+        target.status = target.status || {};
+        const incoming = { turns: 4, pct: 0.04 };
+        if (!target.status.bleed) target.status.bleed = incoming; else { target.status.bleed.pct = Math.max(target.status.bleed.pct || 0, incoming.pct); target.status.bleed.turns = Math.max(target.status.bleed.turns || 0, incoming.turns); }
+        return `${user.name} tears with talons for ${dealt} damage and causes bleeding.`;
+    },
+    griffin_wing_gust(user, target) {
+        const base = user.baseAtk || 12;
+        const raw = Math.floor(Math.random() * 8) + Math.floor(base / 2);
+        const dealt = applyDamage(target, raw, { attacker: user });
+        target.status = target.status || {};
+        // reduce evasion (makes the player easier to hit)
+        target.evasion = Math.max(0, (target.evasion || 0) - 0.05);
+        return `${user.name} whips a Wing Gust, dealing ${dealt} and unsettling the enemy.`;
+    },
+
+    /* Werewolf abilities */
+    werewolf_frenzy(user, target) {
+        const base = user.baseAtk || 16;
+        let total = 0; for (let i = 0; i < 3; i++) total += Math.floor(Math.random() * 6) + Math.floor(base / 2);
+        const dealt = applyDamage(target, total, { attacker: user });
+        // small self-heal for feral momentum
+        user.hp = Math.min(user.maxHp || 100, (user.hp || 0) + Math.floor(dealt * 0.15));
+        return `${user.name} goes into a Frenzy for ${dealt} total damage and regains a bit of health.`;
+    },
+    werewolf_howl(user, target) {
+        const boost = 6;
+        user.attackBoost = (user.attackBoost || 0) + boost;
+        user.status = user.status || {};
+        user.status.shout = { turns: 3, amount: boost };
+        if (Math.random() < 0.2) {
+            target.status = target.status || {};
+            target.status.stun = { turns: 1 };
+        }
+        return `${user.name} howls, increasing ferocity (+${boost} ATK)!`;
+    },
+    werewolf_feral_leap(user, target) {
+        const base = user.baseAtk || 16;
+        const raw = Math.floor(Math.random() * 12) + base + 4;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        if (Math.random() < 0.25) {
+            target.status = target.status || {};
+            target.status.stun = { turns: 1 };
+        }
+        return `${user.name} leaps and slashes for ${dealt} damage!`;
+    },
+
+    /* Serpent abilities */
+    serpent_bite(user, target) {
+        const base = user.baseAtk || 12;
+        const raw = Math.floor(Math.random() * 8) + base;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        target.status = target.status || {};
+        const incoming = { turns: 4, dmg: Math.max(2, Math.floor(base / 3)) };
+        if (target.status.poison) { target.status.poison.dmg = Math.max(target.status.poison.dmg || 0, incoming.dmg); target.status.poison.turns = Math.max(target.status.poison.turns || 0, incoming.turns); } else target.status.poison = incoming;
+        return `${user.name} bites for ${dealt} and injects venom.`;
+    },
+    serpent_coil(user, target) {
+        const base = user.baseAtk || 12;
+        const raw = Math.floor(Math.random() * 10) + Math.floor(base / 2);
+        const dealt = applyDamage(target, raw, { attacker: user });
+        target.status = target.status || {};
+        const amount = 3;
+        if (!target.status.weaken) target.status.weaken = { turns: 2, amount: amount, prevBoost: (target.attackBoost || 0) };
+        else { target.status.weaken.amount = (target.status.weaken.amount || 0) + amount; target.status.weaken.turns = Math.max(target.status.weaken.turns || 0, 2); }
+        return `${user.name} coils and squeezes for ${dealt}, weakening the foe.`;
+    },
+    serpent_venom_spit(user, target) {
+        const base = user.baseAtk || 12;
+        const raw = Math.floor(Math.random() * 10) + Math.floor(base / 1.5);
+        const dealt = applyDamage(target, raw, { attacker: user });
+        target.status = target.status || {};
+        const incoming = { turns: 3, dmg: Math.max(2, Math.floor(base / 3)) };
+        if (target.status.poison) { target.status.poison.dmg = Math.max(target.status.poison.dmg || 0, incoming.dmg); target.status.poison.turns = Math.max(target.status.poison.turns || 0, incoming.turns); } else target.status.poison = incoming;
+        return `${user.name} spits venom for ${dealt} and poisons the enemy.`;
+    },
+
+    /* Centaur abilities */
+    centaur_trample(user, target) {
+        const base = user.baseAtk || 15;
+        let total = 0; for (let i = 0; i < 2; i++) total += Math.floor(Math.random() * 8) + Math.floor(base / 2);
+        const dealt = applyDamage(target, total, { attacker: user });
+        if (Math.random() < 0.2) {
+            target.status = target.status || {};
+            target.status.stun = { turns: 1 };
+        }
+        return `${user.name} tramples for ${dealt} damage and may stun.`;
+    },
+    centaur_arch_shot(user, target) {
+        const base = user.baseAtk || 15;
+        const raw = Math.floor(Math.random() * 12) + base + 4;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        return `${user.name} fires a precise Arc Shot for ${dealt} damage.`;
+    },
+    centaur_charge(user, target) {
+        const base = user.baseAtk || 15;
+        const raw = Math.floor(Math.random() * 12) + base + 6;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        if (Math.random() < 0.25) {
+            target.status = target.status || {};
+            target.status.stun = { turns: 1 };
+        }
+        return `${user.name} charges in and deals ${dealt} damage!`;
+    },
+
+    /* Turtle abilities */
+    turtle_shell_bash(user, target) {
+        const base = user.baseAtk || 10;
+        const raw = Math.floor(Math.random() * 8) + base;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        user.defense = (user.defense || 0) + 6;
+        user.status = user.status || {};
+        user.status.shield = { turns: 2, amount: 6 };
+        return `${user.name} bashes with its shell for ${dealt} and braces defensively.`;
+    },
+    turtle_withdraw(user, target) {
+        const heal = 12;
+        user.hp = Math.min(user.maxHp || 100, (user.hp || 0) + heal);
+        user.defense = (user.defense || 0) + 8;
+        user.status = user.status || {};
+        user.status.shield = { turns: 3, amount: 8 };
+        return `${user.name} withdraws into its shell, healing ${heal} HP and increasing defense.`;
+    },
+    turtle_rolling_charge(user, target) {
+        const base = user.baseAtk || 10;
+        const raw = Math.floor(Math.random() * 12) + Math.floor(base * 0.6);
+        const dealt = applyDamage(target, raw, { attacker: user });
+        return `${user.name} rolls and slams for ${dealt} damage.`;
+    },
+
+    /* Tortoise abilities */
+    tortoise_shell_guard(user, target) {
+        const add = 12;
+        user.defense = (user.defense || 0) + add;
+        user.status = user.status || {};
+        user.status.shield = { turns: 4, amount: add };
+        return `${user.name} braces in a Shell Guard, greatly increasing defense.`;
+    },
+    tortoise_tail_sweep(user, target) {
+        const base = user.baseAtk || 9;
+        const raw = Math.floor(Math.random() * 8) + base;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        if (Math.random() < 0.2) {
+            target.status = target.status || {};
+            target.status.stun = { turns: 1 };
+        }
+        return `${user.name} sweeps its tail for ${dealt} damage and may trip the foe.`;
+    },
+    tortoise_stone_spit(user, target) {
+        const base = user.baseAtk || 9;
+        const raw = Math.floor(Math.random() * 10) + Math.floor(base / 1.5);
+        const dealt = applyDamage(target, raw, { attacker: user });
+        // slow effect represented as reduced speed via a status hint
+        target.status = target.status || {};
+        target.status.slow = { turns: 2, amount: 1 };
+        return `${user.name} spits stones for ${dealt} damage and slows the enemy.`;
+    },
+
+    /* Phoenix abilities */
+    phoenix_ember(user, target) {
+        const base = user.baseAtk || 18;
+        const raw = Math.floor(Math.random() * 12) + base + 6;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        target.status = target.status || {};
+        target.status.burn = { turns: 3, dmg: Math.max(3, Math.floor(base / 4)) };
+        // minor self-heal
+        user.hp = Math.min(user.maxHp || 100, (user.hp || 0) + Math.floor(dealt * 0.12));
+        return `${user.name} scorches the foe for ${dealt} and is slightly rejuvenated.`;
+    },
+    phoenix_wingstorm(user, target) {
+        const base = user.baseAtk || 18;
+        const raw = Math.floor(Math.random() * 16) + base + 8;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        user.status = user.status || {};
+        user.status.regen = { turns: 3, amount: 4 };
+        return `${user.name} unleashes Wingstorm for ${dealt} damage and gains regenerative embers.`;
+    },
+    phoenix_rebirth(user, target) {
+        user.status = user.status || {};
+        user.status.rebirth = { enabled: true };
+        return `${user.name} prepares its Rebirth — if it falls it will attempt to return once.`;
+    },
+
+    /* Dragon abilities */
+    dragon_fire_breath(user, target) {
+        const base = user.baseAtk || 30;
+        const raw = Math.floor(Math.random() * 40) + base + 12;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        target.status = target.status || {};
+        target.status.burn = { turns: 4, dmg: Math.max(5, Math.floor(base / 4)) };
+        return `${user.name} breathes fire for ${dealt} damage and scorches the target.`;
+    },
+    dragon_claw(user, target) {
+        const base = user.baseAtk || 30;
+        const raw = Math.floor(Math.random() * 30) + base + 8;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        target.status = target.status || {};
+        const incoming = { turns: 4, pct: 0.06 };
+        if (!target.status.bleed) target.status.bleed = incoming; else { target.status.bleed.pct = Math.max(target.status.bleed.pct || 0, incoming.pct); target.status.bleed.turns = Math.max(target.status.bleed.turns || 0, incoming.turns); }
+        return `${user.name} slashes with Dragon Claw for ${dealt} damage and causes bleeding.`;
+    },
+    dragon_roar(user, target) {
+        const amount = 6;
+        target.status = target.status || {};
+        if (!target.status.weaken) target.status.weaken = { turns: 3, amount: amount, prevBoost: (target.attackBoost || 0) };
+        else { target.status.weaken.amount = (target.status.weaken.amount || 0) + amount; target.status.weaken.turns = Math.max(target.status.weaken.turns || 0, 3); }
+        if (Math.random() < 0.3) target.status.stun = { turns: 1 };
+        return `${user.name} roars, intimidating the foe and lowering their attack.`;
+    }
+
+    /* Stranger unique primary: Shadow Lunge */
+    ,stranger_shadow_lunge(user, target) {
+        const base = user.baseAtk || 32;
+        const raw = Math.floor(Math.random() * 20) + base + 6;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        // apply an instability stacking debuff that increases damage taken slightly
+        target.status = target.status || {};
+        const prev = (target.status.instability && target.status.instability.stacks) ? target.status.instability.stacks : 0;
+        target.status.instability = { turns: 3, stacks: prev + 1 };
+        return `${user.name} lunges from the shadows for ${dealt} damage and destabilizes ${target.name}!`;
+    }
+
+    /* Stranger unique buff/psychic: Mind Shatter */
+    ,stranger_mind_shatter(user, target) {
+        const base = user.baseAtk || 28;
+        const raw = Math.floor(Math.random() * 18) + base + 4;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        target.status = target.status || {};
+        // apply weaken and small chance to stun/confuse
+        const weakenAmt = 5;
+        if (!target.status.weaken) target.status.weaken = { turns: 3, amount: weakenAmt, prevBoost: (target.attackBoost || 0) };
+        else { target.status.weaken.amount = (target.status.weaken.amount || 0) + weakenAmt; target.status.weaken.turns = Math.max(target.status.weaken.turns || 0, 3); }
+        if (Math.random() < 0.25) target.status.stun = { turns: 1 };
+        return `${user.name} shatters the mind of ${target.name} for ${dealt} damage, leaving them disoriented!`;
+    }
+
+    /* Stranger dynamic third: executes a different boss third-ability at runtime each use */
+    ,stranger_unstable_third(user, target) {
+        try {
+            const bossIds = ['ogre','griffin','werewolf','serpent','centaur','tortoise','phoenix','dragon'];
+            const pool = [];
+            bossIds.forEach(id => {
+                const e = ENEMY_STATS[id];
+                if (e && Array.isArray(e.abilities) && e.abilities.length > 0) {
+                    const third = (e.abilities.length >= 3) ? e.abilities[2] : e.abilities[e.abilities.length - 1];
+                    if (third) pool.push(third);
+                }
+            });
+            // unique list and filter out stranger's own ids
+            const uniq = Array.from(new Set(pool)).filter(x => x !== 'stranger_shadow_lunge' && x !== 'stranger_mind_shatter' && x !== 'stranger_unstable_third');
+            if (!uniq.length) return `${user.name} hesitates and does nothing.`;
+            user.status = user.status || {};
+            const last = user.status.lastStrangerThird || null;
+            let chosen = null;
+            // try to pick a choice different from last used (attempt a few times)
+            for (let i = 0; i < 8; i++) {
+                const cand = uniq[Math.floor(Math.random() * uniq.length)];
+                if (!last || cand !== last) { chosen = cand; break; }
+            }
+            if (!chosen) chosen = uniq[Math.floor(Math.random() * uniq.length)];
+            // record the last used so future uses prefer a different one
+            user.status.lastStrangerThird = chosen;
+            // execute the chosen ability's handler if available
+            let res;
+            try {
+                if (abilityHandlers[chosen]) {
+                    res = abilityHandlers[chosen](user, target);
+                } else {
+                    // fallback: basic execution message
+                    const info = ABILITIES[chosen] || { name: chosen };
+                    res = `${user.name} calls upon ${info.name}.`;
+                }
+            } catch (e) {
+                console.error('stranger unstable third inner handler failed', e);
+                res = `${user.name} attempts an odd assault but it fizzles.`;
+            }
+            return `${user.name} shifts and unleashes an unstable echo: ${res}`;
+        } catch (e) {
+            console.error('stranger_unstable_third failed', e);
+            return `${user.name} tries to do something strange but fails.`;
+        }
     }
 };
 
@@ -724,6 +1107,38 @@ for (const aid of initialAllies) {
     allyObj.maxMana = (CLASS_STATS[aid] && typeof CLASS_STATS[aid].mana === 'number') ? CLASS_STATS[aid].mana : 0;
     party.push(allyObj);
 }
+
+// Apply story campaign 'next player' state if present.
+// When a player spares an enemy in the story, the UI sets 'story_next_player_state' to 'spare'
+// and when killing it sets to 'full'. Here we honor that flag so the next battle starts
+// with the appropriate HP/mana/cooldown state.
+try {
+    const nxt = localStorage.getItem('story_next_player_state');
+    if (nxt) {
+        if (nxt === 'spare') {
+            for (const p of party) {
+                try {
+                    p.hp = Math.max(1, Math.floor((p.maxHp || p.hp || 1) * 0.75));
+                    if (p.maxMana) p.mana = Math.max(0, Math.floor((p.maxMana || p.mana || 0) * 0.75));
+                    p.abilityCooldowns = p.abilityCooldowns || {};
+                    const abs = p.abilities || [];
+                    abs.forEach(aid => { p.abilityCooldowns[aid] = Math.max(1, p.abilityCooldowns[aid] || 1); });
+                } catch (e) { /* ignore per-player init errors */ }
+            }
+        } else if (nxt === 'full') {
+            // ensure party is topped off when killing a creature
+            for (const p of party) {
+                try {
+                    p.hp = p.maxHp || p.hp || p.maxHp;
+                    if (p.maxMana) p.mana = p.maxMana || p.mana || 0;
+                    p.abilityCooldowns = p.abilityCooldowns || {};
+                } catch (e) { }
+            }
+        }
+        // clear the one-time flag
+        localStorage.removeItem('story_next_player_state');
+    }
+} catch (e) { /* ignore localStorage errors */ }
 
 let partyIndex = 0;
 let player = party[partyIndex];
@@ -933,18 +1348,141 @@ function spawnEnemy(enemyId) {
     enemy.abilityCooldowns = {};
     enemy.status = {};
     enemy.fainted = false;
+    // If this spawn is the story final boss, allow storyCampaignResult to adjust its HP
+    // Additionally, if this is the Stranger, give it a deterministic role: primary attack
+    // + buffing attack + a third ability chosen at random from the boss 'third' abilities.
+    try {
+        if (enemyId === 'stranger') {
+            // Give the Stranger unique primary/buff abilities and a dynamic third.
+            const primary = 'stranger_shadow_lunge';
+            const buff = 'stranger_mind_shatter';
+            enemy.abilities = [primary, buff, 'stranger_unstable_third'];
+            // initialize last-stranger-third tracker so each use prefers a different inner ability
+            enemy.status = enemy.status || {};
+            enemy.status.lastStrangerThird = null;
+        }
+    } catch (e) { /* ignore errors in stranger ability composition */ }
+    // If this spawn is the story final boss, allow storyCampaignResult to adjust its HP
+    try {
+        if (enemyId === 'stranger') {
+            const res = localStorage.getItem('storyCampaignResult');
+            if (res) {
+                let mult = 1;
+                if (res === 'all_kill') mult = 1.25;
+                else if (res === 'all_spare') mult = 0.75;
+                enemy.maxHp = Math.max(1, Math.floor((enemy.maxHp || ENEMY_STATS[enemyId].maxHp || 100) * mult));
+                enemy.hp = enemy.maxHp;
+            }
+        }
+    } catch (e) { /* ignore */ }
     const eNameEl = document.getElementById('enemy-name');
     if (eNameEl) eNameEl.textContent = enemy.name;
     updateUI();
 }
 
 function handleEnemyDefeat() {
+    // Phoenix revival check: if the enemy can rebirth, consume that effect and revive instead of treating as defeat
+    try {
+        if (enemy && enemy.status && enemy.status.rebirth && enemy.status.rebirth.enabled) {
+            // consume rebirth and restore a portion of HP
+            delete enemy.status.rebirth;
+            // revive with 40% HP
+            enemy.hp = Math.max(1, Math.floor((enemy.maxHp || ENEMY_STATS[currentEnemyId].maxHp || 100) * 0.4));
+            enemy.fainted = false;
+            // mark ability cooldown to avoid infinite re-enables (if applicable)
+            if (typeof startAbilityCooldown === 'function') startAbilityCooldown(enemy, 'phoenix_rebirth');
+            logMessage(`The ${enemy.name} bursts into flame and is reborn!`);
+            updateUI();
+            return; // resume the fight
+        }
+    } catch (e) { /* continue to normal death flow on error */ }
+
     logMessage(`You defeated the ${enemy.name}!`);
     enemy.fainted = true;
     updateUI();
+    // If this was the story final boss, clear campaign state and report completion
+    try {
+        const rawC = localStorage.getItem('storyCampaign');
+        const c = rawC ? JSON.parse(rawC) : null;
+        if (c && c.active && currentEnemyId === (c.bossId || 'stranger')) {
+            localStorage.removeItem('storyCampaign');
+            localStorage.removeItem('storyCampaignResult');
+            logMessage('Campaign complete. The Stranger has been defeated.');
+        }
+    } catch (e) { /* ignore */ }
     // accumulate drop chance based on enemy defeated
     const DROP_CHANCES = { slime: 5, gladiator: 10, boss: 25 };
     try { pveRunDropChance = Math.min(100, pveRunDropChance + (DROP_CHANCES[currentEnemyId] || 0)); } catch (e) { }
+
+    // Story campaign handling: if a campaign is active, present spare/kill choice for campaign monsters
+    try {
+        const raw = localStorage.getItem('storyCampaign');
+        const campaign = raw ? JSON.parse(raw) : null;
+        if (campaign && campaign.active) {
+            // If this is the final boss (stranger) we don't offer a spare option here — normal victory flow continues
+            if (currentEnemyId !== campaign.bossId) {
+                // show overlay choice to spare or kill
+                const overlayId = 'story-choice-overlay';
+                if (!document.getElementById(overlayId)) {
+                    const overlay = document.createElement('div');
+                    overlay.id = overlayId;
+                    overlay.style.position = 'fixed'; overlay.style.left = '0'; overlay.style.top = '0'; overlay.style.width = '100%'; overlay.style.height = '100%';
+                    overlay.style.background = 'rgba(0,0,0,0.75)'; overlay.style.display = 'flex'; overlay.style.alignItems = 'center'; overlay.style.justifyContent = 'center'; overlay.style.zIndex = '9999';
+
+                    const panel = document.createElement('div');
+                    panel.style.background = '#111'; panel.style.color = '#fff'; panel.style.padding = '18px'; panel.style.borderRadius = '8px'; panel.style.maxWidth = '720px'; panel.style.width = '90%'; panel.style.boxSizing = 'border-box';
+
+                    const title = document.createElement('h2');
+                    title.textContent = `You have defeated the ${enemy.name}`;
+                    panel.appendChild(title);
+
+                    const desc = document.createElement('p');
+                    desc.textContent = 'Will you spare this creature or end its life? Your choices will affect the final confrontation.';
+                    panel.appendChild(desc);
+
+                    const row = document.createElement('div'); row.style.display='flex'; row.style.gap='12px'; row.style.justifyContent='center';
+
+                    const spareBtn = document.createElement('button'); spareBtn.className='secondary-btn'; spareBtn.textContent='Spare';
+                    const killBtn = document.createElement('button'); killBtn.className='primary-btn'; killBtn.textContent='Kill';
+
+                    function recordChoice(choice) {
+                        try {
+                            const raw2 = localStorage.getItem('storyCampaign');
+                            const c2 = raw2 ? JSON.parse(raw2) : null;
+                            if (!c2) return;
+                            c2.choices = c2.choices || [];
+                            c2.choices.push(choice);
+                            c2.progress = (c2.progress || 0) + 1;
+                            // persist updated campaign
+                            localStorage.setItem('storyCampaign', JSON.stringify(c2));
+                        } catch (e) { console.error('persist campaign choice failed', e); }
+                    }
+
+                    spareBtn.addEventListener('click', () => {
+                        recordChoice('spare');
+                        // inform next battle to start player at 75% (spared behavior)
+                        try { localStorage.setItem('story_next_player_state', 'spare'); } catch (e) {}
+                        overlay.remove();
+                        // return to story page so player sees map and can continue
+                        location.href = 'story.html';
+                    });
+                    killBtn.addEventListener('click', () => {
+                        recordChoice('kill');
+                        // inform next battle to start player at full (killed behavior)
+                        try { localStorage.setItem('story_next_player_state', 'full'); } catch (e) {}
+                        overlay.remove();
+                        location.href = 'story.html';
+                    });
+
+                    row.appendChild(spareBtn); row.appendChild(killBtn);
+                    panel.appendChild(row);
+                    overlay.appendChild(panel);
+                    document.body.appendChild(overlay);
+                }
+                return; // halt normal post-defeat flow until player chooses
+            }
+        }
+    } catch (e) { /* ignore story errors and continue normal flow */ }
 
     if (enemyQueue.length > 0) {
         setTimeout(() => {
@@ -1204,14 +1742,22 @@ function handlePlayerDefeat() {
             // show a return button to selection
             try {
                 const container = document.getElementById('battle') || document.body;
-                if (container && !document.getElementById('return-to-selection-btn')) {
-                    const btn = document.createElement('button');
-                    btn.id = 'return-to-selection-btn';
-                    btn.textContent = 'Return to Selection';
-                    btn.style.marginTop = '12px';
-                    btn.className = 'primary-btn';
-                    btn.addEventListener('click', () => { location.href = 'selection.html'; });
-                    container.appendChild(btn);
+                // If we're in a story campaign, return to story mode instead of selection
+                const rawC = localStorage.getItem('storyCampaign');
+                const campaignActive = rawC ? (JSON.parse(rawC).active === true) : false;
+                if (campaignActive) {
+                    // give a short delay for the player to read the defeat message
+                    setTimeout(() => { try { location.href = 'story.html'; } catch(e){} }, 900);
+                } else {
+                    if (container && !document.getElementById('return-to-selection-btn')) {
+                        const btn = document.createElement('button');
+                        btn.id = 'return-to-selection-btn';
+                        btn.textContent = 'Return to Selection';
+                        btn.style.marginTop = '12px';
+                        btn.className = 'primary-btn';
+                        btn.addEventListener('click', () => { location.href = 'selection.html'; });
+                        container.appendChild(btn);
+                    }
                 }
             } catch (e) { /* ignore */ }
         }, 400);

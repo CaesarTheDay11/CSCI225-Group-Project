@@ -6,15 +6,342 @@
     <title>Story — Arena BattleGrounds</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
+    <style>
+      /* Story page specific tweaks to fix contrast and small layout */
+      body { background: #0e0f14; color: #eaeaea; }
+      .container { background: rgba(255,255,255,0.02); padding: 14px; border-radius: 8px; }
+      .class-btn { background:#1b1d23; color:#fff; border: 1px solid #2b2f38; margin:4px; padding:6px 8px; border-radius:6px; min-width:86px; }
+      .class-btn.selected { box-shadow: 0 0 0 3px rgba(58,134,255,0.16); }
+      .class-icon{ display:block; margin:0 auto 6px; border-radius:6px; }
+      #ally-list .ally-badge{ display:inline-block; background:#222; color:#eee; padding:6px 8px; border-radius:12px; margin:4px; }
+      #ally-list .remove-ally{ margin-left:8px; color:#ff7b7b; cursor:pointer; font-weight:700; }
+      #dialogue-box{ background: linear-gradient(180deg,#0d0f12 0%, #111217 100%); color:#eee; }
+      .primary-btn{ background:#2e7dff; color:#fff; border:none; padding:8px 12px; border-radius:6px; }
+      .secondary-btn{ background:#444; color:#fff; border:none; padding:8px 12px; border-radius:6px; }
+    </style>
   </head>
   <body>
-    <div class="container mt-5 text-center">
-      <h1>Story Mode (placeholder)</h1>
-      <p>This is a placeholder for the Story campaign. You can hook your campaign scenes and selection here.</p>
-      <p>
-        <a class="btn btn-primary" href="selection.html">Start Campaign (selection)</a>
-  <a class="btn btn-link" href="../TitleScreen.html">Back</a>
-      </p>
+    <div class="container mt-4">
+      <h1 class="text-center">The Tale of Eight Monsters</h1>
+      <div class="row mt-3">
+        <div class="col-md-6">
+          <div style="margin-bottom:10px; text-align:center; color:#ddd; font-weight:700">Selected class: <span id="selected-class-display">Warrior</span></div>
+          <h5 style="color:#fff">Choose your class</h5>
+          <div id="class-row" class="class-grid" role="list" style="margin-bottom:8px">
+            <button type="button" data-class="warrior" class="class-btn has-tooltip" data-tooltip="Warrior — High HP & strong defense"><img class="class-icon" src="../img/warrior.jpg" width="56" height="56" alt="Warrior"><br>Warrior</button>
+            <button type="button" data-class="mage" class="class-btn has-tooltip" data-tooltip="Mage — High magic damage, lower HP"><img class="class-icon" src="../img/mage.jpg" width="56" height="56" alt="Mage"><br>Mage</button>
+            <button type="button" data-class="archer" class="class-btn has-tooltip" data-tooltip="Archer — Ranged DPS with precision"><img class="class-icon" src="../img/archer.jpg" width="56" height="56" alt="Archer"><br>Archer</button>
+            <button type="button" data-class="cleric" class="class-btn has-tooltip" data-tooltip="Cleric — Heals and dispels DOTs"><img class="class-icon" src="../img/cleric.jpg" width="56" height="56" alt="Cleric"><br>Cleric</button>
+            <button type="button" data-class="rogue" class="class-btn has-tooltip" data-tooltip="Rogue — High single-target burst"><img class="class-icon" src="../img/rogue.jpg" width="56" height="56" alt="Rogue"><br>Rogue</button>
+            <button type="button" data-class="dark_mage" class="class-btn has-tooltip" data-tooltip="Dark Mage — Corrupt magics & siphon"><img class="class-icon" src="../img/dark_mage.jpg" width="56" height="56" alt="Dark Mage"><br>Dark Mage</button>
+            <button type="button" data-class="necromancer" class="class-btn has-tooltip" data-tooltip="Necromancer — Summons and curses"><img class="class-icon" src="../img/necromancer.jpg" width="56" height="56" alt="Necromancer"><br>Necromancer</button>
+            <button type="button" data-class="paladin" class="class-btn has-tooltip" data-tooltip="Paladin — Tanky support"><img class="class-icon" src="../img/paladin.jpg" width="56" height="56" alt="Paladin"><br>Paladin</button>
+            <button type="button" data-class="druid" class="class-btn has-tooltip" data-tooltip="Druid — Nature heals & control"><img class="class-icon" src="../img/druid.jpg" width="56" height="56" alt="Druid"><br>Druid</button>
+            <button type="button" data-class="monk" class="class-btn has-tooltip" data-tooltip="Monk — Fast strikes & control"><img class="class-icon" src="../img/monk.jpg" width="56" height="56" alt="Monk"><br>Monk</button>
+            <button type="button" data-class="wild_magic_sorcerer" class="class-btn has-tooltip" data-tooltip="Wild Mage — Chaotic magic & high variance"><img class="class-icon" src="../img/wild_magic_sorcerer.jpg" width="56" height="56" alt="Wild Mage"><br>Wild Mage</button>
+          </div>
+
+          <h5 style="color:#fff">Pick up to 2 allies</h5>
+          <div id="ally-row" class="class-grid" style="margin-bottom:8px">
+            <button type="button" class="class-btn has-tooltip" data-add-ally="warrior"><img class="class-icon" src="../img/warrior.jpg" width="56" height="56" alt="Warrior"><br>Warrior</button>
+            <button type="button" class="class-btn has-tooltip" data-add-ally="cleric"><img class="class-icon" src="../img/cleric.jpg" width="56" height="56" alt="Cleric"><br>Cleric</button>
+            <button type="button" class="class-btn has-tooltip" data-add-ally="rogue"><img class="class-icon" src="../img/rogue.jpg" width="56" height="56" alt="Rogue"><br>Rogue</button>
+            <button type="button" class="class-btn has-tooltip" data-add-ally="dark_mage"><img class="class-icon" src="../img/dark_mage.jpg" width="56" height="56" alt="Dark Mage"><br>Dark Mage</button>
+            <button type="button" class="class-btn has-tooltip" data-add-ally="necromancer"><img class="class-icon" src="../img/necromancer.jpg" width="56" height="56" alt="Necromancer"><br>Necromancer</button>
+            <button type="button" class="class-btn has-tooltip" data-add-ally="paladin"><img class="class-icon" src="../img/paladin.jpg" width="56" height="56" alt="Paladin"><br>Paladin</button>
+            <button type="button" class="class-btn has-tooltip" data-add-ally="druid"><img class="class-icon" src="../img/druid.jpg" width="56" height="56" alt="Druid"><br>Druid</button>
+            <button type="button" class="class-btn has-tooltip" data-add-ally="monk"><img class="class-icon" src="../img/monk.jpg" width="56" height="56" alt="Monk"><br>Monk</button>
+            <button type="button" class="class-btn has-tooltip" data-add-ally="wild_magic_sorcerer"><img class="class-icon" src="../img/wild_magic_sorcerer.jpg" width="56" height="56" alt="Wild Mage"><br>Wild Mage</button>
+          </div>
+
+          <div id="ally-list" style="min-height:2.2rem; margin-bottom:6px; color:#ddd">No allies added.</div>
+
+          <div id="dialogue-box" style="max-height:320px; overflow:auto; background:#111; color:#eee; padding:12px; border-radius:8px;">
+            <!-- Dialogue-only story text will be injected here -->
+          </div>
+        </div>
+        <div class="col-md-6 text-center">
+          <div style="background:#000; padding:12px; border-radius:8px; color:#fff;">
+            <h4>Campaign Map</h4>
+            <img id="map-gif" src="Gifs/Full Map Animation.gif" alt="Map" style="max-width:100%; border:1px solid #333; border-radius:6px;"/>
+            <div id="progress-note" style="margin-top:6px; color:#ddd; font-size:0.95rem">Progress: Not started</div>
+            <div style="margin-top:12px">
+              <button id="startCampaignBtn" class="primary-btn">Start "The tale of eight monsters"</button>
+              <button id="continueCampaignBtn" class="secondary-btn" style="display:none;">Continue Campaign</button>
+            </div>
+            <div style="margin-top:8px">
+              <a class="btn btn-link" href="../TitleScreen.html">Back</a>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
+    <script>
+  // friendly display names for classes (used for ally badges)
+  const CLASS_DISPLAY_NAMES = {
+    warrior: 'Warrior', mage: 'Mage', archer: 'Archer', cleric: 'Cleric', rogue: 'Rogue', dark_mage: 'Dark Mage', necromancer: 'Necromancer', paladin: 'Paladin', druid: 'Druid', monk: 'Monk', wild_magic_sorcerer: 'Wild Mage'
+  };
+  // Dialogue mapping per encounter (opening + post-fight spare/kill)
+  const DIALOGUES = {
+    ogre: {
+      opening: `Narrator:\n\nYou enter a large, dark cave and find a giant ogre sleeping. You walk over a branch and wake up the ogre.\n\nogre:\nWho wakes me? Ahhhh, you tiny challenger. What brings you here? Gonna give me a backrub? HaHaHa.`,
+      post_kill: `ogre:\nAhh, you better watch your back.`,
+      post_spare: `ogre:\nThanks for not ending me there. Now get out of here before my brother wakes up and wants a piece of ya.`
+    },
+    griffin: {
+      opening: `Narrator:\n\nYou enter a lush forest with tall trees and rows of bushes as far as the eye can see. You search for a little bit until you look up in the sky to see a Griffin soaring high in the beautiful night sky.\n\nGriffin:\nYou are brave, yet you are ignorant. You know now the damage you can cause. I shall put you in your place.`,
+      post_kill: `Griffin:\nI fear you do not know the result of your decision. Yet you grow in strength. Good luck, I have faith you can complete any goal you have.`,
+      post_spare: `Griffin:\nYou were a worthy challenger. Your compassion is only second to your strength. Save travels, brave warrior.`
+    },
+    werewolf: {
+      opening: `Narrator:\n\nYou find yourself in a field of tall grass under a crescent moon. A low growl echoes in the darkness, and before you know it, a towering Werewolf leaps from the shadows, its eyes glowing yellow.\n\nWerewolf:\nHoooowwl! You have disturbed my hunt! Your flesh is mine, tiny morsel! I will tear you limb from limb!`,
+      post_kill: `Werewolf:\n(A final, mournful howl fades into the night.) My curse is broken... but you carry the weight of my end.`,
+      post_spare: `Werewolf:\nThank you... I will run far, far away from here. May the moon guide your path, and may you never know my hunger.`
+    },
+    serpent: {
+      opening: `Narrator:\n\nYou descend into a humid marshland, the air thick with the smell of decay. The ground trembles as a massive Giant Serpent, its scales the color of emeralds, emerges from the murky water.\n\nSerpent:\nSssspeak, prey. Why do you intrude upon my sssslumber? You have the ssssmell of death upon you. Come closssser.`,
+      post_kill: `Serpent:\n(A deep, guttural sound, like a crumbling mountain.) The world is colder now... without the ancient ones.`,
+      post_spare: `Serpent:\nYou show respect to the old ways. I will remember thisss act of kindness. Leave thisss sssswamp, and do not return.`
+    },
+    centaur: {
+      opening: `Narrator:\n\nYou arrive at a vast, open plain where the wind whistles through the tall, dry grass. A noble Centaur, armed with a bow and spear, stands waiting for you, looking sorrowful.\n\nCentaur:\nGreetings, traveler. I know why you are here. The Stranger sent you. Let us make this swift, though my heart is heavy with this fight. Honor demands I defend myself.`,
+      post_kill: `Centaur:\n(A deep sigh, a broken voice.) Tell my family... I fought with honor.`,
+      post_spare: `Centaur:\nI will not forget this kindness. Go quickly, before I reconsider my vow of peace. May the earth bless your steps.`
+    },
+    tortoise: {
+      opening: `Narrator:\n\nYour path leads you to a desolate, rocky expanse. A mountain seems to move, and you realize it is the shell of a colossal Giant Black Tortoise, ancient and immense.\n\nTortoise:\n(A slow, rumbling voice, like stones shifting.) Why awaken me? I have slept for ages. Young one, your life force is fleeting. Go back to your short existence. I seek only solitude.`,
+      post_kill: `Tortoise:\n(Silence. The earth trembles and a chasm opens briefly nearby.) The world mourns the loss of its stability.`,
+      post_spare: `Tortoise:\nHmmph. A wise choice. True power is knowing when not to use force. You have saved more than just my life today. Go. Grow old.`
+    },
+    phoenix: {
+      opening: `Narrator:\n\nYou travel to a scorching volcanic peak. Perched on the highest spire is a breathtaking Phoenix, its feathers shimmering with internal fire.\n\nPhoenix:\nAh, a challenger! Welcome to the peak of rebirth. You seek to end me, but how can you kill what is eternal? My flames will cleanse you of your fear... or your life.`,
+      post_kill: `Phoenix:\n(A burst of brilliant, searing light.) Farewell, little spark. I will see you in another life.`,
+      post_spare: `Phoenix:\nYou seek life, not death. A noble trait. My next life will be one of peace, thanks to your compassion. Go now, and carry my light with you.`
+    },
+    dragon: {
+      opening: `Narrator:\n\nYour final quest takes you to a forbidding mountain lair. Inside, on a massive pile of gold and jewels, sleeps the mighty Dragon, scales of deep crimson, its breath hot and sulfurous.\n\nDragon:\n(A roar that shakes the very mountain.) WHO DARES DISTURB THE GREAT ONE'S TREASURE?! You seek my head for that trinket-master? Foolish mortal! You will become a pile of ash!`,
+      post_kill: `Dragon:\n(A terrible, grinding sound.) The treasures are yours... but the lie is on your soul.`,
+      post_spare: `Dragon:\nYou choose wisdom over savagery. You are a true hero, not his killer. Fly now, little one, before he claims the final prize.`
+    },
+    stranger: {
+      opening: `Narrator:\n\nYou return to the place where you first met the Stranger. He is standing exactly where he was, but a dark, swirling energy now surrounds him. The map falls from your hand and crumbles to dust.\n\nStranger:\nWelcome back, my little exterminator! Did you truly think I cared for your meager riches? They were bait! I needed you to weaken or eliminate these creatures, for their power is too great for a single man to overcome—until now!`,
+      post_kill: `Stranger:\nHaha! You have delivered their essences right into my hands! Their combined strength is MINE! Prepare to be my first slave!`,
+      post_spare: `Stranger:\nNo! Why did you show them mercy?! Their power is scattered and useless to me! You have ruined everything! But I will still crush you myself!`,
+      post_mixed: `Stranger:\nSome power is better than none! I will still have the world! Die, you meddling fool!`
+    }
+  };
+
+  // Map images per enemy (use these when showing the next encounter on the map)
+  const MAP_IMAGES_BY_ENEMY = {
+    ogre: 'Gifs/mapFrame1.png',
+    griffin: 'Gifs/mapGif#1.gif',
+    werewolf: 'Gifs/mapGif#2.gif',
+    serpent: 'Gifs/mapGif#3.gif',
+    centaur: 'Gifs/mapGif#4.gif',
+    tortoise: 'Gifs/mapGif#5.gif',
+    phoenix: 'Gifs/mapGif#6.gif',
+    dragon: 'Gifs/mapGif#7.gif'
+  };
+
+  function setDialogue(text){ const el = document.getElementById('dialogue-box'); if (!el) return; el.textContent = text; }
+
+  // initial placeholder
+  setDialogue(`Stranger:\n\nRaise Brave Warrior! For you must defeat these mystical beasts. Take this map and begin your quest.`);
+
+      // Campaign configuration
+      const campaignKey = 'storyCampaign';
+      const defaultEnemies = ['ogre','griffin','werewolf','serpent','centaur','tortoise','phoenix','dragon'];
+
+      function getCampaign(){ try { return JSON.parse(localStorage.getItem(campaignKey) || 'null'); } catch(e){ return null; } }
+      function saveCampaign(c){ localStorage.setItem(campaignKey, JSON.stringify(c)); }
+
+      // Selection helpers (class + allies)
+          let allyQueue = JSON.parse(localStorage.getItem('allyQueue') || '[]');
+          function renderAllyList() {
+            const el = document.getElementById('ally-list');
+            if (!el) return;
+            el.innerHTML = '';
+            if (!allyQueue || allyQueue.length === 0) { el.textContent = 'No allies added.'; return; }
+            allyQueue.forEach((id,i)=>{
+            const span = document.createElement('span');
+            span.className = 'ally-badge';
+            const friendly = CLASS_DISPLAY_NAMES[id] || id;
+            span.textContent = friendly;
+              const rem = document.createElement('span');
+              rem.className = 'remove-ally';
+              rem.textContent = '✕';
+              rem.title = 'Remove ally';
+              rem.addEventListener('click', ()=>{ removeAlly(i); });
+            span.appendChild(rem);
+              el.appendChild(span);
+            });
+          }
+
+          function removeAlly(index){ if (!allyQueue) return; allyQueue.splice(index,1); localStorage.setItem('allyQueue', JSON.stringify(allyQueue)); renderAllyList(); }
+
+      // wire add-ally buttons
+      document.querySelectorAll('[data-add-ally]').forEach(btn=>{
+        btn.addEventListener('click', (e)=>{
+          const id = btn.getAttribute('data-add-ally');
+          if (!allyQueue) allyQueue = [];
+          if (allyQueue.length >= 2) { alert('Ally limit reached (max 2).'); return; }
+          allyQueue.push(id);
+          localStorage.setItem('allyQueue', JSON.stringify(allyQueue));
+          renderAllyList();
+          e.stopPropagation();
+        });
+      });
+
+      // class selection behavior
+      function setupClassSelection() {
+        const row = document.getElementById('class-row'); if (!row) return;
+        row.querySelectorAll('[data-class]').forEach(item=>{
+          item.addEventListener('click', ()=>{
+            row.querySelectorAll('.selected').forEach(c=>c.classList.remove('selected'));
+            item.classList.add('selected');
+            const sel = item.getAttribute('data-class');
+            const disp = document.getElementById('selected-class-display'); if (disp) disp.textContent = sel;
+            localStorage.setItem('selectedClass', sel);
+          });
+        });
+        // mark default from localStorage if present
+        const existingClass = localStorage.getItem('selectedClass') || 'warrior';
+        const btn = document.querySelector(`#class-row [data-class='${existingClass}']`);
+        if (btn) { btn.classList.add('selected'); document.getElementById('selected-class-display').textContent = existingClass; }
+      }
+
+      setupClassSelection(); renderAllyList();
+
+      function renderProgress(){
+        const c = getCampaign();
+        const note = document.getElementById('progress-note');
+        const contBtn = document.getElementById('continueCampaignBtn');
+        const startBtn = document.getElementById('startCampaignBtn');
+        if (!c || !c.active){
+          note.textContent = 'Progress: Not started';
+          contBtn.style.display='none';
+          startBtn.style.display='inline-block';
+          document.getElementById('map-gif').src = 'Gifs/Full Map Animation.gif';
+          // show intro
+          setDialogue(`Stranger:\n\nRaise Brave Warrior! For you must defeat these mystical beasts. Take this map and begin your quest.`);
+          return;
+        }
+        const idx = c.progress || 0;
+        note.textContent = `Progress: ${idx} / ${c.enemies.length}`;
+        startBtn.style.display='none'; contBtn.style.display='inline-block';
+        // pick gif by progress (1-based) — prefer per-enemy mapped frames when available
+        const gifs = [
+          'Gifs/mapGif#1.gif',
+          'Gifs/mapGif#2.gif',
+          'Gifs/mapGif#3.gif',
+          'Gifs/mapGif#4.gif',
+          'Gifs/mapGif#5.gif',
+          'Gifs/mapGif#6.gif',
+          'Gifs/mapGif#7.gif'
+        ];
+        const mapEl = document.getElementById('map-gif');
+        if (idx < c.enemies.length) {
+          const nextId = c.enemies[idx];
+          const mapped = MAP_IMAGES_BY_ENEMY[nextId];
+          if (mapped) {
+            mapEl.src = mapped;
+          } else {
+            if (idx <= 0) mapEl.src = gifs[0]; else if (idx <= gifs.length) mapEl.src = gifs[Math.max(0, idx-1)]; else mapEl.src = 'Gifs/Full Map Animation.gif';
+          }
+        } else {
+          mapEl.src = 'Gifs/Full Map Animation.gif';
+        }
+
+        // Build dialogue: if we have a previous completed enemy, show its post-fight line, then the opening for the next enemy
+        const parts = [];
+        if (idx > 0){
+          const prevId = c.enemies[idx-1];
+          const prevChoice = (c.choices && c.choices[idx-1]) || null;
+          if (prevId && prevChoice){
+            const prevD = DIALOGUES[prevId];
+            if (prevD){
+              parts.push(prevChoice === 'kill' ? (prevD.post_kill || '') : (prevD.post_spare || ''));
+            }
+          }
+        }
+
+        if (idx < c.enemies.length){
+          const nextId = c.enemies[idx];
+          const nextD = DIALOGUES[nextId];
+          if (nextD && nextD.opening) parts.push(nextD.opening);
+        } else {
+          // all regular enemies completed — show Stranger opening and reaction based on choices
+          const strangerD = DIALOGUES['stranger'];
+          if (strangerD){
+            parts.push(strangerD.opening);
+            const allKilled = c.choices.length === c.enemies.length && c.choices.every(x => x==='kill');
+            const allSpared = c.choices.length === c.enemies.length && c.choices.every(x => x==='spare');
+            if (allKilled) parts.push(strangerD.post_kill); else if (allSpared) parts.push(strangerD.post_spare); else parts.push(strangerD.post_mixed);
+          }
+        }
+
+        setDialogue(parts.join('\n\n---\n\n'));
+      }
+
+      document.getElementById('startCampaignBtn').addEventListener('click', () => {
+        // ensure class and allies saved
+        const selClass = localStorage.getItem('selectedClass') || 'warrior';
+        localStorage.setItem('selectedClass', selClass);
+        localStorage.setItem('allyQueue', JSON.stringify(allyQueue || []));
+        // initialize campaign state
+        const c = { active: true, progress: 0, choices: [], enemies: defaultEnemies.slice(), bossId: 'stranger' };
+        saveCampaign(c);
+        // set selectedEnemy to first
+        localStorage.setItem('selectedEnemy', c.enemies[0]);
+        // ensure no queued wave
+        localStorage.removeItem('enemyQueue');
+        // go to battle page
+        location.href = 'PVEbattle.html';
+      });
+
+      document.getElementById('continueCampaignBtn').addEventListener('click', () => {
+        const c = getCampaign(); if (!c || !c.active) return; const idx = c.progress || 0; if (idx < c.enemies.length){
+          // ensure selections saved
+          const selClass = localStorage.getItem('selectedClass') || 'warrior';
+          localStorage.setItem('selectedClass', selClass);
+          localStorage.setItem('allyQueue', JSON.stringify(allyQueue || []));
+          localStorage.setItem('selectedEnemy', c.enemies[idx]); localStorage.removeItem('enemyQueue'); location.href='PVEbattle.html'; return; } // if progress >= enemies, go to final boss
+        // compute boss hp adjustment before starting final fight
+        const allKilled = c.choices.length === c.enemies.length && c.choices.every(x => x==='kill');
+        const allSpared = c.choices.length === c.enemies.length && c.choices.every(x => x==='spare');
+        // store a campaign result flag for PVEbattle to read
+        localStorage.setItem('storyCampaignResult', allKilled ? 'all_kill' : (allSpared ? 'all_spare' : 'mixed'));
+        localStorage.setItem('selectedEnemy', c.bossId);
+        localStorage.removeItem('enemyQueue');
+        location.href='PVEbattle.html';
+      });
+
+      // render initial
+      // wire reset button safely after DOM is parsed (the button element sits after this script)
+      document.addEventListener('DOMContentLoaded', ()=>{
+        const resetBtn = document.getElementById('resetCampaignBtn');
+        if (resetBtn) {
+          resetBtn.addEventListener('click', ()=>{
+            if (!confirm('Reset campaign and clear selections?')) return;
+            try {
+              localStorage.removeItem('storyCampaign');
+              localStorage.removeItem('storyCampaignResult');
+              localStorage.removeItem('story_next_player_state');
+              localStorage.removeItem('allyQueue');
+              localStorage.removeItem('selectedClass');
+              localStorage.removeItem('selectedEnemy');
+              localStorage.removeItem('enemyQueue');
+              allyQueue = [];
+              renderAllyList();
+              renderProgress();
+              setDialogue('Campaign reset. Take the map again, brave warrior.');
+            } catch (e) { console.error('reset failed', e); }
+          });
+        }
+      });
+
+      renderProgress();
+    </script>
+    <button id="resetCampaignBtn" title="Reset campaign" style="position:fixed; right:18px; bottom:18px; z-index:9999; background:#8b0000; color:#fff; border:none; padding:8px 10px; border-radius:8px; box-shadow:0 4px 10px rgba(0,0,0,0.4);">Reset Campaign</button>
   </body>
 </html>

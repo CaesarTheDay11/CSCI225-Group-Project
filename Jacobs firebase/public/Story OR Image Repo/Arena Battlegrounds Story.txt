@@ -1,0 +1,252 @@
+﻿Concept
+
+
+You meet this stranger who tasks you with killing 8 monsters. You can fight the monsters and kill them, but you are given the option to spare them after the end of your battle. However, instead of resetting your HP, cooldowns, and mana to full, it resets them to 75% of their original values, and all moves are on a 1-cooldown. The final boss of the game is the stranger, and if you kill all the monsters, he becomes 25% harder, while if you save all of them, he becomes 25% easier. He was an evil guy who wanted the monsters dead so he could harness their power and enslave the world. If you save some and kill others, then no change in difficulty in battle. Similar to something like Undertale or Shadow of the Colossus. Definitely up to change.
+
+
+________________
+
+
+
+
+
+
+Dialogue
+Stranger : 
+
+
+Raise Brave Warrior! For you must defeat these mystical beasts. They are dangerous monsters who need to be eliminated as fast as possible. I will reward you with riches beyond your wildest dreams if you can defeat these strong foes for me. But be warned, if you enter battle unprepared, you will be swiftly killed and shown no mercy. Take this map if you wish to accept my challenge and defeat these 8 creatures.
+
+
+Narrotor :
+
+
+You take the map and begin an epic quest.  You search for your first monster and prepare for a deathly battle.
+
+
+First Encounter(Ogre)
+Narrotor :
+
+
+You enter a large, dark cave and find a giant ogre sleeping. You walk over a branch and wake up the ogre.
+
+
+ogre (opening dialogue) :
+
+
+Who wakes me? Ahhhh, you tiny challenger. What brings you here? Gonna give me a backrub? HaHaHa.
+
+
+ogre(one hit from killing you):
+
+
+You really thought you could beat me, hahaha. Pathetic loser.
+
+
+ogre (1 hit before death):
+
+
+Look, this battle has been fun, but how about we call it there? I wouldn’t want you to get hurt after all.
+
+
+ogre (You kill him):
+
+
+Ahh, you better watch your back.
+
+
+ogre (You spare him):
+
+
+Thanks for not ending me there. Now get out of here before my brother wakes up and wants a piece of ya.
+
+
+________________
+
+
+
+
+Second Encounter(Griffin)
+
+
+Narrotor :
+
+
+You enter a lush forest with tall trees and rows of bushes as far as the eye can see. You search for a little bit until you look up in the sky to see a Griffin soaring high in the beautiful night sky.
+
+
+Griffin(opening dialogue) :
+
+
+You are brave, yet you are ignorant. You know now the damage you can cause. I shall put you in your place.
+
+
+Griffin(one hit from killing you) :
+
+
+You fought through, but your ego blinded you from victory.
+
+
+Griffin(one hit before death) :
+
+
+Please, valiant warrior, spare me. You have already bested me in battle. There is no need to kill me, for you have proven you have the power to defeat me if you so choose.
+
+
+Griffin(You kill him) :
+
+
+I fear you do not know the result of your decision. Yet you grow in strength.  Good luck, I have faith you can complete any goal you have.
+
+
+Griffin(You spare him) :
+
+
+You were a worthy challenger. Your compassion is only second to your strength. Save travels, brave warrior.
+
+
+________________
+
+
+
+
+Third Encounter(Werewolf) :
+Narrator: 
+You find yourself in a field of tall grass under a crescent moon. A low growl echoes in the darkness, and before you know it, a towering Werewolf leaps from the shadows, its eyes glowing yellow.
+Werewolf (opening dialogue): 
+Hoooowwl! You have disturbed my hunt! Your flesh is mine, tiny morsel! I will tear you limb from limb!
+Werewolf (one hit from killing you): 
+Gnnnnh... I was too careless. But you will fall now! My rage will consume you!
+Werewolf (1 hit before death): 
+Wait! Stop! I... I am a creature of instinct, not pure malice! Show me mercy! I beg you, do not take my life!
+Werewolf (You kill him): 
+(A final, mournful howl fades into the night.) My curse is broken... but you carry the weight of my end.
+Werewolf (You spare him): 
+Thank you... I will run far, far away from here. May the moon guide your path, and may you never know my hunger.
+Narrator: 
+You press on, the memory of the encounter fresh in your mind.
+Stranger:
+ One down, seven to go. Your strength is impressive, warrior. Remember the prize!
+________________
+
+
+
+
+Fourth Encounter(Serpent) :
+Narrator: 
+You descend into a humid marshland, the air thick with the smell of decay. The ground trembles as a massive Giant Serpent, its scales the color of emeralds, emerges from the murky water.
+Serpent (opening dialogue): 
+Sssspeak, prey. Why do you intrude upon my sssslumber? You have the ssssmell of death upon you. Come closssser.
+Serpent (one hit from killing you): 
+Hsssssss! Such fire in such a small vessel! But the water extinguishes the flame. Your journey ends here.
+Serpent (1 hit before death): 
+I... I concede! The young dragon proves its might. I have ssssurvived for centuriesss. Do not let my life end by the hand of a new challenger.
+Serpent (You kill him): 
+(A deep, guttural sound, like a crumbling mountain.) The world is colder now... without the ancient ones.
+Serpent (You spare him): 
+You show respect to the old ways. I will remember thisss act of kindness. Leave thisss sssswamp, and do not return.
+Narrator: 
+The serpent retreats, and you are left alone with the silence of the marsh.
+Stranger: 
+Four down. You are performing splendidly! The spoils of war await!
+________________
+
+
+Fifth Encounter (Centaur)
+Narrator: 
+You arrive at a vast, open plain where the wind whistles through the tall, dry grass. A noble Centaur, armed with a bow and spear, stands waiting for you, looking sorrowful.
+Centaur (opening dialogue): 
+Greetings, traveler. I know why you are here. The Stranger sent you. Let us make this swift, though my heart is heavy with this fight. Honor demands I defend myself.
+Centaur (one hit from killing you): 
+A valiant effort! But my aim is true, and your luck has run out. Prepare for the end, little one.
+Centaur (1 hit before death): 
+Enough! I have children! I have a herd to protect! Please, by the ancient gods, let me live! I will renounce fighting forever if you just walk away!
+Centaur (You kill him):
+ (A deep sigh, a broken voice.) Tell my family... I fought with honor.
+Centaur (You spare him):
+ I will not forget this kindness. Go quickly, before I reconsider my vow of peace. May the earth bless your steps.
+Narrator:
+ The Centaur bows his head in thanks, and you continue across the plains.
+Stranger: 
+Five down! A true hero's journey! You'll be richer than any king!
+________________
+
+
+Sixth Encounter (Tortoise)
+Narrator: 
+Your path leads you to a desolate, rocky expanse. A mountain seems to move, and you realize it is the shell of a colossal Giant Black Tortoise, ancient and immense.
+Tortoise (opening dialogue):
+ (A slow, rumbling voice, like stones shifting.) Why awaken me? I have slept for ages. Young one, your life force is fleeting. Go back to your short existence. I seek only solitude.
+Tortoise (one hit from killing you):
+ Crunch. The shell does not break easily, does it? You should have listened to the old one. Rest now.
+Tortoise (1 hit before death):
+ (A tired groan.) I am too old for this... I have seen civilizations rise and fall. Do you truly believe my death will bring you peace? My purpose is to maintain the balance of the land. Take my life, and that balance is disturbed.
+Tortoise (You kill him):
+ (Silence. The earth trembles and a chasm opens briefly nearby.) The world mourns the loss of its stability.
+Tortoise (You spare him):
+ Hmmph. A wise choice. True power is knowing when not to use force. You have saved more than just my life today. Go. Grow old.
+Narrator: 
+The great creature sinks back into the earth, and you feel a strange sense of quiet peace wash over the area.
+Stranger: 
+Six down! I grow impatient! Hurry, warrior! The final two await!
+________________
+
+
+Seventh Encounter (Phoenix)
+Narrator: 
+You travel to a scorching volcanic peak. Perched on the highest spire is a breathtaking Phoenix, its feathers shimmering with internal fire.
+Phoenix (opening dialogue): 
+Ah, a challenger! Welcome to the peak of rebirth. You seek to end me, but how can you kill what is eternal? My flames will cleanse you of your fear... or your life.
+Phoenix (one hit from killing you):
+ You are a flash of light, but I am the sun! My fire will consume your paltry strength! Be purified!
+Phoenix (1 hit before death):
+ (The flames flicker weakly.) I... I am wounded. But my death is only a prelude to my return. If you kill me now, I will be reborn, fiercer and more vengeful. Spare me, and I will be reborn with forgiveness in my heart.
+Phoenix (You kill him):
+ (A burst of brilliant, searing light.) Farewell, little spark. I will see you in another life.
+Phoenix (You spare him):
+ You seek life, not death. A noble trait. My next life will be one of peace, thanks to your compassion. Go now, and carry my light with you.
+Narrator:
+ The Phoenix rises in a beautiful spiral of fire, ascending into the sky until it is a single, glittering star.
+Stranger:
+ Seven down! Only one remains! I can practically taste the power!
+________________
+
+
+Eighth Encounter (Dragon)
+Narrator: 
+Your final quest takes you to a forbidding mountain lair. Inside, on a massive pile of gold and jewels, sleeps the mighty Dragon, scales of deep crimson, its breath hot and sulfurous.
+Dragon (opening dialogue):
+ (A roar that shakes the very mountain.) WHO DARES DISTURB THE GREAT ONE'S TREASURE?! You seek my head for that trinket-master? Foolish mortal! You will become a pile of ash!
+Dragon (one hit from killing you):
+ Gah! You fight like a cornered beast! But cornered beasts die! Tremble before my power!
+Dragon (1 hit before death): 
+(A weak, rasping breath.) Please... I only guard my hoard. I have harmed no one in centuries. Do not be his final pawn! He lies! If you slay me, the world loses one of its grandest protectors!
+Dragon (You kill him): 
+(A terrible, grinding sound.) The treasures are yours... but the lie is on your soul.
+Dragon (You spare him): 
+You choose wisdom over savagery. You are a true hero, not his killer. Fly now, little one, before he claims the final prize.
+Narrator: 
+The Dragon lets out a triumphant roar and settles back onto its hoard, a silent ally. You leave the cave, the map now useless, but your mission is complete.
+Stranger:
+ (His voice booms from the sky, a cruel echo.) EIGHT DOWN! YOU HAVE DONE IT!
+________________
+
+
+Final Encounter (The Stranger)
+Narrator: 
+You return to the place where you first met the Stranger. He is standing exactly where he was, but a dark, swirling energy now surrounds him. The map falls from your hand and crumbles to dust.
+Stranger (opening dialogue): 
+Welcome back, my little exterminator! Did you truly think I cared for your meager riches? They were bait! I needed you to weaken or eliminate these creatures, for their power is too great for a single man to overcome—until now!
+(If you Killed all 8 Monsters): 
+The energy of all eight monsters flows into him, making him a terrifying composite of their power.
+Stranger:
+ Haha! You have delivered their essences right into my hands! Their combined strength is MINE! Prepare to be my first slave!
+(If you Spared all 8 Monsters):
+ The energy fails to coalesce, and the Stranger looks weak, the dark energy sputtering around him.
+Stranger: 
+No! Why did you show them mercy?! Their power is scattered and useless to me! You have ruined everything! But I will still crush you myself! 
+(If you Saved some and Killed others): 
+The energy partially coalesces, making him strong, but incomplete.
+Stranger: 
+Some power is better than none! I will still have the world! Die, you meddling fool!
+________________

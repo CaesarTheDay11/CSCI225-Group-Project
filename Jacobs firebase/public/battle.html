@@ -15,6 +15,7 @@
   <ul class="nav-links">
     <li><a href="TitleScreen.html">Title</a></li>
     <li><a href="battle.html">Battle</a></li>
+    <li><a href="rankings.html">Rankings</a></li>
     <li><a href="profile.html">Profile</a></li>
     <li><a href="index.html">Login / Signup</a></li>
   </ul>
@@ -22,6 +23,11 @@
 
 <body>
   <button class="queueBtn" id="queueBtn"> Find a Match </button>
+  <!-- Forfeit button area: top-right, below nav/bar -->
+  <div id="forfeit-area" style="position:fixed; top:72px; right:16px; z-index:900; text-align:right;">
+    <button id="forfeitBtn" style="display:none; padding:8px 12px; background:#b33; color:#fff; border-radius:6px; border:none; cursor:pointer;" onclick="forfeitMatch()">Forfeit Match</button>
+    <div id="forfeit-note" style="font-size:12px; color:#666; margin-top:6px; display:none;">Time remaining: --s</div>
+  </div>
   <div id="class-status" class="class-status" style="margin-top:8px; font-size:14px;">
     Selected class: <span id="selected-class-display">(none)</span>
     <span id="selected-class-saved" style="margin-left:8px;color:gray">(not saved)</span>

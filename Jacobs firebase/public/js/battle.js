@@ -18,6 +18,13 @@ let opponentRef = null;
 let isPlayer1 = false;
 let lastProcessedMoveActor = null;
 let lastProcessedMove = null;
+let lastActivityTs = Date.now();
+let inactivityInterval = null;
+let inactivityFinishing = false;
+const INACTIVITY_LIMIT_MS = 60000; // 60 seconds
+let perTurnStartTs = null;
+let currentTurnUid = null;
+let countdownInterval = null;
 //this debounces death checks triggered by realtime listeners to avoid races with concurrent writes
 const _deathCheckTimers = {};
 
@@ -155,6 +162,8 @@ function attachActionTooltips() {
     btn.addEventListener('focus', moveHandler);
     btn.addEventListener('blur', _hideAbilityTooltip);
   });
+  // start inactivity watcher when listeners are ready
+  try { startInactivityWatcher(); } catch (e) { console.error('Could not start inactivity watcher', e); }
 }
 
 function applyDamageToObject(targetObj, rawDamage, opts = {}) {
@@ -1200,6 +1209,8 @@ window.initializeBattle = async function(mId, userId) {
   // Set player names and seed player stats if not already present
   const userSnapshot = await get(ref(db, `users/${userId}`));
   const userName = userSnapshot.val()?.displayName || "Player";
+  // Show forfeit UI
+  try { const fb = document.getElementById('forfeitBtn'); if (fb) fb.style.display = 'inline-block'; const fn = document.getElementById('forfeit-note'); if (fn) fn.style.display='block'; } catch(e){}
 
   // Determine player's selected class: prefer DB stored selection, fallback to localStorage
   const dbSelected = userSnapshot.val()?.selectedClass;
@@ -1324,8 +1335,12 @@ function setupMatchListeners() {
   // Listen to current turn changes
   onValue(currentTurnRef, (snap) => {
     const currentTurn = snap.exists() ? snap.val() : null;
+    currentTurnUid = currentTurn;
     const isMyTurn = currentTurn === currentUserId;
-    
+    // update per-turn timestamps so inactivity is per-player-per-turn
+    perTurnStartTs = Date.now();
+    lastActivityTs = Date.now();
+
     if (isMyTurn) {
       enableButtons();
       showTurnIndicator(true);
@@ -1333,6 +1348,17 @@ function setupMatchListeners() {
       disableButtons();
       showTurnIndicator(false);
     }
+
+    // Refresh UI state for both players to avoid stale displays when turns change
+    (async () => {
+      try {
+        const [pSnap, oSnap] = await Promise.all([ get(playerRef), get(opponentRef) ]);
+        if (pSnap.exists()) updatePlayerUI(pSnap.val(), true);
+        if (oSnap.exists()) updatePlayerUI(oSnap.val(), false);
+      } catch (e) { /* ignore */ }
+    })();
+    // ensure inactivity watcher running
+    try { startInactivityWatcher(); } catch (e) {}
   });
 
   // Listen to player stats changes
@@ -1364,9 +1390,14 @@ function setupMatchListeners() {
   // Listen to match state changes to generate appropriate messages
   onValue(ref(db, `matches/${matchId}`), async (snap) => {
     if (!snap.exists()) return;
-    
+
     const matchData = snap.val();
-    
+
+    // Update last-activity timestamp whenever the match node changes.
+    // This helps the inactivity watcher detect real activity (moves, turn
+    // changes, etc.).
+    lastActivityTs = Date.now();
+
     // Don't process messages if game is finished (end game overlay handles that)
     if (matchData?.status === "finished") {
       return;
@@ -1432,6 +1463,8 @@ function setupMatchListeners() {
   // Listen to match status changes (for game over)
   onValue(ref(db, `matches/${matchId}/status`), (snap) => {
     if (snap.exists() && snap.val() === "finished") {
+      // stop the inactivity watcher when match ends
+      stopInactivityWatcher();
       disableButtons();
       const winnerRef = ref(db, `matches/${matchId}/winner`);
       onValue(winnerRef, async (winnerSnap) => {
@@ -1526,6 +1559,105 @@ function setupMatchListeners() {
 }
 
   // In-match class chooser UI helpers
+  // Inactivity watcher helpers: finish match after prolonged inactivity
+  function stopInactivityWatcher() {
+    try {
+      if (inactivityInterval) {
+        clearInterval(inactivityInterval);
+        inactivityInterval = null;
+      }
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
+      try { const fn = document.getElementById('forfeit-note'); if (fn) { fn.style.display='none'; fn.textContent = 'Time remaining: --s'; } } catch (e) {}
+    } catch (e) { /* ignore */ }
+  }
+
+  function startInactivityWatcher() {
+    stopInactivityWatcher();
+    inactivityInterval = setInterval(async () => {
+      try {
+        if (!matchId || inactivityFinishing) return;
+        const age = Date.now() - (lastActivityTs || 0);
+        if (age >= INACTIVITY_LIMIT_MS) {
+          inactivityFinishing = true;
+          await finishMatchDueToInactivity();
+          inactivityFinishing = false;
+        }
+      } catch (e) {
+        console.error('inactivity watcher error', e);
+      }
+    }, 3000);
+    // UI countdown updater (per-second)
+    countdownInterval = setInterval(() => {
+      try {
+        if (!matchId) return;
+        const fn = document.getElementById('forfeit-note');
+        if (!fn) return;
+        // prefer per-turn start timestamp, otherwise fall back to lastActivityTs
+        const start = perTurnStartTs || lastActivityTs || Date.now();
+        const elapsed = Date.now() - start;
+        const remainingMs = Math.max(0, INACTIVITY_LIMIT_MS - elapsed);
+        const seconds = Math.ceil(remainingMs / 1000);
+        let label = `Time remaining: ${seconds}s`;
+        // indicate whose turn it is
+        try {
+          if (currentTurnUid) {
+            if (currentTurnUid === currentUserId) label = `Your turn — ${seconds}s`;
+            else label = `Opponent's turn — ${seconds}s`;
+          }
+        } catch (e) {}
+        fn.textContent = label;
+        fn.style.display = 'block';
+        // color hint in last 10s
+        if (remainingMs <= 10000) fn.style.color = '#c33'; else fn.style.color = '#666';
+      } catch (e) { /* ignore */ }
+    }, 1000);
+  }
+
+  async function finishMatchDueToInactivity() {
+    if (!matchId) return;
+    try {
+      const snap = await get(matchRef);
+      if (!snap.exists()) return;
+      const matchData = snap.val() || {};
+      if (matchData.status === 'finished') return;
+      // Per-turn timeout: the currentTurn actor is considered to have
+      // forfeited by not acting during their 60s window. Prefer to use
+      // matchData.currentTurn; if missing, fallback to HP comparison.
+      const timedOut = matchData.currentTurn;
+      let winnerId = null;
+      const p1 = matchData.p1;
+      const p2 = matchData.p2;
+      if (timedOut) {
+        // winner is the other player
+        if (p1 && p2) {
+          winnerId = (timedOut === p1) ? p2 : p1;
+        }
+      }
+      if (!winnerId) {
+        // fallback to HP comparison
+        if (!p1 || !p2) return;
+        const p1Snap = await get(ref(db, `matches/${matchId}/players/${p1}`));
+        const p2Snap = await get(ref(db, `matches/${matchId}/players/${p2}`));
+        const p1Stats = p1Snap.exists() ? p1Snap.val() : {};
+        const p2Stats = p2Snap.exists() ? p2Snap.val() : {};
+        const p1Hp = Number(p1Stats.hp || 0);
+        const p2Hp = Number(p2Stats.hp || 0);
+        if (p1Hp > p2Hp) winnerId = p1;
+        else if (p2Hp > p1Hp) winnerId = p2;
+        else winnerId = (Math.random() < 0.5) ? p1 : p2;
+      }
+
+      await update(matchRef, { status: 'finished', winner: winnerId, message: 'Match ended due to inactivity (turn timeout).' });
+      // stop timer after writing
+      stopInactivityWatcher();
+    } catch (e) {
+      console.error('Could not finish match due to inactivity', e);
+    }
+  }
+
   function showClassChooseModal() {
     // Disabled: in-match class chooser is intentionally turned off.
     // Keep function as a no-op so calls are harmless.
@@ -1759,17 +1891,9 @@ async function finalizeRewards(winnerUid, loserUid, chosenItemId) {
   // Award chosen item to winner and random to loser; increment wins/losses.
   // Attempt to use window.addItemToUser fallback to manual update.
   try {
-    // increment wins/losses
-    try {
-      const wSnap = await get(ref(db, `users/${winnerUid}/wins`));
-      const lSnap = await get(ref(db, `users/${loserUid}/losses`));
-      const wVal = (wSnap.exists() ? Number(wSnap.val()) : 0) + 1;
-      const lVal = (lSnap.exists() ? Number(lSnap.val()) : 0) + 1;
-      await Promise.all([
-        update(ref(db, `users/${winnerUid}`), { wins: wVal }),
-        update(ref(db, `users/${loserUid}`), { losses: lVal })
-      ]);
-    } catch (e) { console.error('Could not increment wins/losses', e); }
+    // NOTE: wins/losses are recorded server-side by cloud function onMatchFinished
+    // to keep authority centralized; the client will only write reward details
+    // (chosen items). This avoids double-counting.
 
     // award chosen to winner
     const catalog = (window.getItemCatalog) ? window.getItemCatalog() : {};
@@ -1856,6 +1980,8 @@ window.returnToQueue = async function() {
   
   // Clear current match reference
   await set(ref(db, `users/${currentUserId}/currentMatch`), null);
+  // stop inactivity watcher
+  try { stopInactivityWatcher(); } catch (e) { /* ignore */ }
   
   // Hide end game overlay
   const overlay = document.getElementById("end-game-overlay");
@@ -1876,6 +2002,26 @@ window.returnToQueue = async function() {
   opponentId = null;
   lastProcessedMoveActor = null;
   lastProcessedMove = null;
+  try { const fb = document.getElementById('forfeitBtn'); if (fb) fb.style.display = 'none'; const fn = document.getElementById('forfeit-note'); if (fn) fn.style.display='none'; } catch(e){}
+  try { const cs = document.getElementById('class-select'); if (cs) cs.style.display = ''; } catch(e){}
+};
+
+// Forfeit the current match: mark current user as forfeiter and set opponent as winner
+window.forfeitMatch = async function() {
+  try {
+    if (!matchId || !currentUserId) return;
+    const snap = await get(matchRef);
+    if (!snap.exists()) return;
+    const matchData = snap.val() || {};
+    const p1 = matchData.p1;
+    const p2 = matchData.p2;
+    const opponent = (currentUserId === p1) ? p2 : p1;
+    if (!opponent) return;
+    await update(matchRef, { status: 'finished', winner: opponent, message: 'Player forfeited.' });
+    stopInactivityWatcher();
+  } catch (e) {
+    console.error('forfeitMatch error', e);
+  }
 };
 
 function updatePlayerUI(stats, isPlayer) {
