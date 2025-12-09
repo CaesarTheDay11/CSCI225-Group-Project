@@ -44,7 +44,6 @@ onAuthStateChanged(auth, async (user) => {
   const battleElement = document.getElementById("battle");
   const queueBtnEl = document.getElementById("queueBtn") || document.querySelector('.queueBtn');
   const signOutBtn = document.getElementById("signOutBtn");
-  const forfeitBtn = document.getElementById('forfeitBtn');
   const navAuthLinks = document.querySelectorAll('.nav-auth-link');
   const navProtectedLinks = document.querySelectorAll('.nav-protected-link');
 
@@ -103,17 +102,6 @@ onAuthStateChanged(auth, async (user) => {
     // seed starter items if necessary
     try { await seedStarterItemsIfMissing(uid); } catch (e) { console.error('Error seeding starter items for user', e); }
 
-    // wire sign out button if present (call Firebase signOut)
-    try {
-      if (signOutBtn && !signOutBtn._wired) {
-        signOutBtn.addEventListener('click', (ev) => {
-          ev.preventDefault();
-          signOut(auth).catch((err) => { console.error('Sign out failed', err); });
-        });
-        signOutBtn._wired = true;
-      }
-    } catch (e) { console.error('Could not wire signOutBtn', e); }
-
     // match listener
     const matchRef = ref(db, `users/${uid}/currentMatch`);
     detachMatchListener = onValue(matchRef, (snap) => {
@@ -121,7 +109,6 @@ onAuthStateChanged(auth, async (user) => {
         const matchId = snap.val();
         if (queueBtnEl) queueBtnEl.style.display = 'none';
         if (battleElement) battleElement.style.display = 'block';
-        if (forfeitBtn) forfeitBtn.style.display = '';
         // hide class selector when in a match
         const cs = document.getElementById('class-select'); if (cs) cs.style.display = 'none';
         console.log('Matched! Match ID:', matchId);
@@ -133,25 +120,9 @@ onAuthStateChanged(auth, async (user) => {
           }
         }, 100);
       } else {
-        // If the end-game overlay (reward chooser) is visible, keep the
-        // battle UI displayed so the winner can pick their reward even if
-        // the server has cleared users/<uid>/currentMatch. Only hide the
-        // battle UI when no reward UI is active.
-        const overlay = document.getElementById('end-game-overlay');
-        const chooser = document.getElementById('reward-chooser');
-        const overlayVisible = overlay && overlay.style && overlay.style.display && overlay.style.display !== 'none';
-        const chooserVisible = chooser && chooser.style && chooser.style.display && chooser.style.display !== 'none' && chooser.style.display !== '';
-        if (overlayVisible || chooserVisible) {
-          if (queueBtnEl) queueBtnEl.style.display = 'none';
-          if (battleElement) battleElement.style.display = 'block';
-          if (forfeitBtn) forfeitBtn.style.display = '';
-          const cs2 = document.getElementById('class-select'); if (cs2) cs2.style.display = 'none';
-        } else {
-          if (queueBtnEl) queueBtnEl.style.display = 'inline';
-          if (battleElement) battleElement.style.display = 'none';
-          if (forfeitBtn) forfeitBtn.style.display = 'none';
-          const cs2 = document.getElementById('class-select'); if (cs2) cs2.style.display = '';
-        }
+        if (queueBtnEl) queueBtnEl.style.display = 'inline';
+        if (battleElement) battleElement.style.display = 'none';
+        const cs2 = document.getElementById('class-select'); if (cs2) cs2.style.display = '';
       }
     });
 

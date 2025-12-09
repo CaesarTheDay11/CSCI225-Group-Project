@@ -62,14 +62,25 @@
     </div>
 
     <script type="module">
-      // Use the site's shared Firebase initializer so the leaderboard reads from the
-      // same project/config as the rest of the app.
-      import { app, db as rdbShared } from './js/firebase.js';
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js';
       import { getFirestore, collection, onSnapshot, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js';
-      import { ref as rtdbRef, onValue } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js';
+      import { getDatabase, ref as rtdbRef, onValue } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js';
 
+      // Replace with your Firebase config (kept from the snippet you provided)
+      const firebaseConfig = {
+  apiKey: "AIzaSyD7zSx5Qi5_MOxfX2HpQGt5BZMN0O7fJFk",
+  authDomain: "database225-53f4e.firebaseapp.com",
+  projectId: "database225-53f4e",
+  storageBucket: "database225-53f4e.firebasestorage.app",
+  messagingSenderId: "116405452649",
+  appId: "1:116405452649:web:08fac2fb8376a4f6fd87f8",
+  measurementId: "G-V0SS2G0QX2"
+};
+
+
+      const app = initializeApp(firebaseConfig);
       const fs = getFirestore(app);
-      const rdb = rdbShared;
+      const rdb = getDatabase(app);
 
       const updateDom = (rows) => {
         // rows: array of { Name, Score }
