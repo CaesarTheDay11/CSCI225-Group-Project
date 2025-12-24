@@ -1,0 +1,86 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Armory</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .armory-grid { display:flex; flex-wrap:wrap; gap:12px; }
+    .gear-card { border:1px solid #444; padding:8px; width:200px; background:#111; color:#fff; border-radius:6px; }
+    .gear-slot { font-size:12px; color:#ccc; }
+    .gear-actions { margin-top:8px; display:flex; gap:6px; }
+    .armory-slots { display:flex; flex-wrap:wrap; gap:12px; }
+    .slot-card { width:180px; border:1px dashed #666; padding:8px; border-radius:6px; background:#0d0d0d; color:#eee; }
+    .slot-drop { min-height:80px; display:flex; align-items:center; justify-content:center; flex-direction:column; gap:6px; }
+    .slot-empty { color:#888; font-size:13px; }
+    .slot-title { font-weight:700; text-transform:capitalize; margin-bottom:6px; }
+    .gear-img { width:64px; height:64px; object-fit:contain; margin-right:8px; }
+    .gear-top { display:flex; align-items:center; gap:8px; }
+    .can-drop { outline:2px solid #2a9d8f; }
+  </style>
+</head>
+<body>
+  <nav style="display:flex;gap:12px;align-items:center;margin:12px 0;">
+    <a href="TitleScreen.html">Home</a>
+    <a href="battle.html">Battle</a>
+    <a href="multiplayer.html">Multiplayer</a>
+    <a href="index.html">Login</a>
+    <a href="profile.html">Profile</a>
+    <span style="margin-left:auto;color:#999;font-size:0.9rem">Armory</span>
+  </nav>
+  <h1>Armory</h1>
+  <div style="display:flex;gap:24px;align-items:flex-start">
+    <div style="flex:0 0 420px;">
+      <h2>Equipped</h2>
+      <div id="armory-slots" class="armory-slots"></div>
+      <div style="margin-top:12px;">
+        <h3>Equip Actions</h3>
+        <div id="armory-actions" style="display:flex;gap:12px;align-items:center;">
+          <div id="drop-unequip" class="slot-card" style="flex:0 0 180px; text-align:center;">
+            <div class="slot-title">Unequip</div>
+            <div class="slot-drop" style="min-height:60px;">Drop equipped item here to unequip</div>
+          </div>
+          <div id="drop-trash" class="slot-card" style="flex:0 0 180px; text-align:center;">
+            <div class="slot-title">Trash</div>
+            <div class="slot-drop" style="min-height:60px;">Drop item here to delete</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:12px;">
+        <h3>Equipped Element Summary</h3>
+        <div id="armory-aggregate" style="padding:8px;border-radius:6px;background:#0b0b0b;color:#ddd;min-height:40px">(no equipped items)</div>
+      </div>
+    </div>
+    <div style="flex:1;">
+      <h2>All Gear</h2>
+      <div id="armory-list" class="armory-grid">(loading...)</div>
+    </div>
+  </div>
+  <script type="module">
+    // Bootstrap firebase globals for the standalone armory page so Gear can access DB helpers
+    try {
+      import('./js/firebase.js').then(({ auth, db }) => {
+        // import DB helpers from CDN and expose small set of globals used by gear.js
+        Promise.all([
+          import('https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js'),
+          import('https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js')
+        ]).then(([dbMod, authMod]) => {
+          try {
+            const { ref, get, update } = dbMod;
+            const { onAuthStateChanged } = authMod;
+            window.db = db;
+            window.ref = ref;
+            window.get = get;
+            window.update = update;
+            window.auth = auth;
+            onAuthStateChanged(auth, (user) => { window.currentUserUid = user ? user.uid : null; if (!user) { try { window.location.href = 'index.html'; } catch(e){} } });
+            console.debug('[armory] firebase bootstrap complete');
+          } catch (e) { console.warn('[armory] firebase bootstrap failed', e); }
+        }).catch(e => console.warn('[armory] import error', e));
+      }).catch(e => console.warn('[armory] could not import firebase module', e));
+    } catch (e) { console.warn('[armory] bootstrap error', e); }
+  </script>
+  <script src="js/gear.js"></script>
+  <script src="js/armory.js"></script>
+</body>
+</html>

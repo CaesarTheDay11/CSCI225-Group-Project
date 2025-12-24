@@ -17,8 +17,12 @@ const CLASS_STATS = {
   necromancer: { hp: 80, maxHp: 80, baseAtk: 10, defense: 2, speed: 6, critChance: 0.05, evasion: 0.03, abilities: ['necro_summon_skeleton', 'necro_spirit_shackles', 'necro_dark_inversion'], mana: 40 },
   druid:   { hp: 100, maxHp: 100, baseAtk: 12, defense: 2, speed: 6, critChance: 0.05, evasion: 0.04, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 },
   dark_mage: { hp: 75, maxHp: 75, baseAtk: 12, defense: 1, speed: 6, critChance: 0.05, evasion: 0.03, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 },
-  monk:    { hp: 105, maxHp: 105, baseAtk: 13, defense: 3, speed: 8, critChance: 0.07, evasion: 0.05, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 },
+  monk:    { hp: 105, maxHp: 105, baseAtk: 20, defense: 3, speed: 8, critChance: 0.07, evasion: 0.05, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 },
   wild_magic_sorcerer: { hp: 85, maxHp: 85, baseAtk: 14, defense: 1, speed: 6, critChance: 0.06, evasion: 0.03, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 }
+  
+  ,valkyrie: { hp: 130, maxHp: 130, baseAtk: 14, defense: 3, speed: 8, critChance: 0.06, evasion: 0.05, abilities: ['valkyrie_spear', 'valkyrie_aerial_sweep', 'valkyrie_guard'], mana: 30 }
+  ,artificer: { hp: 125, maxHp: 125, baseAtk: 16, defense: 6, speed: 5, critChance: 0.06, evasion: 0.03, abilities: ['artificer_turret', 'artificer_shock', 'artificer_repair_field'], mana: 40 }
+  ,barbarian: { hp: 140, maxHp: 140, baseAtk: 12, defense: 1, speed: 6, critChance: 0.05, evasion: 0.02, abilities: ['barbarian_berserk_slam', 'barbarian_war_cry', 'barbarian_reckless_strike'], mana: 0 }
 };
 
 // Server no longer awards gameplay items automatically; client-side chooser

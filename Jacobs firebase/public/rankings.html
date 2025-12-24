@@ -29,10 +29,10 @@
             <a href="index.html">Home</a>
             <a href="battle.html">PvP Battle</a>
             <a href="TitleScreen.html">Title Screen</a>
-            <a href="selection.html">PVE Selection</a>
+            <a href="PVE/selection.html">PVE Selection</a>
         </div>
-        <h1>Game Rankings - Top 3 Players (by wins)</h1>
-        <table class="ranking-table">
+    <h1>Game Rankings - Top 10 Players (by wins)</h1>
+    <table class="ranking-table">
             <thead>
                 <tr>
                     <th>Rank</th>
@@ -41,101 +41,163 @@
                 </tr>
             </thead>
             <tbody>
-                <tr>
-                    <td>1</td>
-                    <td id="player1-name">—</td>
-                    <td id="player1-score">0</td>
-                </tr>
-                <tr>
-                    <td>2</td>
-                    <td id="player2-name">—</td>
-                    <td id="player2-score">0</td>
-                </tr>
-                <tr>
-                    <td>3</td>
-                    <td id="player3-name">—</td>
-                    <td id="player3-score">0</td>
-                </tr>
+        <tr>
+          <td>1</td>
+          <td id="player1-name">—</td>
+          <td id="player1-score">0</td>
+        </tr>
+        <tr>
+          <td>2</td>
+          <td id="player2-name">—</td>
+          <td id="player2-score">0</td>
+        </tr>
+        <tr>
+          <td>3</td>
+          <td id="player3-name">—</td>
+          <td id="player3-score">0</td>
+        </tr>
+        <tr>
+          <td>4</td>
+          <td id="player4-name">—</td>
+          <td id="player4-score">0</td>
+        </tr>
+        <tr>
+          <td>5</td>
+          <td id="player5-name">—</td>
+          <td id="player5-score">0</td>
+        </tr>
+        <tr>
+          <td>6</td>
+          <td id="player6-name">—</td>
+          <td id="player6-score">0</td>
+        </tr>
+        <tr>
+          <td>7</td>
+          <td id="player7-name">—</td>
+          <td id="player7-score">0</td>
+        </tr>
+        <tr>
+          <td>8</td>
+          <td id="player8-name">—</td>
+          <td id="player8-score">0</td>
+        </tr>
+        <tr>
+          <td>9</td>
+          <td id="player9-name">—</td>
+          <td id="player9-score">0</td>
+        </tr>
+        <tr>
+          <td>10</td>
+          <td id="player10-name">—</td>
+          <td id="player10-score">0</td>
+        </tr>
             </tbody>
         </table>
-        <p style="margin-top:12px;color:#666;font-size:13px;">This leaderboard displays the top 3 players by number of wins. It reads Firestore collection <code>scores</code> (Score field) and falls back to Realtime Database users/* wins if Firestore is not populated.</p>
+    <p style="margin-top:12px;color:#666;font-size:13px;">This leaderboard displays the top 10 players by number of wins. It reads Firestore collection <code>scores</code> (Score field) and falls back to Realtime Database users/* wins if Firestore is not populated.</p>
     </div>
 
-    <script type="module">
-      import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js';
-      import { getFirestore, collection, onSnapshot, query, orderBy, limit } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js';
-      import { getDatabase, ref as rtdbRef, onValue } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js';
+    <div id="ranking-status" style="max-width:900px;margin:6px auto;color:#f0f0f0;font-size:13px;text-align:center;"></div>
 
-      // Replace with your Firebase config (kept from the snippet you provided)
-      const firebaseConfig = {
-  apiKey: "AIzaSyD7zSx5Qi5_MOxfX2HpQGt5BZMN0O7fJFk",
-  authDomain: "database225-53f4e.firebaseapp.com",
-  projectId: "database225-53f4e",
-  storageBucket: "database225-53f4e.firebasestorage.app",
-  messagingSenderId: "116405452649",
-  appId: "1:116405452649:web:08fac2fb8376a4f6fd87f8",
-  measurementId: "G-V0SS2G0QX2"
+    <script type="module">
+      (async function initRankings() {
+        const status = (msg, isError = false) => {
+          const el = document.getElementById('ranking-status');
+          if (!el) return;
+          el.textContent = msg || '';
+          el.style.color = isError ? '#ffb3b3' : '#cfefff';
+        };
+
+        try {
+          // Dynamically import Firebase modules so we can catch failures and show helpful messages
+          const [{ initializeApp }, { getFirestore, collection, onSnapshot, query, orderBy, limit }, { getDatabase, ref: rtdbRef, onValue }] = await Promise.all([
+            import('https://www.gstatic.com/firebasejs/12.5.0/firebase-app.js'),
+            import('https://www.gstatic.com/firebasejs/12.5.0/firebase-firestore.js'),
+            import('https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js')
+          ]);
+
+          // Replace with your Firebase config
+          const firebaseConfig = {
+  apiKey: "AIzaSyCAZCdpLSNAHhJMbX6XO7kM6OGEq1Wlp_g",
+  authDomain: "arena-battlegrounds-2724e.firebaseapp.com",
+  databaseURL: "https://arena-battlegrounds-2724e-default-rtdb.firebaseio.com",
+  projectId: "arena-battlegrounds-2724e",
+  storageBucket: "arena-battlegrounds-2724e.firebasestorage.app",
+  messagingSenderId: "772072071103",
+  appId: "1:772072071103:web:0ecb0d98cdbe1d39708b0a",
+  measurementId: "G-G1Q86QFQBP"
 };
 
+          const app = initializeApp(firebaseConfig);
+          const fs = getFirestore(app);
+          const rdb = getDatabase(app);
 
-      const app = initializeApp(firebaseConfig);
-      const fs = getFirestore(app);
-      const rdb = getDatabase(app);
+          const updateDom = (rows) => {
+            // Support up to top 10 rows on the page
+            for (let i = 0; i < 10; i++) {
+              const nameEl = document.getElementById(`player${i+1}-name`);
+              const scoreEl = document.getElementById(`player${i+1}-score`);
+              if (!nameEl || !scoreEl) continue;
+              if (rows[i]) {
+                nameEl.textContent = rows[i].Name || rows[i].name || rows[i].displayName || 'Player';
+                scoreEl.textContent = String(Number(rows[i].Score || rows[i].wins || 0));
+              } else {
+                nameEl.textContent = '—'; scoreEl.textContent = '0';
+              }
+            }
+          };
 
-      const updateDom = (rows) => {
-        // rows: array of { Name, Score }
-        for (let i = 0; i < 3; i++) {
-          const nameEl = document.getElementById(`player${i+1}-name`);
-          const scoreEl = document.getElementById(`player${i+1}-score`);
-          if (rows[i]) {
-            nameEl.innerText = rows[i].Name || rows[i].name || rows[i].displayName || 'Player';
-            scoreEl.innerText = Number(rows[i].Score || rows[i].wins || 0);
-          } else {
-            nameEl.innerText = '—'; scoreEl.innerText = '0';
-          }
-        }
-      };
-
-      // Try Firestore first (collection: scores, field: Score)
-      try {
-        const quancollection = collection(fs, 'scores');
-        const q = query(quancollection, orderBy('Score', 'desc'), limit(3));
-        onSnapshot(q, (snapshot) => {
-          const rankings = [];
-          snapshot.forEach((doc) => rankings.push(doc.data()));
-          if (rankings.length) {
-            updateDom(rankings);
-          } else {
-            // fallback to Realtime DB
+          // Try Firestore first
+          try {
+            status('Connecting to Firestore...');
+            const scoresCol = collection(fs, 'scores');
+            const q = query(scoresCol, orderBy('Score', 'desc'), limit(10));
+            onSnapshot(q, (snapshot) => {
+              const rankings = [];
+              snapshot.forEach((doc) => rankings.push(doc.data()));
+              if (rankings.length) {
+                updateDom(rankings);
+                status('Leaderboard loaded from Firestore.');
+              } else {
+                status('No Firestore data, falling back to Realtime DB...');
+                fetchFromRealtime();
+              }
+            }, (err) => {
+              console.error('Firestore leaderboard error', err);
+              status('Firestore error — falling back to Realtime DB (see console).', true);
+              fetchFromRealtime();
+            });
+          } catch (e) {
+            console.warn('Firestore not available, falling back to Realtime DB', e);
+            status('Firestore not available, using Realtime DB (if accessible).');
             fetchFromRealtime();
           }
-        }, (err) => {
-          console.error('Firestore leaderboard error', err);
-          fetchFromRealtime();
-        });
-      } catch (e) {
-        console.warn('Firestore not available, falling back to Realtime DB', e);
-        fetchFromRealtime();
-      }
 
-      function fetchFromRealtime() {
-        try {
-          const usersRef = rtdbRef(rdb, 'users');
-          onValue(usersRef, (snap) => {
-            const arr = [];
-            const val = snap.exists() ? snap.val() : {};
-            Object.keys(val || {}).forEach(uid => {
-              const u = val[uid] || {};
-              const wins = Number(u.wins || 0);
-              const name = u.displayName || u.name || (u.profile && u.profile.name) || uid;
-              arr.push({ Name: name, Score: wins });
-            });
-            arr.sort((a,b) => (b.Score||0)-(a.Score||0));
-            updateDom(arr.slice(0,3));
-          }, { onlyOnce: false });
-        } catch (e) { console.error('Realtime fallback failed', e); }
-      }
+          function fetchFromRealtime() {
+            try {
+              status('Connecting to Realtime Database...');
+              const usersRef = rtdbRef(rdb, 'users');
+              onValue(usersRef, (snap) => {
+                const arr = [];
+                const val = snap && snap.exists ? (snap.exists() ? snap.val() : {}) : (snap ? snap.val() : {});
+                Object.keys(val || {}).forEach(uid => {
+                  const u = val[uid] || {};
+                  const wins = Number(u.wins || 0);
+                  const name = u.displayName || u.name || (u.profile && u.profile.name) || uid;
+                  arr.push({ Name: name, Score: wins });
+                });
+                arr.sort((a,b) => (b.Score||0)-(a.Score||0));
+                updateDom(arr.slice(0,10));
+                status('Leaderboard loaded from Realtime DB.');
+              });
+            } catch (e) { console.error('Realtime fallback failed', e); status('Realtime DB error (see console).', true); }
+          }
 
+        } catch (err) {
+          console.error('Failed to load Firebase modules or init failed', err);
+          const el = document.getElementById('ranking-status');
+          if (el) el.textContent = 'Error loading leaderboard — check console for details.';
+        }
+      })();
     </script>
   </body>
 </html>

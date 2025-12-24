@@ -18,7 +18,7 @@ const statusEl = document.getElementById("auth-status");
 const signupForm = document.getElementById("signup-form");
 const loginForm = document.getElementById("login-form");
 
-const validClasses = ["warrior", "mage", "archer", "cleric", "knight", "rogue", "paladin", "dark_mage", "necromancer", "druid", "monk", "wild_magic_sorcerer"];
+const validClasses = ["warrior", "mage", "archer", "cleric", "knight", "rogue", "paladin", "dark_mage", "necromancer", "druid", "monk", "wild_magic_sorcerer", "artificer", "valkyrie", "barbarian"];
 
 function setStatus(message, type = "info") {
   if (!statusEl) return;
@@ -44,6 +44,19 @@ async function saveUserProfile(user, playerClass) {
 
   if (!snap.exists()) {
     await set(userRef, profile);
+    // Grant starter gear at signup when Gear helper is available (no auto-equip).
+    try {
+      if (typeof Gear !== 'undefined' && typeof Gear.generateGear === 'function' && typeof Gear.addGearToArmoryAndSync === 'function') {
+        try {
+          const g1 = Gear.generateGear(null, 'uncommon');
+          const g2 = Gear.generateGear(null, 'uncommon');
+          if (g1) { try { await Gear.addGearToArmoryAndSync(g1); } catch(e){} }
+          if (g2) { try { await Gear.addGearToArmoryAndSync(g2); } catch(e){} }
+        } catch(e) { console.error('starter gear grant during signup failed', e); }
+      }
+      // Mark starter flag so the player won't receive starters later during match init
+      try { await update(ref(db, `users/${user.uid}`), { starterGearGiven: true }); } catch(e){}
+    } catch (e) { console.error('granting starter gear on signup failed', e); }
   } else {
     // Preserve existing fields but ensure mode is present/updated from client if available
     const updates = Object.assign({}, profile);

@@ -8,9 +8,12 @@ const CLASS_STATS = {
     paladin: { name: 'Paladin', hp: 130, maxHp: 130, baseAtk: 11, defense: 5, speed: 5, critChance: 0.04, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['paladin_aura', 'paladin_holy_strike', 'paladin_bless'], mana: 15 },
     dark_mage: { name: 'Dark Mage', hp: 75, maxHp: 75, baseAtk: 12, defense: 1, speed: 6, critChance: 0.05, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 },
     necromancer: { name: 'Necromancer', hp: 80, maxHp: 80, baseAtk: 10, defense: 2, speed: 6, critChance: 0.05, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['necro_summon_skeleton', 'necro_spirit_shackles', 'necro_dark_inversion'], mana: 40 },
-    monk: { name: 'Monk', hp: 105, maxHp: 105, baseAtk: 13, defense: 3, speed: 8, critChance: 0.07, evasion: 0.05, attackBoost: 0, fainted: false, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 },
+    monk: { name: 'Monk', hp: 105, maxHp: 105, baseAtk: 20, defense: 3, speed: 8, critChance: 0.07, evasion: 0.05, attackBoost: 0, fainted: false, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 },
     wild_magic_sorcerer: { name: 'Wild Magic Sorcerer', hp: 85, maxHp: 85, baseAtk: 14, defense: 1, speed: 6, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 },
     druid: { name: 'Druid', hp: 100, maxHp: 100, baseAtk: 12, defense: 2, speed: 6, critChance: 0.05, evasion: 0.04, attackBoost: 0, fainted: false, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 }
+    ,artificer: { name: 'Artificer', hp: 125, maxHp: 125, baseAtk: 16, defense: 6, speed: 5, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['artificer_turret','artificer_shock','artificer_repair_field'], mana: 40 }
+    ,valkyrie: { name: 'Valkyrie', hp: 130, maxHp: 130, baseAtk: 14, defense: 3, speed: 8, critChance: 0.06, evasion: 0.05, attackBoost: 0, fainted: false, abilities: ['valkyrie_spear','valkyrie_aerial_sweep','valkyrie_guard'], mana: 30 }
+    ,barbarian: { name: 'Barbarian', hp: 140, maxHp: 140, baseAtk: 12, defense: 1, speed: 6, critChance: 0.05, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['barbarian_berserk_slam','barbarian_war_cry','barbarian_reckless_strike'], mana: 0 }
 };
 
 const ENEMY_STATS = {
@@ -72,6 +75,19 @@ ABILITIES.rogue_evade = ABILITIES.rogue_evade || { id: 'rogue_evade', name: 'Eva
 ABILITIES.paladin_bless = ABILITIES.paladin_bless || { id: 'paladin_bless', name: 'Blessing', cost: 8, cooldown: 5, desc: 'A small heal and an inspirational attack boost to yourself.' };
 ABILITIES.necro_curse = ABILITIES.necro_curse || { id: 'necro_curse', name: 'Curse of Decay', cost: 10, cooldown: 5, desc: 'Afflict the target so they suffer reduced healing (slimed) and ongoing rot.' };
 ABILITIES.druid_barkskin = ABILITIES.druid_barkskin || { id: 'druid_barkskin', name: 'Barkskin', cost: 6, cooldown: 5, desc: 'Harden your skin: heal a small amount, gain +6 defense for several turns, and lash the enemy for minor damage.' };
+
+// New classes: Artificer, Valkyrie, Barbarian
+ABILITIES.artificer_turret = { id: 'artificer_turret', name: 'Deploy Turret', cost: 6, cooldown: 5, desc: 'Deploy a mechanical turret that deals damage for 3 turns.' };
+ABILITIES.artificer_shock = { id: 'artificer_shock', name: 'Arc Shock', cost: 4, cooldown: 3, desc: 'Zap the target for moderate piercing damage and a small chance to stun (ignores defense).' };
+ABILITIES.artificer_repair_field = { id: 'artificer_repair_field', name: 'Repair Field', cost: 8, cooldown: 6, desc: 'Repair your systems: heals you and grants small regen for several turns.' };
+
+ABILITIES.valkyrie_spear = { id: 'valkyrie_spear', name: 'Spear Strike', cost: 4, cooldown: 3, desc: 'A piercing spear strike that ignores some defense.' };
+ABILITIES.valkyrie_aerial_sweep = { id: 'valkyrie_aerial_sweep', name: 'Aerial Sweep', cost: 6, cooldown: 4, desc: 'A sweeping aerial strike that deals solid damage and inflicts burn and poison.' };
+ABILITIES.valkyrie_guard = { id: 'valkyrie_guard', name: 'Valkyrie Guard', cost: 6, cooldown: 5, desc: 'Raise a protective guard: gain a shield for several turns.' };
+
+ABILITIES.barbarian_berserk_slam = { id: 'barbarian_berserk_slam', name: 'Berserk Slam', cost: 0, cooldown: 4, desc: 'A heavy slam that deals big damage and increases your attack for a short time.' };
+ABILITIES.barbarian_war_cry = { id: 'barbarian_war_cry', name: 'War Cry', cost: 0, cooldown: 5, desc: 'A fierce cry that raises your attack for several turns, grants minor regeneration, and silences the opponent (prevents specials).' };
+ABILITIES.barbarian_reckless_strike = { id: 'barbarian_reckless_strike', name: 'Reckless Strike', cost: 0, cooldown: 6, desc: 'Deliver a massive strike with 50% chance to deal increased damage; costs some HP as recoil.' };
 
 // Monk abilities (previously missing -> created by fallback with zero cooldown). Give proper costs and cooldowns.
 ABILITIES.monk_flurry = ABILITIES.monk_flurry || { id: 'monk_flurry', name: 'Flurry', cost: 4, cooldown: 3, desc: 'Three rapid strikes that together deal good damage and inflict Weaken. Costs 4 mana.' };
@@ -322,6 +338,17 @@ function attachActionTooltips() {
 window.addEventListener('DOMContentLoaded', () => {
     // attachActionTooltips will be invoked once later when the main DOMContentLoaded handler runs
 });
+
+// Called by armory UI when equip state changes; re-render PVE UI to reflect modifiers
+window.onEquipChanged = function(e) {
+    try {
+        if (window.Gear && typeof Gear.applyEquipToStats === 'function') {
+            // apply to in-memory player for correct display
+            try { Gear.applyEquipToStats(player); } catch(e){}
+            updateUI();
+        }
+    } catch (e) { console.error('onEquipChanged PVE failed', e); }
+};
 
 const abilityHandlers = {
     mage_fireball(user, target) {
@@ -671,12 +698,152 @@ const abilityHandlers = {
         return `${user.name} hardens skin and lashes out, healing ${immediate} and dealing ${dealt} damage.`;
     },
 
+    /* New: Artificer abilities */
+    artificer_turret(user, target) {
+        // Deploy turret: stronger turret, pierces defenses and grants a larger temporary ATK buff
+        user.status = user.status || {};
+        const prevBoost = user.attackBoost || 0;
+        const buffAmount = 8;
+        user.attackBoost = prevBoost + buffAmount;
+        const baseAtk = user.baseAtk || 12;
+        const turretTurns = 3;
+        const buff = 2;
+        user.status = user.status || {};
+        // slightly reduce turret per-turn damage scaling
+        user.status.turret = { turns: turretTurns, dmg: Math.max(16, Math.floor(base * 1.6)), ignoreDefense: true };
+    },
+
+    artificer_shock(user, target) {
+        // Arc Shock: reduced damage to match PvP changes
+        const base = user.baseAtk || 12;
+        // reduce shock's burst multiplier
+        let raw = Math.floor(Math.random() * 10) + Math.floor(base * 1.0) + 6;
+        // Arc Shock pierces defenses (ignores target.defense) and always stuns
+        const dealt = applyDamage(target, raw, { ignoreDefense: true, attacker: user });
+        target.status = target.status || {};
+        target.status.stun = { turns: 1 };
+        user.mana = Math.max(0, (user.mana || 0) - (ABILITIES.artificer_shock.cost || 0));
+        return `${user.name} channels an Arc Shock dealing ${dealt} damage${target.status && target.status.stun ? ' and stuns the target!' : '!'}`;
+    },
+
+    artificer_repair_field(user, target) {
+        const heal = Math.floor(Math.random() * 12) + 18; // larger heal
+        user.hp = Math.min(user.maxHp || 100, (user.hp || 0) + heal);
+        user.status = user.status || {};
+        user.status.regen = { turns: 4, amount: 6 };
+        // increase defense while repair field is active
+        const defAdd = 12;
+        user.defense = (user.defense || 0) + defAdd;
+        user.status.shield = { turns: 4, amount: defAdd };
+        // 50% chance to stun the target (if applicable)
+        if (target) {
+            if (Math.random() < 0.5) {
+                target.status = target.status || {};
+                target.status.stun = { turns: 1 };
+            }
+        }
+        user.mana = Math.max(0, (user.mana || 0) - (ABILITIES.artificer_repair_field.cost || 0));
+        return `${user.name} activates a Repair Field, healing ${heal} HP, granting regen, and raising defense.`;
+    },
+
+    /* New: Valkyrie abilities */
+    valkyrie_spear(user, target) {
+        const base = user.baseAtk || 14;
+        const raw = Math.floor(Math.random() * 12) + base + 6;
+        // ignore a portion of defense
+        const effectiveDefense = Math.floor((target.defense || 0) * 0.4);
+        const final = Math.max(0, raw - effectiveDefense);
+        const dealt = applyDamage(target, final, { ignoreDefense: true, attacker: user });
+        user.mana = Math.max(0, (user.mana || 0) - (ABILITIES.valkyrie_spear.cost || 0));
+        return `${user.name} strikes with a Valkyrie Spear for ${dealt} piercing damage!`;
+    },
+
+    valkyrie_aerial_sweep(user, target) {
+        const base = user.baseAtk || 14;
+        // reduced damage: narrower random range and smaller flat bonus
+        const raw = Math.floor(Math.random() * 10) + base + 2;
+        const dealt = applyDamage(target, raw, { attacker: user });
+        // Apply burn + poison instead of evasion reduction
+        target.status = target.status || {};
+        // Burn: moderate DOT based on caster base
+        const burnDmg = Math.max(1, Math.floor(base / 4));
+        const burnIncoming = { turns: 3, dmg: burnDmg };
+        if (target.status.burn) {
+            target.status.burn.dmg = Math.max(target.status.burn.dmg || 0, burnIncoming.dmg);
+            target.status.burn.turns = Math.max(target.status.burn.turns || 0, burnIncoming.turns);
+        } else {
+            target.status.burn = burnIncoming;
+        }
+        // Poison: smaller DOT
+        const poisonDmg = Math.max(1, Math.floor(base / 6));
+        const poisonIncoming = { turns: 3, dmg: poisonDmg };
+        if (target.status.poison) {
+            target.status.poison.dmg = Math.max(target.status.poison.dmg || 0, poisonIncoming.dmg);
+            target.status.poison.turns = Math.max(target.status.poison.turns || 0, poisonIncoming.turns);
+        } else {
+            target.status.poison = poisonIncoming;
+        }
+        user.mana = Math.max(0, (user.mana || 0) - (ABILITIES.valkyrie_aerial_sweep.cost || 0));
+        return `${user.name} performs an Aerial Sweep for ${dealt} damage and inflicts burn and poison!`;
+    },
+
+    valkyrie_guard(user, target) {
+        const add = 6; // smaller shield
+        user.defense = (user.defense || 0) + add;
+        user.status = user.status || {};
+        user.status.shield = { turns: 2, amount: add };
+        user.mana = Math.max(0, (user.mana || 0) - (ABILITIES.valkyrie_guard.cost || 0));
+        return `${user.name} raises Valkyrie Guard, gaining +${add} DEF for several turns.`;
+    },
+
+    /* New: Barbarian abilities */
+    barbarian_berserk_slam(user, target) {
+        const base = user.baseAtk || 12;
+        const raw = Math.floor(Math.random() * 10) + base + 4; // greatly reduced damage
+        const dealt = applyDamage(target, raw, { attacker: user });
+        const buff = 2; // much smaller attack buff
+        user.attackBoost = (user.attackBoost || 0) + buff;
+        user.status = user.status || {};
+        user.status.rage = { turns: 2, amount: buff };
+        return `${user.name} slams for ${dealt} damage and gains +${buff} ATK.`;
+    },
+
+    
+    barbarian_war_cry(user, target) {
+        const buff = 3;
+        const silenceTurns = 2;
+        user.attackBoost = (user.attackBoost || 0) + buff;
+        user.status = user.status || {};
+        user.status.shout = { turns: 3, amount: buff };
+        // apply silence to the opponent
+        try {
+            target.status = target.status || {};
+            target.status.silence = { turns: silenceTurns };
+        } catch (e) {}
+        return `${user.name} bellows a War Cry, boosting attack by ${buff} for several turns and silencing the opponent.`;
+    },
+
+    barbarian_reckless_strike(user, target) {
+        const base = user.baseAtk || 12;
+        const raw = Math.floor(Math.random() * 12) + base + 4; // reduced range
+        // ~25% chance to deal slightly increased damage (1.2x)
+        let usedRaw = raw;
+        let boosted = false;
+        if (Math.random() < 0.25) { usedRaw = Math.floor(raw * 1.2); boosted = true; }
+        const dealt = applyDamage(target, usedRaw, { attacker: user });
+        // increased self-damage tradeoff (20%)
+        const selfDmg = Math.max(4, Math.floor(dealt * 0.20));
+        user.hp = Math.max(0, (user.hp || 0) - selfDmg);
+        return `${user.name} performs Reckless Strike for ${dealt} damage${boosted ? ' (empowered)' : ''} and takes ${selfDmg} recoil.`;
+    },
+
     monk_flurry(user, target) {
         const base = user.baseAtk || 12;
-        let total = 0; for (let i=0;i<3;i++) total += Math.floor(Math.random()*6) + Math.floor(base/2);
+        let total = 0; for (let i=0;i<3;i++) total += Math.floor(Math.random()*8) + Math.floor(base/2);
     const dealt = applyDamage(target, total, { attacker: user });
         target.status = target.status || {};
-        const weakenAmt = 4;
+        // stronger weaken for PVE Monk
+        const weakenAmt = 8;
         if (!target.status.weaken) target.status.weaken = { turns: 2, amount: weakenAmt, prevBoost: (target.attackBoost || 0) };
         else { target.status.weaken.amount = (target.status.weaken.amount || 0) + weakenAmt; target.status.weaken.turns = Math.max(target.status.weaken.turns || 0, 2); }
         user.mana = Math.max(0, (user.mana || 0) - (ABILITIES.monk_flurry ? ABILITIES.monk_flurry.cost : 0));
@@ -686,7 +853,8 @@ const abilityHandlers = {
     monk_stunning_blow(user, target) {
         const base = user.baseAtk || 14; const raw = Math.floor(Math.random()*12) + base;
     const dealt = applyDamage(target, raw, { attacker: user });
-        if (Math.random() < 0.5) {
+        // increase stun chance to make Monk more consistent in PVE
+        if (Math.random() < 0.75) {
             target.status = target.status || {};
             target.status.stun = { turns: 1 };
         }
@@ -696,7 +864,27 @@ const abilityHandlers = {
 
     monk_quivering_palm(user, target) {
         const maxHpT = target.maxHp || 100; const threshold = Math.floor(maxHpT * 0.2);
-        if ((target.hp || 0) <= threshold) { target.hp = 0; target.fainted = true; return `${user.name} collapses the enemy instantly with Quivering Palm!`; }
+        if ((target.hp || 0) <= threshold) {
+            // If the target (player or enemy) has a prepared Revive Scroll, consume it instead of allowing death.
+            if (target.has_revive) {
+                try {
+                    const updates = buildConsumeReviveUpdatesPVE(target);
+                    target.hp = updates.hp;
+                    target.fainted = false;
+                    target.status = updates.status || null;
+                    // persist/clear revive for player-specific local storage helper
+                    if (target === player) {
+                        try { consumeRevive(); } catch (e) { target.has_revive = false; }
+                    } else {
+                        try { target.has_revive = false; } catch (e) {}
+                    }
+                    try { console.debug('[PVE] Revive consumed by Quivering Palm for', target && target.name); } catch(e) {}
+                    logMessage(`${target.name} was saved from death by a Revive Scroll!`);
+                    return `${user.name} collapses the enemy instantly with Quivering Palm! But they were saved by a Revive Scroll!`;
+                } catch (e) { console.error('Quivering Palm revive handling failed', e); }
+            }
+            target.hp = 0; target.fainted = true; return `${user.name} collapses the enemy instantly with Quivering Palm!`;
+        }
         const base = user.baseAtk || 12; const raw = Math.floor(Math.random()*10) + Math.floor(base/2);
     const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -1156,6 +1344,16 @@ let turnCounter = 0;
 let pveRunDropChance = 0;
 
 function updateUI() {
+    // Render using equipped gear modifiers if available. Shadow the global `player`
+    // with a copy that has gear applied so we don't mutate actual battle state.
+    try {
+        if (window.Gear && typeof Gear.applyEquipToStats === 'function') {
+            const _copy = JSON.parse(JSON.stringify(player || {}));
+            Gear.applyEquipToStats(_copy);
+            // shadow the global `player` name within this function for rendering
+            var player = _copy;
+        }
+    } catch (e) { console.error('applyEquipToStats failed in PVE updateUI', e); }
     const pBar = document.getElementById('player-hp');
     const eBar = document.getElementById('enemy-hp');
     if (pBar) pBar.style.width = (player.hp / player.maxHp * 100) + '%';
@@ -1190,6 +1388,11 @@ function updateUI() {
 
     const pManaText = document.getElementById('player-mana-text');
     if (pManaText) pManaText.textContent = player.maxMana ? `MANA: ${player.mana}/${player.maxMana}` : '';
+    // revive indicator
+    try {
+        const reviveEl = document.getElementById('player-revive-indicator');
+        if (reviveEl) reviveEl.textContent = player && player.has_revive ? 'Revive: READY' : '';
+    } catch (e) { /* ignore */ }
 
     // update mana bar fill (if present)
     const pManaFill = document.getElementById('player-mana');
@@ -1408,6 +1611,20 @@ function handleEnemyDefeat() {
             localStorage.removeItem('storyCampaign');
             localStorage.removeItem('storyCampaignResult');
             logMessage('Campaign complete. The Stranger has been defeated.');
+            try {
+                if (typeof Gear !== 'undefined') {
+                    let g = null;
+                    try {
+                        if (typeof Gear.addGearToArmoryAndSync === 'function') {
+                            g = Gear.generateGear(null, 'uncommon');
+                            Gear.addGearToArmoryAndSync(g).catch(()=>{});
+                        } else {
+                            g = Gear.awardGearToPlayer({ slot: null, guaranteed: true });
+                        }
+                    } catch (e) { try { g = Gear.awardGearToPlayer({ slot: null, guaranteed: true }); } catch(er){} }
+                    if (g) logMessage(`You received campaign reward gear: ${g.name}`);
+                }
+            } catch (e) { console.error('Campaign gear award failed', e); }
         }
     } catch (e) { /* ignore */ }
     // accumulate drop chance based on enemy defeated
@@ -1680,6 +1897,8 @@ function handleEnemyDefeat() {
 }
 
 function handlePlayerDefeat() {
+    // Debug: log entering defeat handler and current revive flag
+    try { console.debug('[PVE] handlePlayerDefeat called', { playerName: player && player.name, has_revive: player && player.has_revive }); } catch(e){}
     // If a revive was prepared, consume it and restore the player
     if (player && player.has_revive) {
         try {
@@ -1691,7 +1910,9 @@ function handlePlayerDefeat() {
                 if (player.status.poison) delete player.status.poison;
                 if (player.status.burn) delete player.status.burn;
             }
-            player.has_revive = false;
+            // clear revive using helper so persistence/UI is consistent
+            try { consumeRevive(); } catch(e) { player.has_revive = false; }
+            try { console.debug('[PVE] Revive consumed for', player.name); } catch(e){}
             logMessage('A Revive Scroll saved you from defeat!');
             updateUI();
             // keep the turn with the player after revive
@@ -1769,7 +1990,7 @@ function logMessage(msg) {
     if (el) el.textContent = msg;
 }
 
-function processStatusEffects(actor) {
+function processStatusEffects(actor, opponent) {
     if (!actor.status) return [];
     const messages = [];
 
@@ -1779,6 +2000,40 @@ function processStatusEffects(actor) {
         messages.push(`${actor.name} suffers ${dealt} burn damage.`);
         b.turns--;
         if (b.turns <= 0) delete actor.status.burn;
+    }
+
+    // Turret: damage the opponent each turn if present on actor
+    if (actor.status.turret && opponent) {
+        try {
+            const t = actor.status.turret;
+            const dmg = t.dmg || 1;
+            const dealt = applyDamage(opponent, dmg, { ignoreDefense: !!t.ignoreDefense, attacker: actor });
+            messages.push(`${actor.name}'s Turret fires for ${dealt} damage at ${opponent.name || 'the enemy'}.`);
+            // chance to stun on hit
+            if (t.stunChance && Math.random() < t.stunChance) {
+                opponent.status = opponent.status || {};
+                opponent.status.stun = { turns: 1 };
+                messages.push(`${opponent.name || 'The enemy'} is stunned by the Turret!`);
+            }
+            t.turns = (t.turns || 0) - 1;
+            if (t.turns <= 0) delete actor.status.turret;
+        } catch (e) { console.error('turret processing failed', e); }
+    }
+
+    // Turret attack buff expiration (if turret granted a temporary attack buff)
+    if (actor.status.turret_buff) {
+        const tb = actor.status.turret_buff;
+        tb.turns = (tb.turns || 0) - 1;
+        if (tb.turns <= 0) {
+            // revert to previous boost if recorded, otherwise remove added amount
+            if (typeof tb.prevBoost === 'number') {
+                actor.attackBoost = tb.prevBoost;
+            } else {
+                actor.attackBoost = Math.max(0, (actor.attackBoost || 0) - (tb.amount || 0));
+            }
+            delete actor.status.turret_buff;
+            messages.push(`${actor.name}'s Turret boost has expired.`);
+        }
     }
 
     // Regen / healing-over-time
@@ -1925,6 +2180,17 @@ function applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates =
     return { playerUpdates: p, opponentUpdates: o };
 }
 
+// PVE helper: compute revive consumption updates for a stats object
+function buildConsumeReviveUpdatesPVE(stats) {
+    const rawMax = Number(stats.maxHp || stats.maxHP || 100) || 100;
+    const intended = Math.max(1, Math.ceil(rawMax * 0.3));
+    const newHp = Math.min(rawMax, intended);
+    const newStatus = Object.assign({}, stats.status || {});
+    if (newStatus.poison) delete newStatus.poison;
+    if (newStatus.burn) delete newStatus.burn;
+    return { hp: newHp, fainted: false, status: Object.keys(newStatus).length ? newStatus : null, has_revive: false };
+}
+
 function canUseAbility(actor, abilityId) {
     const abil = ABILITIES[abilityId];
     if (!abil) return false;
@@ -1943,9 +2209,29 @@ function startAbilityCooldown(actor, abilityId) {
 function chooseMove(move) {
     if (!playerTurn) { logMessage("It's not your turn!"); return; }
 
-    const pmsgs = processStatusEffects(player);
+    // Apply gear modifiers to the in-memory player so gear affects PVE combat outcomes
+    try {
+        if (window.Gear && typeof Gear.applyEquipToStats === 'function') Gear.applyEquipToStats(player);
+    } catch (e) { console.error('applyEquipToStats failed in PVE chooseMove', e); }
+
+    const pmsgs = processStatusEffects(player, enemy);
     if (pmsgs.length) pmsgs.forEach(m => logMessage(m));
-    if (player.hp <= 0) { handlePlayerDefeat(); return; }
+    if (player.hp <= 0) {
+        if (player.has_revive) {
+            try {
+                const updates = buildConsumeReviveUpdatesPVE(player);
+                player.hp = updates.hp;
+                player.fainted = false;
+                player.status = updates.status || null;
+                try { consumeRevive(); } catch (e) { player.has_revive = false; }
+                logMessage('A Revive Scroll saved you from defeat!');
+                updateUI();
+                playerTurn = true;
+                return;
+            } catch (e) { console.error('player revive consume failed', e); }
+        }
+        handlePlayerDefeat(); return;
+    }
 
     if (player.status && player.status.stun) {
         logMessage("You are stunned and cannot act!");
@@ -1957,17 +2243,41 @@ function chooseMove(move) {
     }
 
     if (move === 'attack' && !player.fainted) {
-        const damage = Math.floor(Math.random() * 8) + player.baseAtk + player.attackBoost;
+        const damage = Math.floor(Math.random() * 8) + (player.baseAtk || player.attack || 0) + (player.attackBoost || 0);
         const dealt = applyDamage(enemy, damage, { attacker: player });
         logMessage(`You hit ${enemy.name} for ${dealt} damage!`);
     } else if (move === 'heal' && !player.fainted) {
         let heal = Math.floor(Math.random() * 15) + 5;
+        // Reduce base 'heal' effectiveness for Paladin class to keep class balance
+        try {
+            const cls = player.classId || player.class || null;
+            if (cls === 'paladin') {
+                // Paladins get weaker basic heals from the generic Heal button
+                heal = Math.floor(heal * 0.5);
+                try { console.debug('[PVE] reduced generic heal for paladin to', heal); } catch(e){}
+            }
+        } catch(e) {}
         if (player.status && player.status.slimed) heal = Math.max(0, Math.floor(heal / 2));
         // If player is under dark_inversion status, healing damages instead
         if (player.status && player.status.dark_inversion) {
             player.hp = Math.max(0, (player.hp || 0) - heal);
             logMessage(`Your healing backfired due to Dark Inversion and dealt ${heal} damage to you!`);
-            if (player.hp <= 0) { player.fainted = true; handlePlayerDefeat(); updateUI(); return; }
+            if (player.hp <= 0) {
+                if (player.has_revive) {
+                    try {
+                        const updates = buildConsumeReviveUpdatesPVE(player);
+                        player.hp = updates.hp;
+                        player.fainted = false;
+                        player.status = updates.status || null;
+                        try { consumeRevive(); } catch (e) { player.has_revive = false; }
+                        logMessage('A Revive Scroll saved you from defeat!');
+                        updateUI();
+                        playerTurn = true;
+                        return;
+                    } catch (e) { console.error('player revive consume failed', e); }
+                }
+                player.fainted = true; handlePlayerDefeat(); updateUI(); return;
+            }
         } else {
             player.hp = Math.min(player.maxHp, player.hp + heal);
             logMessage(`You healed yourself for ${heal} HP!`);
@@ -1984,7 +2294,21 @@ function chooseMove(move) {
     updateUI();
 
 
-    if (enemy.hp <= 0) { handleEnemyDefeat(); return; }
+    if (enemy.hp <= 0) {
+        if (enemy.has_revive) {
+            try {
+                const updates = buildConsumeReviveUpdatesPVE(enemy);
+                enemy.hp = updates.hp;
+                enemy.fainted = false;
+                enemy.status = updates.status || null;
+                enemy.has_revive = false;
+                logMessage(`${enemy.name} was saved from defeat by a Revive effect!`);
+                updateUI();
+                return;
+            } catch (e) { console.error('enemy revive consume failed', e); }
+        }
+        handleEnemyDefeat(); return;
+    }
 
     if (turnCounter % 3 === 0 && turnCounter !== 0) player.attackBoost = 0;
     turnCounter++;
@@ -2005,9 +2329,23 @@ function chooseMove(move) {
 }
 
 function enemyTurn() {
-    const msgs = processStatusEffects(enemy);
+    const msgs = processStatusEffects(enemy, player);
     if (msgs.length) msgs.forEach(m => logMessage(m));
-    if (enemy.hp <= 0) { handleEnemyDefeat(); return; }
+    if (enemy.hp <= 0) {
+        if (enemy.has_revive) {
+            try {
+                const updates = buildConsumeReviveUpdatesPVE(enemy);
+                enemy.hp = updates.hp;
+                enemy.fainted = false;
+                enemy.status = updates.status || null;
+                enemy.has_revive = false;
+                logMessage(`${enemy.name} was saved from defeat by a Revive effect!`);
+                updateUI();
+                return;
+            } catch (e) { console.error('enemy revive consume failed', e); }
+        }
+        handleEnemyDefeat(); return;
+    }
 
     if (enemy.status && enemy.status.stun) {
         logMessage(`${enemy.name} is stunned and can't move!`);
@@ -2024,6 +2362,8 @@ function enemyTurn() {
         const pick = available[Math.floor(Math.random() * available.length)];
         let result;
         try {
+            // Ensure player's equip modifiers are applied so ability handlers see correct gear-modified stats
+            try { if (window.Gear && typeof Gear.applyEquipToStats === 'function') Gear.applyEquipToStats(player); } catch(e){}
             result = (abilityHandlers[pick] && abilityHandlers[pick](enemy, player)) || `${enemy.name} used ${pick}`;
         } catch (err) {
             console.error('enemy ability handler threw', pick, err);
@@ -2040,15 +2380,31 @@ function enemyTurn() {
     if (enemy.fainted) return;
     let choice = Math.floor(Math.random() * 6);
     if (choice > 2) {
+    // ensure player's equip modifiers are applied so defense reflects gear
+    try { if (window.Gear && typeof Gear.applyEquipToStats === 'function') Gear.applyEquipToStats(player); } catch(e){}
     const damage = Math.floor(Math.random() * 8) + enemy.baseAtk + enemy.attackBoost;
     const dealt = applyDamage(player, damage, { attacker: enemy });
     logMessage(`${enemy.name} attacks for ${dealt} damage!`);
     } else if (choice === 2) {
         const heal = Math.floor(Math.random() * 10) + 5;
-        if (enemy.status && enemy.status.dark_inversion) {
+            if (enemy.status && enemy.status.dark_inversion) {
             enemy.hp = Math.max(0, (enemy.hp || 0) - heal);
             logMessage(`${enemy.name}'s heal backfired due to Dark Inversion and they took ${heal} damage!`);
-            if (enemy.hp <= 0) { enemy.fainted = true; handleEnemyDefeat(); updateUI(); return; }
+            if (enemy.hp <= 0) {
+                if (enemy.has_revive) {
+                    try {
+                        const updates = buildConsumeReviveUpdatesPVE(enemy);
+                        enemy.hp = updates.hp;
+                        enemy.fainted = false;
+                        enemy.status = updates.status || null;
+                        enemy.has_revive = false;
+                        logMessage(`${enemy.name} was saved from defeat by a Revive effect!`);
+                        updateUI();
+                        return;
+                    } catch (e) { console.error('enemy revive consume failed', e); }
+                }
+                enemy.fainted = true; handleEnemyDefeat(); updateUI(); return;
+            }
         } else {
             enemy.hp = Math.min(enemy.maxHp, enemy.hp + heal);
             logMessage(`${enemy.name} healed for ${heal} HP!`);
@@ -2078,6 +2434,13 @@ window.addEventListener('DOMContentLoaded', () => {
     updateUI();
     logMessage(`A ${enemy.name} appeared!`);
     try { attachActionTooltips(); } catch (e) { /* ignore */ }
+    // restore any prepared local revive flag from storage (helps if inventory use persisted earlier)
+    try {
+        const flag = localStorage.getItem('pve_has_revive');
+        if (flag && player && !player.has_revive) {
+            try { prepareRevive('local.restore'); } catch(e) { player.has_revive = true; }
+        }
+    } catch (e) { /* ignore localStorage errors */ }
 });
 
 // (old duplicate attachActionTooltips removed - multiplayer-style tooltip helpers above are used)
@@ -2108,8 +2471,12 @@ function applyDamage(target, rawDamage, opts = {}) {
     if (considerHit && critChance > 0) {
         try {
             if (Math.random() < critChance) {
-                final = Math.max(1, Math.round(final * 1.5)); // +50% damage on crit
-                try { console.debug('[PVE] critical hit', { attacker: attacker.name || attacker.classId, critChance: critChance }); } catch(e){}
+                // honor any gear-provided crit damage bonus (stored as percent points)
+                const critBonusPct = Number((attacker && (attacker._critDamageBonus || (attacker._equipEnchants && attacker._equipEnchants.critDamageBonus))) || 0) || 0;
+                const baseMultiplier = 1.5; // default +50%
+                const multiplier = baseMultiplier + (critBonusPct / 100);
+                final = Math.max(1, Math.round(final * multiplier));
+                try { console.debug('[PVE] critical hit', { attacker: attacker.name || attacker.classId, critChance: critChance, critBonusPct }); } catch(e){}
             }
         } catch (e) { /* ignore RNG errors */ }
     }
@@ -2127,8 +2494,78 @@ function applyDamage(target, rawDamage, opts = {}) {
         }
     } catch (e) { /* ignore inversion check errors */ }
 
-    target.hp = Math.max(0, (target.hp || 0) - final);
-    return final;
+    // Apply elemental on-hit effects (PVE) which can mutate target/status or return attacker updates
+    try {
+        if (window.Gear && typeof Gear.applyOnHit === 'function') {
+            const res = Gear.applyOnHit(attacker, target, final, { pve: true });
+            if (res && res.neutralReduce) {
+                final = Math.floor(final * (1 - res.neutralReduce));
+            }
+            // merge target statuses
+            if (res && res.targetStatus && Object.keys(res.targetStatus).length) {
+                target.status = Object.assign({}, target.status || {}, res.targetStatus || {});
+            }
+            // apply attacker updates (e.g., temporary defense) to attacker object
+            if (res && res.attackerUpdates && Object.keys(res.attackerUpdates).length) {
+                try { Object.assign(attacker, res.attackerUpdates); } catch(e){}
+            }
+        }
+    } catch (e) { console.error('PVE applyOnHit failed', e); }
+
+    // honor mana-shield on the defender
+    const oEnchants = (target._equipEnchants) ? target._equipEnchants : {};
+    let damageToApply = final;
+    if (oEnchants.manaShieldChance && Math.random() < Number(oEnchants.manaShieldChance)) {
+        const manaAvail = Number(target.mana || 0);
+        const manaAbsorb = Math.min(manaAvail, damageToApply);
+        if (manaAbsorb > 0) {
+            damageToApply = Math.max(0, damageToApply - manaAbsorb);
+            target.mana = Math.max(0, manaAvail - manaAbsorb);
+        }
+    }
+
+    // attacker enchants: execute / vampirism
+    const aEnchants = (attacker._equipEnchants) ? attacker._equipEnchants : {};
+    if (aEnchants.executeChance && Math.random() < Number(aEnchants.executeChance)) {
+        damageToApply += Number(aEnchants.executeDamage || 0);
+    }
+    let vampTriggered = false;
+    if (aEnchants.vampirismChance && Math.random() < Number(aEnchants.vampirismChance)) {
+        const vampD = Number(aEnchants.vampirismDamage || 0);
+        if (vampD > 0) { damageToApply += vampD; vampTriggered = true; }
+    }
+
+    target.hp = Math.max(0, (target.hp || 0) - damageToApply);
+
+    // reflect: defender reflects a percentage of damage back to attacker
+    if (oEnchants.reflectPercent && Number(oEnchants.reflectPercent) > 0) {
+        const refPct = Number(oEnchants.reflectPercent || 0);
+        const reflectD = Math.max(0, Math.round(damageToApply * refPct));
+        attacker.hp = Math.max(0, (attacker.hp || 0) - reflectD);
+    }
+
+    // counter: defender may deal flat counter damage back
+    if (oEnchants.counterChance && Math.random() < Number(oEnchants.counterChance)) {
+        const counterD = Number(oEnchants.counterDamage || 0) || 0;
+        if (counterD > 0) attacker.hp = Math.max(0, (attacker.hp || 0) - counterD);
+    }
+
+    // lifesteal/vamp heal for attacker
+    if (attacker._lifestealPercent) {
+        try {
+            const percent = Number(attacker._lifestealPercent || 0);
+            if (percent > 0 && damageToApply > 0) {
+                const heal = Math.max(0, Math.round(damageToApply * percent));
+                attacker.hp = Math.min(Number(attacker.maxHp || attacker.maxHP || 100), (attacker.hp || 0) + heal);
+            }
+        } catch (e) { }
+    }
+    if (vampTriggered) {
+        const vampHeal = Number(aEnchants.vampirismDamage || 0) || 0;
+        if (vampHeal > 0) attacker.hp = Math.min(Number(attacker.maxHp || attacker.maxHP || 100), (attacker.hp || 0) + vampHeal);
+    }
+
+    return damageToApply;
 }
 
 // --- Inventory: use the multiplayer (PvP) implementation as the canonical UI/behavior
@@ -2157,6 +2594,25 @@ function getItemImagePaths(itemId) {
         return { jpg, svg };
     }
     return { jpg: `../img/items/${itemId}.jpg`, svg: `../img/items/${itemId}.svg` };
+}
+
+// Revive helpers: centralize preparing and consuming the one-time revive so
+// both local and DB-backed flows behave the same in PVE.
+function prepareRevive(source = 'local') {
+    try { console.debug('[PVE] prepareRevive called', { source, player: player && player.name }); } catch (e) {}
+    if (!player) return;
+    player.has_revive = true;
+    // persist a lightweight flag for PVE local fallback so reloads or UI reads can see it
+    try { localStorage.setItem('pve_has_revive', '1'); } catch (e) {}
+    updateUI();
+}
+
+function consumeRevive() {
+    try { console.debug('[PVE] consumeRevive called', { player: player && player.name }); } catch (e) {}
+    if (!player) return;
+    player.has_revive = false;
+    try { localStorage.removeItem('pve_has_revive'); } catch (e) {}
+    updateUI();
 }
 
 async function renderInventory() {
@@ -2274,6 +2730,15 @@ async function renderInventory() {
                     updateUI(); await renderInventory();
                     // do not end turn for speed scroll
                     return;
+                } else if (id === 'revive_scroll') {
+                    // prepare a one-time revive on the current player (local fallback)
+                    try { prepareRevive('local'); } catch(e) { player.has_revive = true; }
+                    try { console.debug('[PVE] local renderInventory set has_revive for', player && player.name); } catch(e){}
+                    inv[id] = Math.max(0, (inv[id] || 0) - 1);
+                    localStorage.setItem('inventory', JSON.stringify(inv));
+                    logMessage('Revive Scroll prepared: you will be revived automatically if you fall.');
+                    updateUI(); await renderInventory();
+                    // continue to consume the player's turn below
                 } else {
                     logMessage(`Used ${id}.`);
                     inv[id] = Math.max(0, (inv[id] || 0) - 1);
@@ -2364,6 +2829,7 @@ function applyItemEffectToBattle(item) {
             logMessage('Used Focus Charm: increased critical chance temporarily.');
         } else if (id === 'revive_scroll') {
             playerUpdates.has_revive = true;
+            try { console.debug('[PVE] applyItemEffectToBattle set has_revive on player', { playerName: player && player.name }); } catch(e){}
             logMessage('Revive Scroll prepared: you will be revived automatically if you fall.');
         } else {
             logMessage('Used unknown item: ' + id);
@@ -2377,7 +2843,12 @@ function applyItemEffectToBattle(item) {
             if (typeof adjusted.playerUpdates.hp !== 'undefined') player.hp = adjusted.playerUpdates.hp;
             if (typeof adjusted.playerUpdates.defense !== 'undefined') player.defense = adjusted.playerUpdates.defense;
             if (typeof adjusted.playerUpdates.mana !== 'undefined') player.mana = adjusted.playerUpdates.mana;
-            if (typeof adjusted.playerUpdates.has_revive !== 'undefined') player.has_revive = adjusted.playerUpdates.has_revive;
+            if (typeof adjusted.playerUpdates.has_revive !== 'undefined') {
+                player.has_revive = adjusted.playerUpdates.has_revive;
+                if (player.has_revive) {
+                    try { prepareRevive('db'); } catch(e) {}
+                }
+            }
             if (adjusted.playerUpdates.status) {
                 player.status = Object.assign({}, player.status || {}, adjusted.playerUpdates.status || {});
             }
@@ -2390,16 +2861,39 @@ function applyItemEffectToBattle(item) {
             }
         }
 
-        // Check for enemy faint
+        // Check for enemy faint — if enemy has a rebirth/revive, prefer consuming it
         if (enemy && enemy.hp <= 0) {
-            enemy.fainted = true;
-            handleEnemyDefeat();
+            if (enemy.has_revive) {
+                try {
+                    const updates = buildConsumeReviveUpdatesPVE(enemy);
+                    enemy.hp = updates.hp;
+                    enemy.fainted = false;
+                    enemy.status = updates.status || null;
+                    enemy.has_revive = false;
+                    logMessage(`${enemy.name} was saved from defeat by a Revive effect!`);
+                } catch (e) { console.error('enemy revive consume failed', e); enemy.fainted = true; handleEnemyDefeat(); }
+            } else {
+                enemy.fainted = true;
+                handleEnemyDefeat();
+            }
         }
 
-        // Check for player faint (e.g., inverted heal -> damage)
+        // Check for player faint (e.g., inverted heal -> damage) — prefer consuming player's prepared revive
         if (player && player.hp <= 0) {
-            player.fainted = true;
-            handlePlayerDefeat();
+            if (player.has_revive) {
+                try {
+                    const updates = buildConsumeReviveUpdatesPVE(player);
+                    player.hp = updates.hp;
+                    player.fainted = false;
+                    player.status = updates.status || null;
+                    try { consumeRevive(); } catch (e) { player.has_revive = false; }
+                    logMessage('A Revive Scroll saved you from defeat!');
+                    playerTurn = true;
+                } catch (e) { console.error('player revive consume failed', e); player.fainted = true; handlePlayerDefeat(); }
+            } else {
+                player.fainted = true;
+                handlePlayerDefeat();
+            }
         }
 
         try { updateUI(); } catch (e) { /* ignore */ }

@@ -17,6 +17,7 @@
     <li><a href="battle.html">Battle</a></li>
     <li><a href="rankings.html">Rankings</a></li>
     <li><a href="profile.html">Profile</a></li>
+    <li><a href="armory.html">Armory</a></li>
     <li><a href="index.html">Login / Signup</a></li>
   </ul>
 </nav>
@@ -50,6 +51,9 @@
   <button type="button" data-class="monk" class="class-btn has-tooltip" data-tooltip="Monk — spiritual martial artist with balance of offense and defense"><img class="class-icon" src="img/monk.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/monk.svg'" alt="Monk"><br>Monk</button>
   <button type="button" data-class="wild_magic_sorcerer" class="class-btn has-tooltip" data-tooltip="Wild Magic Sorcerer — unpredictable spellcaster with chaotic effects"><img class="class-icon" src="img/wild_magic_sorcerer.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/wild_magic_sorcerer.jpg'" alt="Wild Magic Sorcerer"><br>Wild Magic Sorcerer</button>
   <button type="button" data-class="dark_mage" class="class-btn has-tooltip" data-tooltip="Dark Mage — wields dark magic and necromantic powers"><img class="class-icon" src="img/dark_mage.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/dark_mage.svg'" alt="Dark Mage"><br>Dark Mage</button>
+  <button type="button" data-class="artificer" class="class-btn has-tooltip" data-tooltip="Artificer — Mechanical support and turrets"><img class="class-icon" src="img/artificer.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/artificer.svg'" alt="Artificer"><br>Artificer</button>
+  <button type="button" data-class="valkyrie" class="class-btn has-tooltip" data-tooltip="Valkyrie — Aerial strikes and guard"><img class="class-icon" src="img/valkyrie.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/valkyrie.svg'" alt="Valkyrie"><br>Valkyrie</button>
+  <button type="button" data-class="barbarian" class="class-btn has-tooltip" data-tooltip="Barbarian — High HP and brutal attacks"><img class="class-icon" src="img/barbarian.jpg" width="80px" height="80px" onerror="this.onerror=null;this.src='img/barbarian.svg'" alt="Barbarian"><br>Barbarian</button>
     </div>
     <span id="selected-class-label"></span>
   </div>
@@ -65,6 +69,7 @@
         <div id="enemy-mana-text">Mana: --/--</div>
         <div id="enemy-stats">ATK: -- &nbsp; DEF: -- &nbsp; SPD: -- &nbsp; CRIT: -- &nbsp; EVA: --</div>
       </div>
+      <div id="enemy-equips" class="equip-list" style="text-align:center; font-size:0.9rem; color:#ddd; margin-top:6px;"></div>
       <div class="hp-bar">
         <div id="enemy-hp" class="hp-fill"></div>
       </div>
@@ -79,8 +84,10 @@
         <div id="player-hp-text">HP: --/--</div>
         <div class="mana-bar-outer"><div id="player-mana-fill" class="mana-fill"></div></div>
         <div id="player-mana-text">Mana: --/--</div>
+  <div id="player-revive-indicator-pvp" style="margin-top:6px;color:#b3ffb3;font-weight:700"></div>
         <div id="player-stats">ATK: -- &nbsp; DEF: -- &nbsp; SPD: -- &nbsp; CRIT: -- &nbsp; EVA: --</div>
       </div>
+      <div id="player-equips" class="equip-list" style="text-align:center; font-size:0.9rem; color:#b3ffb3; margin-top:6px;"></div>
       <div class="hp-bar">
         <div id="player-hp" class="hp-fill"></div>
       </div>
@@ -93,6 +100,7 @@
       <button class="has-tooltip" data-tooltip="Defend: brace and gain a small defense increase for the next enemy attack." onclick="chooseMove('defend')">Defend</button>
       <button class="has-tooltip" data-tooltip="Prepare: gain a temporary attack boost for the next 1–2 turns." onclick="chooseMove('prepare')">Prepare</button>
       <button id="toggle-inventory-btn" type="button">Items</button>
+      
     </div>
 
   <div id="specials"></div>
@@ -135,6 +143,9 @@
           <button type="button" data-class="monk" class="modal-class-btn has-tooltip" data-tooltip="Monk — spiritual martial artist with balance of offense and defense">Monk</button>
           <button type="button" data-class="wild_magic_sorcerer" class="modal-class-btn has-tooltip" data-tooltip="Wild Magic Sorcerer — unpredictable spellcaster with chaotic effects">Wild Magic Sorcerer</button>
           <button type="button" data-class="dark_mage" class="modal-class-btn has-tooltip" data-tooltip="Dark Mage — wields dark magic and necromantic powers">Dark Mage</button>
+          <button type="button" data-class="artificer" class="modal-class-btn has-tooltip" data-tooltip="Artificer — Mechanical support and turrets">Artificer</button>
+          <button type="button" data-class="valkyrie" class="modal-class-btn has-tooltip" data-tooltip="Valkyrie — Aerial strikes and guard">Valkyrie</button>
+          <button type="button" data-class="barbarian" class="modal-class-btn has-tooltip" data-tooltip="Barbarian — High HP and brutal attacks">Barbarian</button>
         </div>
         <div style="margin-top:8px; font-size:12px; color:#666;">You must choose before taking your first turn.</div>
       </div>
@@ -142,6 +153,7 @@
   </div>
 
   <script type="module" src="js/app.js"> </script>
+  <script src="js/gear.js"></script>
   <script type="module" src="js/battle.js"></script>
 </body>
 

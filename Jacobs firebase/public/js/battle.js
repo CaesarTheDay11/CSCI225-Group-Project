@@ -10,6 +10,8 @@ import {
 
 let matchId = null;
 let currentUserId = null;
+
+// Note: in-match Armory button removed — armory still accessible from top nav.
 let opponentId = null;
 let matchRef = null;
 let currentTurnRef = null;
@@ -31,13 +33,13 @@ const _deathCheckTimers = {};
 //this defines ABILITIES metadata
 const ABILITIES = {
   mage_fireball: { id: 'mage_fireball', name: 'Fireball', cost: 10, cooldown: 3, desc: 'Deal strong magic damage and apply burn (DOT for 3 turns).' },
-  warrior_rend:  { id: 'warrior_rend',  name: 'Rend',     cost: 0,  cooldown: 3, desc: 'Powerful physical strike that ignores some defense.' },
+  warrior_rend:  { id: 'warrior_rend',  name: 'Rend',     cost: 0,  cooldown: 3, desc: 'Powerful physical strike that ignores some defense. (Buffed)' },
   archer_volley: { id: 'archer_volley', name: 'Volley',   cost: 0,  cooldown: 3, desc: 'Hits multiple shots; chance to reduce enemy attack.' },
   slime_splatter:{ id: 'slime_splatter',name: 'Splatter', cost: 0,  cooldown: 4, desc: 'Deals damage and applies slime (reduces healing/attack).' },
   gladiator_charge:{id:'gladiator_charge',name:'Charge',  cost: 0,  cooldown: 4, desc: 'Heavy single-target hit with chance to stun.' },
   boss_earthquake:{id:'boss_earthquake', name:'Earthquake', cost:0, cooldown:5, desc:'Massive damage and stuns the player for 1 turn.'},
   mage_iceblast:  { id: 'mage_iceblast', name: 'Ice Blast', cost: 8, cooldown: 4, desc: 'Deal magic damage and reduce enemy ATK for 2 turns.' },
-  warrior_shout:  { id: 'warrior_shout', name: 'Battle Shout', cost: 0, cooldown: 5, desc: 'Increase your attack boost for 2 turns.' },
+  warrior_shout:  { id: 'warrior_shout', name: 'Battle Shout', cost: 0, cooldown: 5, desc: 'Increase your attack boost for several turns (now +10).' },
   archer_poison:  { id: 'archer_poison', name: 'Poison Arrow', cost: 0, cooldown: 4, desc: 'Deal damage and apply poison (DOT).' }
 };
 
@@ -55,10 +57,23 @@ ABILITIES.paladin_bless = { id: 'paladin_bless', name: 'Blessing', cost: 8, cool
 ABILITIES.necro_curse = { id: 'necro_curse', name: 'Curse of Decay', cost: 10, cooldown: 5, desc: 'Afflict the target so they suffer reduced healing (slimed) and ongoing rot.' };
 ABILITIES.druid_barkskin = { id: 'druid_barkskin', name: 'Barkskin', cost: 8, cooldown: 5, desc: 'Harden your skin: heal a small amount, gain +8 defense for several turns, and lash the enemy for minor damage.' };
 
+// New classes: Artificer, Valkyrie, Barbarian
+ABILITIES.artificer_turret = { id: 'artificer_turret', name: 'Deploy Turret', cost: 6, cooldown: 5, desc: 'Deploy a mechanical turret that deals damage for 3 turns.' };
+ABILITIES.artificer_shock = { id: 'artificer_shock', name: 'Arc Shock', cost: 4, cooldown: 3, desc: 'Zap the target for moderate piercing damage and a small chance to stun (ignores defense).' };
+ABILITIES.artificer_repair_field = { id: 'artificer_repair_field', name: 'Repair Field', cost: 8, cooldown: 6, desc: 'Repair your systems: heals you and grants small regen for several turns.' };
+
+ABILITIES.valkyrie_spear = { id: 'valkyrie_spear', name: 'Spear Strike', cost: 4, cooldown: 3, desc: 'A piercing spear strike that ignores some defense.' };
+ABILITIES.valkyrie_aerial_sweep = { id: 'valkyrie_aerial_sweep', name: 'Aerial Sweep', cost: 6, cooldown: 4, desc: 'A sweeping aerial strike that deals solid damage and inflicts burn and poison.' };
+ABILITIES.valkyrie_guard = { id: 'valkyrie_guard', name: 'Valkyrie Guard', cost: 6, cooldown: 5, desc: 'Raise a protective guard: gain a +10 DEF shield for several turns.' };
+
+ABILITIES.barbarian_berserk_slam = { id: 'barbarian_berserk_slam', name: 'Berserk Slam', cost: 0, cooldown: 4, desc: 'A heavy slam that deals big damage and increases your attack for a short time.' };
+  ABILITIES.barbarian_war_cry = { id: 'barbarian_war_cry', name: 'War Cry', cost: 0, cooldown: 5, desc: 'A fierce cry that raises your attack for several turns, grants minor regeneration, and silences the opponent (prevents specials).' };
+ABILITIES.barbarian_reckless_strike = { id: 'barbarian_reckless_strike', name: 'Reckless Strike', cost: 0, cooldown: 6, desc: 'Deliver a massive strike with 50% chance to deal increased damage; costs some HP as recoil.' };
+
 // New Monk abilities
-ABILITIES.monk_flurry = { id: 'monk_flurry', name: 'Flurry', cost: 4, cooldown: 3, desc: 'Three rapid strikes that together deal good damage and inflict Weaken. Costs 4 mana.' };
-ABILITIES.monk_stunning_blow = { id: 'monk_stunning_blow', name: 'Stunning Blow', cost: 0, cooldown: 4, desc: 'A heavy strike that has a 50% chance to stun the target.' };
-ABILITIES.monk_quivering_palm = { id: 'monk_quivering_palm', name: 'Quivering Palm', cost: 10, cooldown: 6, desc: 'Inflicts bleeding (5% max HP per turn for 4 turns). If the target is at <=20% max HP when this hits they die instantly.' };
+  ABILITIES.monk_flurry = { id: 'monk_flurry', name: 'Flurry', cost: 4, cooldown: 3, desc: 'Three rapid strikes: higher per-hit damage and a stronger weaken.' };
+  ABILITIES.monk_stunning_blow = { id: 'monk_stunning_blow', name: 'Stunning Blow', cost: 0, cooldown: 4, desc: 'A heavy strike with a high chance to stun (buffed).' };
+  ABILITIES.monk_quivering_palm = { id: 'monk_quivering_palm', name: 'Quivering Palm', cost: 10, cooldown: 6, desc: 'Deep bleeding over time; instantly kills at low HP.' };
 
 // New Necromancer (summoner support spellset)
 ABILITIES.necro_summon_skeleton = { id: 'necro_summon_skeleton', name: 'Summon Skeleton', cost: 8, cooldown: 5, desc: 'Summon a skeleton: gain +5 ATK and +5 DEF for a few turns and poison the enemy.' };
@@ -92,7 +107,7 @@ ABILITIES.defend = { id: 'defend', name: 'Defend', desc: 'Defend: brace and gain
 ABILITIES.prepare = { id: 'prepare', name: 'Prepare', desc: 'Prepare: gain a temporary attack boost for the next 1–2 turns.' };
 
 const CLASS_STATS = {
-  warrior: { name: 'Warrior', hp: 120, maxHp: 120, baseAtk: 12, defense: 4, speed: 5, critChance: 0.04, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['warrior_rend', 'warrior_shout', 'warrior_whirlwind'] },
+  warrior: { name: 'Warrior', hp: 140, maxHp: 140, baseAtk: 16, defense: 6, speed: 5, critChance: 0.04, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['warrior_rend', 'warrior_shout', 'warrior_whirlwind'] },
   mage:    { name: 'Mage',    hp: 80,  maxHp: 80,  baseAtk: 16, defense: 1, speed: 6, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['mage_fireball', 'mage_iceblast', 'mage_arcane_burst'], mana: 30 },
   archer:  { name: 'Archer',  hp: 95,  maxHp: 95,  baseAtk: 14, defense: 2, speed: 8, critChance: 0.12, evasion: 0.06, attackBoost: 0, fainted: false, abilities: ['archer_volley', 'archer_poison', 'archer_trap'] },
   cleric:  { name: 'Cleric',  hp: 90,  maxHp: 90,  baseAtk: 8,  defense: 2, speed: 5, critChance: 0.03, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['cleric_heal', 'cleric_smite', 'cleric_shield'], mana: 30 },
@@ -101,9 +116,12 @@ const CLASS_STATS = {
   paladin: { name: 'Paladin', hp: 130, maxHp: 130, baseAtk: 11, defense: 5, speed: 5, critChance: 0.04, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['paladin_aura', 'paladin_holy_strike', 'paladin_bless'], mana: 15 },
   dark_mage: { name: 'Dark Mage', hp: 75, maxHp: 75, baseAtk: 12, defense: 1, speed: 6, critChance: 0.05, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 },
   necromancer: { name: 'Necromancer', hp: 80, maxHp: 80, baseAtk: 10, defense: 2, speed: 6, critChance: 0.05, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['necro_summon_skeleton', 'necro_spirit_shackles', 'necro_dark_inversion'], mana: 40 },
-  monk:    { name: 'Monk',    hp: 105, maxHp: 105, baseAtk: 13, defense: 3, speed: 8, critChance: 0.07, evasion: 0.05, attackBoost: 0, fainted: false, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 },
+  monk:    { name: 'Monk',    hp: 125, maxHp: 125, baseAtk: 20, defense: 4, speed: 8, critChance: 0.08, evasion: 0.05, attackBoost: 0, fainted: false, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 },
   wild_magic_sorcerer: { name: 'Wild Magic Sorcerer', hp: 85, maxHp: 85, baseAtk: 14, defense: 1, speed: 6, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 },
-  druid:   { name: 'Druid',   hp: 100, maxHp: 100, baseAtk: 12, defense: 2, speed: 6, critChance: 0.05, evasion: 0.04, attackBoost: 0, fainted: false, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 }
+  druid:   { name: 'Druid',   hp: 110, maxHp: 110, baseAtk: 14, defense: 3, speed: 6, critChance: 0.05, evasion: 0.04, attackBoost: 0, fainted: false, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 }
+  ,artificer: { name: 'Artificer', hp: 125, maxHp: 125, baseAtk: 16, defense: 6, speed: 5, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['artificer_turret','artificer_shock','artificer_repair_field'], mana: 40 }
+  ,valkyrie: { name: 'Valkyrie', hp: 130, maxHp: 130, baseAtk: 14, defense: 3, speed: 8, critChance: 0.06, evasion: 0.05, attackBoost: 0, fainted: false, abilities: ['valkyrie_spear','valkyrie_aerial_sweep','valkyrie_guard'], mana: 30 }
+  ,barbarian: { name: 'Barbarian', hp: 140, maxHp: 140, baseAtk: 12, defense: 1, speed: 6, critChance: 0.05, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['barbarian_berserk_slam','barbarian_war_cry','barbarian_reckless_strike'], mana: 0 }
 };
 
 // Mapping for item image filenames in this project's public/img directory.
@@ -135,20 +153,93 @@ function getItemImagePaths(itemId) {
   return { jpg: `img/items/${itemId}.jpg`, svg: `img/items/${itemId}.svg` };
 }
 
+// Return a best-effort image path for a gear object. Gear images are stored under
+// img/gear/<type>/split_<n>.png. We choose a deterministic split index from the gear id
+// so repeated renders pick the same image.
+function getGearImagePath(g) {
+  try {
+    if (!g) return 'img/gear/sword/split_1.png';
+    if (g.image) return g.image;
+    const slot = (g.slot || '').toString().toLowerCase();
+    // map technical slot names to gear folders
+    const SLOT_TO_FOLDER = {
+      melee1: 'sword', melee2: 'sword', sword: 'sword', spear: 'spear', axe: 'axe', hammer: 'hammer', mace: 'mace', dagger: 'dagger', staff: 'staff', bow: 'bow', crossbow: 'crossbow', gun: 'gun', shield: 'shield', bracers: 'bracers', chestplate: 'chestplate', helmet: 'helmet', leggings: 'leggings', pants: 'leggings', boots: 'boots', necklace: 'necklace', rings: 'rings', ring1: 'rings', ring2: 'rings'
+    };
+    const folder = SLOT_TO_FOLDER[slot] || 'sword';
+    // Prefer element-specific images when available (some folders like chestplate
+    // ship with files named <element>_<folder>.png e.g. fire_chestplate.png).
+    // Otherwise map elements to a consistent split_N index so element-colored
+    // visuals are deterministic across clients.
+    const rawEl = (g.element || '').toString().toLowerCase();
+    // normalize common synonyms so filenames match the repo assets
+    const ELEMENT_NORMALIZE = { electric: 'lightning', thunder: 'lightning', phys: 'neutral', none: 'neutral', natural: 'wind' };
+    const el = ELEMENT_NORMALIZE[rawEl] || rawEl;
+    const ELEMENT_SPLIT = { fire:1, lightning:2, ice:3, wind:4, earth:5, neutral:6 };
+    // folders that contain element_<folder>.png assets
+    const ELEMENT_SPECIFIC_FOLDERS = new Set(['chestplate']);
+    if (el) {
+      if (ELEMENT_SPECIFIC_FOLDERS.has(folder)) {
+        return `img/gear/${folder}/${el}_${folder}.png`;
+      }
+      const sidx = ELEMENT_SPLIT[el];
+      if (sidx) return `img/gear/${folder}/split_${sidx}.png`;
+    }
+    // deterministic hash from id (fallback when element not present)
+    const id = g.id || (g.name ? g.name.replace(/\s+/g,'_').toLowerCase() : Math.random().toString(36).slice(2,8));
+    let h = 0; for (let i=0;i<id.length;i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    const idx = (h % 6) + 1; // files named split_1..split_6.png
+    return `img/gear/${folder}/split_${idx}.png`;
+  } catch (e) { return 'img/gear/sword/split_1.png'; }
+}
+
+// Return an ordered list of candidate image paths to try for a gear object. The
+// chooser image onerror handler will step through these until one loads.
+function getGearImageCandidates(g, metaId) {
+  const candidates = [];
+  try {
+    if (!g) return candidates.concat([`img/gear/sword/split_1.png`]);
+    if (g.image) candidates.push(g.image);
+    const slot = (g.slot || '').toString().toLowerCase();
+    const folder = (function(){ const m = { melee1:'sword', melee2:'sword', sword:'sword', spear:'spear', axe:'axe', hammer:'hammer', mace:'mace', dagger:'dagger', staff:'staff', bow:'bow', crossbow:'crossbow', gun:'gun', shield:'shield', bracers:'bracers', chestplate:'chestplate', helmet:'helmet', leggings:'leggings', pants:'leggings', boots:'boots', necklace:'necklace', rings:'rings', ring1:'rings', ring2:'rings' }; return m[slot] || 'sword'; })();
+    const rawEl = (g.element || '').toString().toLowerCase();
+    const ELEMENT_NORMALIZE = { electric: 'lightning', thunder: 'lightning', phys: 'neutral', none: 'neutral', natural: 'wind' };
+    const el = ELEMENT_NORMALIZE[rawEl] || rawEl;
+    // element-specific chestplate image
+    if (el && folder === 'chestplate') candidates.push(`img/gear/${folder}/${el}_${folder}.png`);
+    // element-split fallback when available
+    const ELEMENT_SPLIT = { fire:1, lightning:2, ice:3, wind:4, earth:5, neutral:6 };
+    if (el && ELEMENT_SPLIT[el]) candidates.push(`img/gear/${folder}/split_${ELEMENT_SPLIT[el]}.png`);
+    // deterministic split by id
+    const id = g.id || (g.name ? g.name.replace(/\s+/g,'_').toLowerCase() : Math.random().toString(36).slice(2,8));
+    let h = 0; for (let i=0;i<id.length;i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    const idx = (h % 6) + 1;
+    candidates.push(`img/gear/${folder}/split_${idx}.png`);
+    // per-item image catalog (jpg/svg)
+    if (metaId) {
+      const p = getItemImagePaths(metaId || id);
+      if (p.jpg) candidates.push(p.jpg);
+      if (p.svg) candidates.push(p.svg);
+    }
+  } catch (e) { /* ignore */ }
+  // final generic fallback
+  candidates.push('img/gear/sword/split_1.png');
+  return candidates.filter(Boolean);
+}
+
 function attachActionTooltips() {
   const menu = document.getElementById('menu');
   if (!menu) return;
   const buttons = Array.from(menu.querySelectorAll('button'));
-  buttons.forEach(btn => {
-    // Skip special buttons inside #specials - they have their own tooltips
-    if (btn.closest && btn.closest('#specials')) return;
-    let abilityKey = btn.getAttribute('data-ability');
-    if (!abilityKey) {
-      const on = btn.getAttribute('onclick') || '';
-      const m = on.match(/chooseMove\(['"](\w+)['"]\)/);
-      if (m) abilityKey = m[1];
-    }
-    abilityKey = abilityKey || btn.textContent.trim().toLowerCase();
+      buttons.forEach(btn => {
+        // Skip special buttons inside #specials - they have their own tooltips
+        if (btn.closest && btn.closest('#specials')) return;
+        let abilityKey = btn.getAttribute('data-ability');
+        if (!abilityKey) {
+          const on = btn.getAttribute('onclick') || '';
+          const m = on.match(/chooseMove\(['"](\w+)['"]\)/);
+          if (m) abilityKey = m[1];
+        }
+        abilityKey = abilityKey || btn.textContent.trim().toLowerCase();
 
     const moveHandler = (evt) => {
       // Build a small info object (compatible with _showAbilityTooltip signature)
@@ -170,10 +261,10 @@ function applyDamageToObject(targetObj, rawDamage, opts = {}) {
   // opts: { ignoreDefense: bool, attacker: { critChance, ... }, considerHit: bool }
   const ignoreDefense = !!opts.ignoreDefense;
   const attacker = opts.attacker || null;
-  const considerHit = typeof opts.considerHit === 'boolean' ? opts.considerHit : !!attacker;
+    const considerHit = typeof opts.considerHit === 'boolean' ? opts.considerHit : !!attacker;
 
   // Evasion check (target may dodge entirely)
-  const targetEvasion = Number(targetObj.evasion || 0) || 0;
+    const targetEvasion = Number(targetObj.evasion || 0) || 0;
   if (considerHit && targetEvasion > 0) {
     try {
       if (Math.random() < targetEvasion) {
@@ -193,7 +284,11 @@ function applyDamageToObject(targetObj, rawDamage, opts = {}) {
     try {
       if (Math.random() < critChance) {
         isCrit = true;
-        final = Math.max(1, Math.round(final * 1.5)); // crit = +50% damage
+        // Allow gear to increase crit damage via _critDamageBonus (stored as percent points)
+        const critBonusPct = Number((attacker && (attacker._critDamageBonus || (attacker._equipEnchants && attacker._equipEnchants.critDamageBonus))) || 0) || 0;
+        const baseMultiplier = 1.5; // default crit = +50%
+        const multiplier = baseMultiplier + (critBonusPct / 100);
+        final = Math.max(1, Math.round(final * multiplier));
       }
     } catch (e) { /* ignore RNG errors */ }
   }
@@ -323,19 +418,51 @@ function startAbilityCooldownLocal(abilityCooldowns = {}, abilityId) {
   return out;
 }
 
-function processStatusEffectsLocal(actorStats) {
-  if (!actorStats) return { updates: {}, messages: [] };
+function processStatusEffectsLocal(actorStats, opponentStats) {
+  if (!actorStats) return { updates: {}, opponentUpdates: {}, messages: [] };
 
   const updates = {};
+  const opponentUpdates = {};
   const messages = [];
   const status = actorStats.status ? JSON.parse(JSON.stringify(actorStats.status)) : {};
+
+  // Regenerator: chance to clear debuffs or grant small regen (from gear superchange)
+  try {
+    const aEnchants = (actorStats._equipEnchants) ? actorStats._equipEnchants : {};
+    if (aEnchants.regeneratorChance && Math.random() < Number(aEnchants.regeneratorChance)) {
+      // clear common harmful DOTs
+      if (status.poison) { delete status.poison; messages.push(`${actorStats.name || 'Player'}'s gear purges poison!`); }
+      if (status.burn) { delete status.burn; messages.push(`${actorStats.name || 'Player'}'s gear extinguishes burn!`); }
+      if (status.bleed) { delete status.bleed; messages.push(`${actorStats.name || 'Player'}'s gear staunches bleeding!`); }
+      if (status.slimed) { delete status.slimed; messages.push(`${actorStats.name || 'Player'}'s gear removes slimed debuff!`); }
+      // small chance to grant a tiny regen-over-time entry as well
+      const regenAmt = Number(aEnchants.regenPerTurn || 0) || 0;
+      if (regenAmt > 0) {
+        status.regen = status.regen || { amount: regenAmt, turns: 2 };
+        messages.push(`${actorStats.name || 'Player'} gains a short regeneration from gear.`);
+      }
+    }
+  } catch (e) { /* ignore regenerator errors */ }
+
+  // Passive gear-provided regeneration: if equips grant a steady regen-per-turn, apply it here.
+  try {
+    const passiveRegen = Number(actorStats._regenPerTurn || 0) || 0;
+    if (passiveRegen > 0) {
+      const maxHpLocal = actorStats.maxHp || actorStats.maxHP || 100;
+      const cur = ('hp' in updates) ? Number(updates.hp) : Number(actorStats.hp || 0);
+      const newHp = Math.min(maxHpLocal, (cur || 0) + passiveRegen);
+      updates.hp = newHp;
+      messages.push(`${actorStats.name || 'Player'} regenerates ${passiveRegen} HP from gear.`);
+    }
+  } catch (e) { /* ignore passive regen errors */ }
 
   // Burn: DOT
   if (status.burn) {
     const effectiveAtk = getEffectiveBaseAtk(actorStats, actorStats.baseAtk || 10);
-    const dmg = (status.burn.dmg || Math.max(1, Math.floor(effectiveAtk / 3)));
+    // support both legacy .dmg and gear-produced .amount fields
+    const dmg = (typeof status.burn.dmg !== 'undefined' ? status.burn.dmg : (typeof status.burn.amount !== 'undefined' ? status.burn.amount : Math.max(1, Math.floor(effectiveAtk / 3))));
     const { damage, newHp } = applyDamageToObject({ hp: actorStats.hp, defense: 0 }, dmg, { ignoreDefense: true });
-    updates.hp = newHp;
+  updates.hp = newHp;
     messages.push(`${actorStats.name || 'Player'} suffers ${damage} burn damage.`);
     status.burn.turns = (status.burn.turns || 0) - 1;
     if (status.burn.turns <= 0) delete status.burn;
@@ -354,12 +481,46 @@ function processStatusEffectsLocal(actorStats) {
 
   // Poison: DOT
   if (status.poison) {
-    const pDmg = status.poison.dmg || 1;
+    // support both legacy .dmg and gear-produced .amount fields
+    const pDmg = (typeof status.poison.dmg !== 'undefined' ? status.poison.dmg : (typeof status.poison.amount !== 'undefined' ? status.poison.amount : 1));
     const { damage, newHp } = applyDamageToObject({ hp: (updates.hp ?? actorStats.hp) }, pDmg, { ignoreDefense: true });
     updates.hp = newHp;
     messages.push(`${actorStats.name || 'Player'} suffers ${damage} poison damage.`);
     status.poison.turns = (status.poison.turns || 0) - 1;
     if (status.poison.turns <= 0) delete status.poison;
+  }
+
+  // Turret: if actor has a turret status, it should damage the opponent
+  if (status.turret && opponentStats) {
+    try {
+      const t = status.turret;
+      const dmg = t.dmg || 1;
+      const { damage, newHp } = applyDamageToObject({ hp: opponentStats.hp, defense: opponentStats.defense || 0, evasion: opponentStats.evasion || 0 }, dmg, { ignoreDefense: !!t.ignoreDefense, attacker: actorStats });
+      // Normalize hp (no negatives) and mark fainted if turret tick killed the target.
+      const clamped = Math.max(0, newHp);
+      opponentUpdates.hp = clamped;
+      if (clamped <= 0) {
+        opponentUpdates.fainted = true;
+        try { console.debug('[turret] turret tick killed target, writing fainted=true for opponent', { actor: actorStats?.name, target: opponentStats?.name, dmg, clamped }); } catch (e) {}
+      }
+      messages.push(`${actorStats.name || 'Player'}'s Turret fires for ${damage} damage on ${opponentStats.name || 'Opponent'}.`);
+      t.turns = (t.turns || 0) - 1;
+      if (t.turns <= 0) delete status.turret;
+      // propagate any status changes on opponent via turret? none for now
+    } catch (e) { console.error('Error processing turret tick', e); }
+  }
+
+  // Turret: chance to stun the opponent on tick
+  if (status.turret && opponentStats && status.turret.stunChance) {
+    try {
+      const t = status.turret;
+      if (Math.random() < (t.stunChance || 0)) {
+        const oppStatus = Object.assign({}, opponentStats.status || {});
+        oppStatus.stun = { turns: 1 };
+        opponentUpdates.status = Object.assign({}, opponentUpdates.status || {}, oppStatus);
+        messages.push(`${actorStats.name || 'Player'}'s Turret stuns ${opponentStats.name || 'the opponent'}!`);
+      }
+    } catch (e) { console.error('Error processing turret stun chance', e); }
   }
 
   // Bleed: percent-based DOT (e.g., 5% max HP per turn)
@@ -423,6 +584,16 @@ function processStatusEffectsLocal(actorStats) {
     }
   }
 
+  // Turret buff expiration: if actor has a turret_buff, decrement and revert attackBoost when it expires
+  if (status.turret_buff) {
+    status.turret_buff.turns = (status.turret_buff.turns || 0) - 1;
+    if (status.turret_buff.turns <= 0) {
+      const prev = typeof status.turret_buff.prevBoost === 'number' ? status.turret_buff.prevBoost : Math.max(0, (actorStats.attackBoost || 0) - (status.turret_buff.amount || 0));
+      updates.attackBoost = prev;
+      delete status.turret_buff;
+    }
+  }
+
   // Prepare: temporary attack boost that lasts a fixed number of turns (handled like shout)
   if (status.prepare) {
     status.prepare.turns = (status.prepare.turns || 0) - 1;
@@ -462,7 +633,7 @@ function processStatusEffectsLocal(actorStats) {
     updates.fainted = true;
   }
 
-  return { updates, messages };
+  return { updates, opponentUpdates, messages };
 }
 
 // --- Ability handlers (return DB-friendly update objects) ---
@@ -476,18 +647,18 @@ const abilityHandlers = {
     newStatus.burn = { turns: 3, dmg: Math.max(2, Math.floor(base / 3)) };
     opponentUpdates.status = newStatus;
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'mage_fireball'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.mage_fireball.cost || 0)) };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_mage_fireball' }, message: `${user.name || 'You'} casts Fireball for ${damage} damage and inflicts burn!`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_mage_fireball' }, message: `${user.name || 'You'} casts Fireball for ${damage} damage and inflicts burn!`, actorMessage: `You cast Fireball for ${damage} damage and inflict burn!`, opponentMessage: `${user.name || 'Opponent'} casts Fireball for ${damage} damage and inflicts burn on you!`, lastMoveDamage: damage };
   },
 
   warrior_rend(user, target) {
-    const base = getEffectiveBaseAtk(user, 12);
-    const raw = Math.floor(Math.random() * 10) + base + 6;
+    const base = getEffectiveBaseAtk(user, 14);
+    const raw = Math.floor(Math.random() * 12) + base + 8;
     const effectiveDefense = (target.defense || 0) / 2;
     const final = Math.max(0, Math.round(raw - effectiveDefense));
   const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: effectiveDefense, evasion: target.evasion || 0 }, final, { ignoreDefense: true, attacker: user });
     const opponentUpdates = { hp: newHp };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'warrior_rend') };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_warrior_rend' }, message: `${user.name || 'You'} rends ${target.name || 'the enemy'} for ${damage} damage!`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_warrior_rend' }, message: `${user.name || 'You'} rends ${target.name || 'the enemy'} for ${damage} damage!`, actorMessage: `You rend ${target.name || 'the enemy'} for ${damage} damage!`, opponentMessage: `${user.name || 'Opponent'} rends you for ${damage} damage!`, lastMoveDamage: damage };
   },
 
   archer_volley(user, target) {
@@ -508,7 +679,7 @@ const abilityHandlers = {
   opponentUpdates.status = newStatus;
   opponentUpdates.attackBoost = Math.max(0, (target.attackBoost || 0) - amount);
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'archer_volley') };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_archer_volley' }, message: `${user.name || 'You'} fires a volley for ${damage} total damage!`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_archer_volley' }, message: `${user.name || 'You'} fires a volley for ${damage} total damage!`, actorMessage: `You fire a volley for ${damage} total damage!`, opponentMessage: `${user.name || 'Opponent'} fires a volley dealing ${damage} total damage to you!`, lastMoveDamage: damage };
   },
 
   slime_splatter(user, target) {
@@ -520,7 +691,7 @@ const abilityHandlers = {
     newStatus.slimed = { turns: 3, effect: 'reduce-heal' };
     opponentUpdates.status = newStatus;
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'slime_splatter') };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_slime_splatter' }, message: `Slime splatters for ${damage} and leaves a sticky slime!`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_slime_splatter' }, message: `Slime splatters for ${damage} and leaves a sticky slime!`, actorMessage: `You splatter slime for ${damage} and leave a sticky slime!`, opponentMessage: `${user.name || 'Opponent'} splatters slime for ${damage} and covers you in sticky slime!`, lastMoveDamage: damage };
   },
 
   gladiator_charge(user, target) {
@@ -529,14 +700,18 @@ const abilityHandlers = {
   const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'gladiator_charge') };
+    let didStun = false;
     let message = `${user.name || 'Enemy'} charges for ${damage} damage!`;
     if (Math.random() < 0.3) {
       const newStatus = Object.assign({}, target.status || {});
       newStatus.stun = { turns: 1 };
       opponentUpdates.status = newStatus;
       message = `${user.name || 'Enemy'} charges with a heavy blow for ${damage} — ${target.name || 'the target'} is stunned!`;
+      didStun = true;
     }
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_gladiator_charge' }, message, lastMoveDamage: damage };
+    const actorMsg = didStun ? `You charge with a heavy blow for ${damage} — ${target.name || 'the target'} are stunned!` : `You charge for ${damage} damage!`;
+    const opponentMsg = didStun ? `${user.name || 'Opponent'} charges with a heavy blow for ${damage} — ${target.name || 'the target'} is stunned!` : `${user.name || 'Opponent'} charges for ${damage} damage!`;
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_gladiator_charge' }, message, actorMessage: actorMsg, opponentMessage: opponentMsg, lastMoveDamage: damage };
   },
 
   boss_earthquake(user, target) {
@@ -548,7 +723,7 @@ const abilityHandlers = {
     newStatus.stun = { turns: 1 };
     opponentUpdates.status = newStatus;
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'boss_earthquake') };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_boss_earthquake' }, message: `${user.name || 'Enemy'} slams the ground for ${damage} — ${target.name || 'target'} is stunned!`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_boss_earthquake' }, message: `${user.name || 'Enemy'} slams the ground for ${damage} — ${target.name || 'target'} is stunned!`, actorMessage: `You slam the ground for ${damage} — ${target.name || 'the target'} is stunned!`, opponentMessage: `${user.name || 'Enemy'} slams the ground for ${damage} and stuns you!`, lastMoveDamage: damage };
   },
 
   mage_iceblast(user, target) {
@@ -568,16 +743,16 @@ const abilityHandlers = {
   opponentUpdates.status = newStatus;
   opponentUpdates.attackBoost = Math.max(0, (target.attackBoost || 0) - amount);
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'mage_iceblast'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.mage_iceblast.cost || 0)) };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_mage_iceblast' }, message: `${user.name || 'You'} blasts ${target.name || 'the target'} with ice for ${damage} damage and lowers attack!`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_mage_iceblast' }, message: `${user.name || 'You'} blasts ${target.name || 'the target'} with ice for ${damage} damage and lowers attack!`, actorMessage: `You blast ${target.name || 'the target'} with ice for ${damage} damage and lower their attack!`, opponentMessage: `${user.name || 'Opponent'} blasts you with ice for ${damage} damage and lowers your attack!`, lastMoveDamage: damage };
   },
 
   warrior_shout(user, target) {
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'warrior_shout') };
     const newStatus = Object.assign({}, user.status || {});
   //this gives a longer shout buff so attack persists across more turns
-  newStatus.shout = { turns: 3, amount: 8 };
+  newStatus.shout = { turns: 4, amount: 10 };
   playerUpdates.status = newStatus;
-  playerUpdates.attackBoost = (user.attackBoost || 0) + 8;
+  playerUpdates.attackBoost = (user.attackBoost || 0) + 10;
     return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_warrior_shout' }, message: `${user.name || 'You'} shouts and increases their attack!` };
   },
 
@@ -603,13 +778,13 @@ const abilityHandlers = {
     }
     opponentUpdates.status = newStatus;
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'archer_poison') };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_archer_poison' }, message: `${user.name || 'You'} hits ${target.name || 'the enemy'} for ${damage} and applies poison!`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_archer_poison' }, message: `${user.name || 'You'} hits ${target.name || 'the enemy'} for ${damage} and applies poison!`, actorMessage: `You hit ${target.name || 'the enemy'} for ${damage} and apply poison!`, opponentMessage: `${user.name || 'Opponent'} hits you for ${damage} and applies poison!`, lastMoveDamage: damage };
   }
 
   // New ability handlers for added classes
   ,
   cleric_heal(user, target) {
-    const heal = Math.floor(Math.random() * 14) + 12; // 12-25
+    const heal = Math.floor(Math.random() * 15) + 16; // 16-30 (buffed)
     // If caster is slimed (healing reduction), reduce heal amount
     const isSlimed = !!(user.status && user.status.slimed);
     const actualHeal = isSlimed ? Math.floor(heal / 2) : heal;
@@ -625,13 +800,13 @@ const abilityHandlers = {
   },
 
   cleric_smite(user, target) {
-    const base = getEffectiveBaseAtk(user, 8);
-    const raw = Math.floor(Math.random() * 8) + base + 6;
+    const base = getEffectiveBaseAtk(user, 10);
+    const raw = Math.floor(Math.random() * 12) + base + 8; // stronger smite
   const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { ignoreDefense: false, attacker: user });
     const opponentUpdates = { hp: newHp };
-    // inflict burn on the enemy
+    // inflict burn on the enemy (stronger)
     const oppStatus = Object.assign({}, target.status || {});
-    oppStatus.burn = { turns: 3, dmg: 4 };
+    oppStatus.burn = { turns: 3, dmg: Math.max(5, Math.floor(base / 3)) };
     opponentUpdates.status = oppStatus;
     // dispel damaging DOTs from self (caster)
     const newStatus = Object.assign({}, user.status || {});
@@ -640,7 +815,7 @@ const abilityHandlers = {
     if (newStatus.burn) { delete newStatus.burn; dispelled = true; }
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'cleric_smite'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.cleric_smite.cost || 0)), status: Object.keys(newStatus).length ? newStatus : null };
     const msg = `${user.name || 'You'} smite the foe for ${damage} holy damage${dispelled ? ' and dispels DOTs on yourself!' : '!'}`;
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_cleric_smite' }, message: msg, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_cleric_smite' }, message: msg, actorMessage: `You smite for ${damage} and ${msg || ''}`, opponentMessage: `${user.name || 'Opponent'} smites you for ${damage} and ${msg || ''}`, lastMoveDamage: damage };
   },
 
   knight_guard(user, target) {
@@ -656,7 +831,7 @@ const abilityHandlers = {
     newStatus.shield = { turns: 1, amount: add };
   try { console.debug('[ability] knight_guard applied', { caster: user?.name, amount: add, turns: newStatus.shield.turns }); console.log('[ability] knight_guard applied', { caster: user?.name, amount: add, turns: newStatus.shield.turns }); } catch (e) {}
     const playerUpdates = { defense: newDefense, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'knight_guard') };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_knight_guard' }, message: `${user.name || 'You'} strikes and assumes a guarded stance, dealing ${damage} damage and increasing defense by ${add} for a short time.`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_knight_guard' }, message: `${user.name || 'You'} strikes and assumes a guarded stance, dealing ${damage} damage and increasing defense by ${add} for a short time.`, actorMessage: `You strike and assume a guarded stance, dealing ${damage} damage and gaining +${add} DEF.`, opponentMessage: `${user.name || 'Opponent'} strikes and assumes a guarded stance, dealing ${damage} damage and increases their defense.`, lastMoveDamage: damage };
   },
 
   knight_charge(user, target) {
@@ -665,14 +840,18 @@ const abilityHandlers = {
       const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'knight_charge') };
+    let didStun = false;
     let message = `${user.name || 'You'} charges for ${damage} damage!`;
     if (Math.random() < 0.35) {
       const s = Object.assign({}, target.status || {});
       s.stun = { turns: 1 };
       opponentUpdates.status = s;
       message = `${user.name || 'You'} charges with a crushing blow for ${damage} — ${target.name || 'the enemy'} is stunned!`;
+      didStun = true;
     }
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_knight_charge' }, message, lastMoveDamage: damage };
+    const actorMsg = didStun ? `You charge with a crushing blow for ${damage} — ${target.name || 'the enemy'} are stunned!` : `You charge for ${damage} damage!`;
+    const opponentMsg = didStun ? `${user.name || 'Opponent'} charges with a crushing blow for ${damage} — ${target.name || 'the enemy'} is stunned!` : `${user.name || 'Opponent'} charges for ${damage} damage!`;
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_knight_charge' }, message, actorMessage: actorMsg, opponentMessage: opponentMsg, lastMoveDamage: damage };
   },
 
   rogue_backstab(user, target) {
@@ -682,7 +861,7 @@ const abilityHandlers = {
   const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: Math.floor((target.defense || 0) / 3), evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'rogue_backstab') };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_rogue_backstab' }, message: `${user.name || 'You'} backstabs ${target.name || 'the enemy'} for ${damage} damage!`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_rogue_backstab' }, message: `${user.name || 'You'} backstabs ${target.name || 'the enemy'} for ${damage} damage!`, actorMessage: `You backstab ${target.name || 'the enemy'} for ${damage} damage!`, opponentMessage: `${user.name || 'Opponent'} backstabs you for ${damage} damage!`, lastMoveDamage: damage };
   },
 
   rogue_poisoned_dagger(user, target) {
@@ -701,7 +880,7 @@ const abilityHandlers = {
     }
     opponentUpdates.status = newStatus;
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'rogue_poisoned_dagger') };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_rogue_poisoned_dagger' }, message: `${user.name || 'You'} plunges a poisoned dagger for ${damage} damage and applies poison!`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_rogue_poisoned_dagger' }, message: `${user.name || 'You'} plunges a poisoned dagger for ${damage} damage and applies poison!`, actorMessage: `You plunge a poisoned dagger for ${damage} damage and apply poison!`, opponentMessage: `${user.name || 'Opponent'} plunges a poisoned dagger into you for ${damage} damage and applies poison!`, lastMoveDamage: damage };
   },
 
   paladin_aura(user, target) {
@@ -724,31 +903,31 @@ const abilityHandlers = {
   const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'paladin_holy_strike'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.paladin_holy_strike.cost || 0)) };
   playerUpdates.hp = Math.min(user.maxHp || 100, (user.hp || 0) + actualHeal);
   const opponentUpdates = { hp: newHp };
-  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_paladin_holy_strike' }, message: `${user.name || 'You'} smites for ${damage} and is healed for ${actualHeal} HP.`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_paladin_holy_strike' }, message: `${user.name || 'You'} smites for ${damage} and is healed for ${actualHeal} HP.`, actorMessage: `You smite for ${damage} and heal for ${actualHeal} HP.`, opponentMessage: `${user.name || 'Opponent'} smites you for ${damage} and heals themselves.`, lastMoveDamage: damage };
   },
 
   necro_siphon(user, target) {
-    const base = getEffectiveBaseAtk(user, 10);
-    let raw = Math.floor(Math.random() * 10) + base + 6;
+    const base = getEffectiveBaseAtk(user, 12);
+    let raw = Math.floor(Math.random() * 14) + base + 8; // stronger hit
     // If target has healing reduction (slimed), siphon does double damage
     const hasHealingReduction = !!(target.status && target.status.slimed);
     if (hasHealingReduction) raw = raw * 2;
   const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
-  let healAmt = Math.floor(damage * 0.6);
+  let healAmt = Math.floor(damage * 0.75); // bigger siphon heal
   // If caster is slimed (healing reduction), reduce siphon heal
   if (user.status && user.status.slimed) healAmt = Math.floor(healAmt / 2);
     const opponentUpdates = { hp: newHp };
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'necro_siphon'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.necro_siphon.cost || 0)) };
     playerUpdates.hp = Math.min(user.maxHp || 100, (user.hp || 0) + healAmt);
-  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_necro_siphon' }, message: `${user.name || 'You'} siphons ${damage} life and heals for ${healAmt}.`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_necro_siphon' }, message: `${user.name || 'You'} siphons ${damage} life and heals for ${healAmt}.`, actorMessage: `You siphon ${damage} life and heal for ${healAmt}.`, opponentMessage: `${user.name || 'Opponent'} siphons life from you for ${damage} and heals for ${healAmt}.`, lastMoveDamage: damage };
   },
 
   necro_raise(user, target) {
-    const base = getEffectiveBaseAtk(user, 9);
+    const base = getEffectiveBaseAtk(user, 11);
     // Increase rot potency: stronger per-turn damage and longer duration
-    const poisonDmg = Math.max(2, Math.floor(base / 2));
+    const poisonDmg = Math.max(3, Math.floor(base * 0.6));
     const newStatus = Object.assign({}, target.status || {});
-    const incoming = { turns: 5, dmg: poisonDmg };
+    const incoming = { turns: 6, dmg: poisonDmg };
     // Merge with existing poison so Raise Rot refreshes/strengthens rather than silently overwrite
     if (newStatus.poison) {
       newStatus.poison.dmg = Math.max(newStatus.poison.dmg || 0, incoming.dmg);
@@ -786,14 +965,14 @@ const abilityHandlers = {
       opponentUpdates.status = s;
     }
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'druid_entangle') };
-    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_druid_entangle' }, message: `${user.name || 'You'} conjures grasping vines that entangle the foe, dealing ${damage} damage and weakening their attacks.`, lastMoveDamage: damage };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_druid_entangle' }, message: `${user.name || 'You'} conjures grasping vines that entangle the foe, dealing ${damage} damage and weakening their attacks.`, actorMessage: `You conjure vines that entangle the foe for ${damage} and weaken their attacks.`, opponentMessage: `${user.name || 'Opponent'} conjures vines that entangle you for ${damage} and weaken your attacks.`, lastMoveDamage: damage };
   },
 
   druid_regrowth(user, target) {
     // Larger immediate heal + stronger regen status for more sustained healing
-    const immediate = Math.floor(Math.random() * 10) + 10; // 10-19
-    const regenAmount = 6; // per turn (increased)
-    const regenTurns = 4; // lasts longer
+    const immediate = Math.floor(Math.random() * 12) + 12; // 12-23
+    const regenAmount = 8; // per turn (increased)
+    const regenTurns = 5; // lasts longer
     const actualImmediate = (user.status && user.status.slimed) ? Math.floor(immediate / 2) : immediate;
     const newHp = Math.min(user.maxHp || 100, (user.hp || 0) + actualImmediate);
     const newStatus = Object.assign({}, user.status || {});
@@ -802,16 +981,157 @@ const abilityHandlers = {
     return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_druid_regrowth' }, message: `${user.name || 'You'} calls regrowth, healing ${actualImmediate} HP and regenerating ${regenAmount} HP for ${regenTurns} turns.`, lastMoveHeal: actualImmediate };
   }
 
-  ,
+  ,artificer_turret(user, target) {
+    const newStatus = Object.assign({}, user.status || {});
+    // Stronger turret that pierces defenses and grants a larger temporary ATK buff
+    const turretTurns = 3;
+    const buffAmount = 8;
+    const prevBoost = user.attackBoost || 0;
+    const baseAtk = getEffectiveBaseAtk(user, 12);
+    // reduce turret per-turn damage scaling slightly (balance)
+    newStatus.turret = { turns: turretTurns, dmg: Math.max(16, Math.floor(baseAtk * 1.6)), ignoreDefense: true, stunChance: 0.25 };
+    newStatus.turret_buff = { turns: turretTurns, amount: buffAmount, prevBoost: prevBoost };
+    const playerUpdates = { status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'artificer_turret'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.artificer_turret.cost || 0)), attackBoost: prevBoost + buffAmount };
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_artificer_turret' }, message: `${user.name || 'You'} deploys a Turret and gains +${buffAmount} ATK while it's active.` };
+  },
+
+  artificer_shock(user, target) {
+    // Arc Shock: reduced damage (pierces defenses) and always stuns
+    const base = getEffectiveBaseAtk(user, 20);
+    // Lower overall shock potency: reduce multiplier so Artificer isn't overly bursty
+    const raw = Math.floor(Math.random() * 12) + Math.floor(base * 1.0) + 4;
+    // Arc Shock pierces defenses
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { ignoreDefense: true, attacker: user });
+    const opponentUpdates = { hp: newHp };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'artificer_shock'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.artificer_shock.cost || 0)) };
+    // always stun on shock
+    const s = Object.assign({}, target.status || {});
+    s.stun = { turns: 1 };
+    opponentUpdates.status = s;
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_artificer_shock' }, message: `${user.name || 'You'} fires Arc Shock for ${damage} damage and stuns the target!`, actorMessage: `You fire Arc Shock for ${damage} damage and stun the target!`, opponentMessage: `${user.name || 'Opponent'} fires Arc Shock for ${damage} damage and stuns you!`, lastMoveDamage: damage };
+  },
+
+  artificer_repair_field(user, target) {
+    const immediate = Math.floor(Math.random() * 12) + 18;
+    const newHp = Math.min(user.maxHp || 100, (user.hp || 0) + immediate);
+    const newStatus = Object.assign({}, user.status || {});
+    newStatus.regen = { turns: 4, amount: 6 };
+    const defAdd = 12;
+    newStatus.shield = { turns: 4, amount: defAdd };
+    const playerUpdates = { hp: newHp, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'artificer_repair_field'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.artificer_repair_field.cost || 0)), defense: (user.defense || 0) + defAdd };
+    // 50% chance to stun the target
+    if (Math.random() < 0.5 && target) {
+      const oppStatus = Object.assign({}, target.status || {});
+      oppStatus.stun = { turns: 1 };
+      return { playerUpdates, opponentUpdates: { status: oppStatus }, matchUpdates: { lastMove: 'special_artificer_repair_field' }, message: `${user.name || 'You'} activates Repair Field, healing ${immediate} HP, granting regen and defense, and stuns the target.` };
+    }
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_artificer_repair_field' }, message: `${user.name || 'You'} activates Repair Field, healing ${immediate} HP and granting regeneration and defense.` };
+  },
+
+  valkyrie_spear(user, target) {
+    const base = getEffectiveBaseAtk(user, 15);
+    const raw = Math.floor(Math.random() * 12) + base + 6;
+    const effectiveDefense = Math.floor((target.defense || 0) * 0.4);
+    const final = Math.max(0, Math.round(raw - effectiveDefense));
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, final, { ignoreDefense: true, attacker: user });
+    const opponentUpdates = { hp: newHp };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'valkyrie_spear'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.valkyrie_spear.cost || 0)) };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_valkyrie_spear' }, message: `${user.name || 'You'} pierces the foe with Spear Strike for ${damage} damage!`, actorMessage: `You pierce the foe with Spear Strike for ${damage} damage!`, opponentMessage: `${user.name || 'Opponent'} pierces you with Spear Strike for ${damage} damage!`, lastMoveDamage: damage };
+  },
+
+  valkyrie_aerial_sweep(user, target) {
+    const base = getEffectiveBaseAtk(user, 14);
+    // reduced damage and smaller flat bonus
+    const raw = Math.floor(Math.random() * 10) + base + 2;
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
+    // Apply burn + poison to the opponent instead of evasion reduction
+    const newStatus = Object.assign({}, target.status || {});
+    const burnDmg = Math.max(1, Math.floor(base / 4));
+    const burnIncoming = { turns: 3, dmg: burnDmg };
+    if (newStatus.burn) {
+      newStatus.burn.dmg = Math.max(newStatus.burn.dmg || 0, burnIncoming.dmg);
+      newStatus.burn.turns = Math.max(newStatus.burn.turns || 0, burnIncoming.turns);
+    } else {
+      newStatus.burn = burnIncoming;
+    }
+  const poisonDmg = Math.max(1, Math.floor(base / 6));
+    const poisonIncoming = { turns: 3, dmg: poisonDmg };
+    if (newStatus.poison) {
+      newStatus.poison.dmg = Math.max(newStatus.poison.dmg || 0, poisonIncoming.dmg);
+      newStatus.poison.turns = Math.max(newStatus.poison.turns || 0, poisonIncoming.turns);
+    } else {
+      newStatus.poison = poisonIncoming;
+    }
+    const opponentUpdates = { hp: newHp, status: newStatus };
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'valkyrie_aerial_sweep'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.valkyrie_aerial_sweep.cost || 0)) };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_valkyrie_aerial_sweep' }, message: `${user.name || 'You'} performs Aerial Sweep for ${damage} damage and inflicts burn and poison!`, actorMessage: `You perform Aerial Sweep for ${damage} damage and inflict burn and poison!`, opponentMessage: `${user.name || 'Opponent'} performs Aerial Sweep and hits you for ${damage}, inflicting burn and poison!`, lastMoveDamage: damage };
+  },
+
+  valkyrie_guard(user, target) {
+    const add = 6; // reduced shield
+    const newStatus = Object.assign({}, user.status || {});
+    newStatus.shield = { turns: 2, amount: add };
+    const playerUpdates = { defense: (user.defense || 0) + add, status: newStatus, abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'valkyrie_guard'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.valkyrie_guard.cost || 0)) };
+    return { playerUpdates, opponentUpdates: {}, matchUpdates: { lastMove: 'special_valkyrie_guard' }, message: `${user.name || 'You'} gains Valkyrie Guard (+${add} DEF) for several turns.` };
+  },
+
+  barbarian_berserk_slam(user, target) {
+    const base = getEffectiveBaseAtk(user, 12);
+    const raw = Math.floor(Math.random() * 10) + base + 4; // greatly reduced damage
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
+    const opponentUpdates = { hp: newHp };
+    const buff = 2; // much smaller attack buff
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'barbarian_berserk_slam'), attackBoost: (user.attackBoost || 0) + buff };
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_barbarian_berserk_slam' }, message: `${user.name || 'You'} slams in berserk fury for ${damage} damage and gains +${buff} ATK.`, actorMessage: `You slam in berserk fury for ${damage} damage and gain +${buff} ATK.`, opponentMessage: `${user.name || 'Opponent'} slams you for ${damage} damage and appears enraged.`, lastMoveDamage: damage };
+  },
+
+  barbarian_war_cry(user, target) {
+    // Stronger attack boost and small regeneration as an extra effect
+    const buff = 6;
+    const regenAmount = 4; // HP per turn
+    const regenTurns = 3;
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'barbarian_war_cry'), attackBoost: (user.attackBoost || 0) + buff };
+    const newStatus = Object.assign({}, user.status || {});
+    newStatus.shout = { turns: 3, amount: buff };
+    // Merge or overwrite regen status to ensure predictable behavior
+    newStatus.regen = { turns: regenTurns, amount: regenAmount };
+    playerUpdates.status = newStatus;
+    // Apply silence to opponent to prevent specials for a short duration
+    const opponentUpdates = {};
+    try {
+      const oppStatus = Object.assign({}, (target.status || {}));
+      // 2 turns of silence by default
+      oppStatus.silence = { turns: 2 };
+      opponentUpdates.status = oppStatus;
+    } catch (e) { /* defensive: if target missing, ignore */ }
+    return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_barbarian_war_cry' }, message: `${user.name || 'You'} bellows a War Cry, boosting attack by ${buff}, regenerating ${regenAmount} HP for ${regenTurns} turns, and silencing the opponent.` };
+  },
+
+  barbarian_reckless_strike(user, target) {
+    // Stronger final attack: higher base, wider random range, larger crit/empower chance
+    const base = getEffectiveBaseAtk(user, 14);
+    const raw = Math.floor(Math.random() * 18) + base + 6; // larger damage range
+    // ~50% chance to deal a larger empowered hit (1.5x)
+    let usedRaw = raw;
+    let boosted = false;
+    if (Math.random() < 0.5) { usedRaw = Math.floor(raw * 1.5); boosted = true; }
+    const { damage, newHp } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, usedRaw, { attacker: user });
+    const opponentUpdates = { hp: newHp };
+    // increased self-damage tradeoff (20%) to discourage spamming
+    const selfDmg = Math.max(4, Math.floor(damage * 0.20));
+    const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'barbarian_reckless_strike') };
+    playerUpdates.hp = Math.max(0, (user.hp || 0) - selfDmg);
+  return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_barbarian_reckless_strike' }, message: `${user.name || 'You'} deals ${damage} with Reckless Strike${boosted ? ' (empowered)' : ''} and takes ${selfDmg} recoil.`, actorMessage: `You deal ${damage} with Reckless Strike${boosted ? ' (empowered)' : ''} and take ${selfDmg} recoil.`, opponentMessage: `${user.name || 'Opponent'} strikes you recklessly for ${damage} and takes recoil.`, lastMoveDamage: damage };
+  },
   // Third-ability handlers
   warrior_whirlwind(user, target) {
-    const base = getEffectiveBaseAtk(user, 12);
-    const raw = Math.floor(Math.random() * 12) + base + 6;
+    const base = getEffectiveBaseAtk(user, 16);
+    const raw = Math.floor(Math.random() * 18) + base + 10;
   const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     // apply a weaken to reduce enemy attack for 2 turns
     const newStatus = Object.assign({}, target.status || {});
-    const amount = 3;
+    const amount = 6;
     if (!newStatus.weaken) {
       newStatus.weaken = { turns: 2, amount: amount, prevBoost: (target.attackBoost || 0) };
     } else {
@@ -898,12 +1218,13 @@ const abilityHandlers = {
   },
 
   necro_curse(user, target) {
-    const base = getEffectiveBaseAtk(user, 9);
+    const base = getEffectiveBaseAtk(user, 11);
     const newStatus = Object.assign({}, target.status || {});
     // apply slimed to reduce healing
-    newStatus.slimed = { turns: 4, effect: 'reduce-heal' };
+    // increase slimed duration so Dark Mage curses are more impactful
+    newStatus.slimed = { turns: 7, effect: 'reduce-heal' };
     // apply stronger poison/rot
-    const incoming = { turns: 5, dmg: Math.max(2, Math.floor(base / 2)) };
+    const incoming = { turns: 6, dmg: Math.max(3, Math.floor(base * 0.6)) };
     if (newStatus.poison) {
       newStatus.poison.dmg = Math.max(newStatus.poison.dmg || 0, incoming.dmg);
       newStatus.poison.turns = Math.max(newStatus.poison.turns || 0, incoming.turns);
@@ -911,9 +1232,9 @@ const abilityHandlers = {
       newStatus.poison = incoming;
     }
     // also apply a burn
-    newStatus.burn = { turns: 3, dmg: 3 };
-    // 70% chance to stun
-    if (Math.random() < 0.7) {
+    newStatus.burn = { turns: 3, dmg: 4 };
+    // 80% chance to stun
+    if (Math.random() < 0.8) {
       newStatus.stun = { turns: 1 };
   try { console.debug('[ability] necro_curse applied stun to target', { caster: user?.name, target: target?.name, status: newStatus }); console.log('[ability] necro_curse applied stun to target', { caster: user?.name, target: target?.name, status: newStatus }); } catch (e) {}
     }
@@ -945,14 +1266,15 @@ const abilityHandlers = {
 
   // ---- Monk ability handlers ----
   ,monk_flurry(user, target) {
-    // Three quick strikes; total damage summed. Apply a weaken on the target.
-    const base = getEffectiveBaseAtk(user, 12);
+    // Three quick strikes; increased per-hit damage and stronger weaken.
+    const base = getEffectiveBaseAtk(user, 16);
     let total = 0;
-    for (let i = 0; i < 3; i++) total += Math.floor(Math.random() * 6) + Math.floor(base / 2);
+    for (let i = 0; i < 3; i++) total += Math.floor(Math.random() * 8) + Math.floor(base / 2);
   const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, total, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const newStatus = Object.assign({}, target.status || {});
-    const weakenAmt = 4;
+    // stronger weaken so Monk can better control enemies
+    const weakenAmt = 8;
     if (!newStatus.weaken) {
       newStatus.weaken = { turns: 2, amount: weakenAmt, prevBoost: (target.attackBoost || 0) };
     } else {
@@ -965,11 +1287,12 @@ const abilityHandlers = {
   }
 
   ,monk_stunning_blow(user, target) {
-    const base = getEffectiveBaseAtk(user, 14);
-    const raw = Math.floor(Math.random() * 12) + base;
+    const base = getEffectiveBaseAtk(user, 18);
+    const raw = Math.floor(Math.random() * 16) + base + 4;
   const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
-    if (Math.random() < 0.5) {
+    // higher stun chance to make Monk more reliable
+    if (Math.random() < 0.75) {
       const s = Object.assign({}, target.status || {});
       s.stun = { turns: 1 };
       opponentUpdates.status = s;
@@ -988,8 +1311,8 @@ const abilityHandlers = {
       return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_monk_quivering_palm' }, message: `${user.name || 'You'} strikes a Quivering Palm and collapses the enemy instantly!` };
     }
     // Otherwise apply bleed: 5% max HP per turn for 4 turns
-    const base = getEffectiveBaseAtk(user, 12);
-    const raw = Math.floor(Math.random() * 10) + Math.floor(base / 2);
+    const base = getEffectiveBaseAtk(user, 16);
+    const raw = Math.floor(Math.random() * 14) + Math.floor(base / 2) + 4;
   const { damage, newHp, isCrit, dodged } = applyDamageToObject({ hp: target.hp, defense: target.defense || 0, evasion: target.evasion || 0 }, raw, { attacker: user });
     const opponentUpdates = { hp: newHp };
     const newStatus = Object.assign({}, target.status || {});
@@ -1000,7 +1323,7 @@ const abilityHandlers = {
     } else {
       newStatus.bleed = incoming;
     }
-    opponentUpdates.status = newStatus;
+  opponentUpdates.status = newStatus;
     const playerUpdates = { abilityCooldowns: startAbilityCooldownLocal(user.abilityCooldowns, 'monk_quivering_palm'), mana: Math.max(0, (user.mana || 0) - (ABILITIES.monk_quivering_palm.cost || 0)) };
     return { playerUpdates, opponentUpdates, matchUpdates: { lastMove: 'special_monk_quivering_palm' }, message: `${user.name || 'You'} uses Quivering Palm dealing ${damage} damage and inflicting deep bleeding!`, lastMoveDamage: damage };
   }
@@ -1190,6 +1513,7 @@ const abilityHandlers = {
 // Initialize battle when match is found
 window.initializeBattle = async function(mId, userId) {
   matchId = mId;
+  try { localStorage.setItem('in_match_v1', matchId); } catch(e) {}
   currentUserId = userId;
   matchRef = ref(db, `matches/${matchId}`);
   currentTurnRef = ref(db, `matches/${matchId}/currentTurn`);
@@ -1204,6 +1528,8 @@ window.initializeBattle = async function(mId, userId) {
   // Determine if this user is player 1 or player 2
   isPlayer1 = matchData.p1 === userId;
   opponentId = isPlayer1 ? matchData.p2 : matchData.p1;
+  // expose opponentId to window so other modules (UI/gear) can reliably fetch opponent gear
+  try { if (typeof window !== 'undefined') window.opponentId = opponentId; } catch(e) {}
   opponentRef = ref(db, `matches/${matchId}/players/${opponentId}`);
 
   // Set player names and seed player stats if not already present
@@ -1220,6 +1546,8 @@ window.initializeBattle = async function(mId, userId) {
   // Get existing player node to avoid overwriting any existing server values
   const existingPlayerSnap = await get(playerRef);
   const existing = existingPlayerSnap.exists() ? existingPlayerSnap.val() : {};
+  const opponentSnapNow = await get(opponentRef);
+  const existingOpponent = opponentSnapNow.exists() ? opponentSnapNow.val() : {};
   // Decide which class to seed for this player. Use the selectedClass (from users node or localStorage)
   // and avoid carrying over abilities from a different existing class. If an existing player node
   // belongs to a different class, overwrite abilities with the templateAbilities for the selectedClass.
@@ -1260,7 +1588,171 @@ window.initializeBattle = async function(mId, userId) {
     maxMana: maxManaVal
   };
 
-  await update(playerRef, seed);
+  // Apply local equipped gear to the seed so the authoritative match node reflects
+  // gear-derived HP/MaxHP/attack/defense bonuses. Without this the local UI may
+  // show gear-adjusted values while the match node (used for combat calculations)
+  // remains at base stats causing mismatches where opponents see different HP.
+  try {
+    if (window.Gear && typeof Gear.applyEquipToStats === 'function') {
+      try { Gear.applyEquipToStats(seed); } catch (e) { console.warn('applyEquipToStats on seed failed', e); }
+    }
+  } catch (e) {}
+
+  // Only write the full seed if the player node did not previously exist. If a
+  // node already exists, avoid overwriting it — this prevents a race where both
+  // clients write gear-applied seeds and the last writer wins, producing
+  // inconsistent authoritative stats. The equipped map is synced separately
+  // below (and may be written/merged if missing).
+  try {
+    if (!existingPlayerSnap.exists()) {
+      await update(playerRef, seed);
+    } else {
+      // If the node exists, ensure any missing core fields are present without
+      // stomping existing values. Only write fields that are absent.
+      const minimal = {};
+      if (typeof existing.hp === 'undefined') minimal.hp = seed.hp;
+      if (typeof existing.maxHp === 'undefined' && typeof seed.maxHp !== 'undefined') minimal.maxHp = seed.maxHp;
+      if (typeof existing.baseAtk === 'undefined' && typeof seed.baseAtk !== 'undefined') minimal.baseAtk = seed.baseAtk;
+      if (typeof existing.defense === 'undefined' && typeof seed.defense !== 'undefined') minimal.defense = seed.defense;
+      if (Object.keys(minimal).length) {
+        try { await update(playerRef, minimal); } catch(e){}
+      }
+    }
+  } catch (e) { console.warn('writing player seed conditionally failed', e); }
+
+  // Authoritative equip write: if the match player node doesn't have an `equipped` map,
+  // write the client's local equip map so both sides can see equipped IDs.
+  try {
+    const localEq = (typeof localStorage !== 'undefined') ? (JSON.parse(localStorage.getItem('armory_equip_v1') || '{}') || {}) : {};
+    // If there's no authoritative equipped map, or it differs from the client's local equip map,
+    // write/merge the local map so both sides can see equipped IDs. This helps avoid races
+    // where the opponent UI cannot fetch gear because the match node lacks the equipped IDs.
+    const existingEq = existing && existing.equipped ? existing.equipped : {};
+    const needWrite = (!existingEq || Object.keys(existingEq || {}).length === 0) || (JSON.stringify(existingEq) !== JSON.stringify(localEq));
+    if (needWrite && Object.keys(localEq || {}).length) {
+      try { await update(playerRef, { equipped: localEq }); } catch(e){}
+    }
+    // Also ensure equipped gear items are present on the server under users/{uid}/gear
+    try {
+      if (typeof db !== 'undefined' && typeof ref === 'function' && typeof update === 'function' && window.Gear && typeof Gear.getArmory === 'function') {
+        const arm = Gear.getArmory() || [];
+        const ids = Object.values(localEq).filter(Boolean);
+        // write any equipped items the client has locally to the server so the seeder can fetch them
+        for (const id of ids) {
+          try {
+            const found = arm.find(x => x.id === id);
+            if (found) {
+              const gearRef = ref(db, `users/${currentUserId}/gear/${found.id}`);
+              // best-effort update (do not await multiple in series too long)
+              try { await update(gearRef, found); } catch(e) { /* ignore write errors */ }
+            }
+          } catch (e) { /* ignore per-item errors */ }
+        }
+      }
+    } catch (e) { /* ignore gear sync errors */ }
+  } catch (e) { console.error('writing initial equipped map failed', e); }
+
+  // Starter gear is granted at signup (login.js) or via end-of-match rewards.
+
+  // Attempt to perform a single authoritative seeding of both players' match nodes
+  // with gear-applied stats. We elect the lexicographically smaller uid as the
+  // seeder to avoid races; the seeder will wait briefly for both players' equipped
+  // maps to appear in the match node, fetch the referenced gear objects, apply
+  // gear modifiers to calculated seeds and write both players under matches/{id}/players
+  // in a single update so both clients observe identical starting stats.
+  try {
+    const p1 = matchData.p1, p2 = matchData.p2;
+    if (p1 && p2) {
+      const seeder = (p1 < p2) ? p1 : p2;
+      // ensure local equip map is written for this client (existing logic)
+      try {
+        const localEq = (typeof localStorage !== 'undefined') ? (JSON.parse(localStorage.getItem('armory_equip_v1') || '{}') || {}) : {};
+        const existingEq = existing && existing.equipped ? existing.equipped : {};
+        const needWrite = (!existingEq || Object.keys(existingEq || {}).length === 0) || (JSON.stringify(existingEq) !== JSON.stringify(localEq));
+        if (needWrite && Object.keys(localEq || {}).length) {
+          try { await update(playerRef, { equipped: localEq }); } catch(e){}
+        }
+      } catch (e) { /* ignore equip write errors */ }
+
+      // Only the chosen seeder performs the combined seed write
+      if (currentUserId === seeder) {
+        // wait for both equipped maps to be present (retry a few times)
+        const maxRetries = 6; let retry = 0; let bothEq = false;
+        while (retry < maxRetries) {
+          try {
+            const snap = await get(matchRef);
+            const md = snap.val() || {};
+            const players = md.players || {};
+            const p1eq = players[p1] && players[p1].equipped && Object.keys(players[p1].equipped||{}).length;
+            const p2eq = players[p2] && players[p2].equipped && Object.keys(players[p2].equipped||{}).length;
+            if (p1eq && p2eq) { bothEq = true; break; }
+          } catch (e) { /* ignore */ }
+          // small backoff
+          await new Promise(r=>setTimeout(r, 250));
+          retry++;
+        }
+
+        // fetch equipped maps (best-effort) from match node
+        let playersNode = {};
+        try { playersNode = (await get(ref(db, `matches/${matchId}/players`))).val() || {}; } catch (e) { playersNode = {}; }
+
+        // helper to build a seed for a uid
+        const buildSeedFor = async (uid, existingNode) => {
+          try {
+            const userSnap = await get(ref(db, `users/${uid}`));
+            const userVal = userSnap.val() || {};
+            const userName = userVal.displayName || (existingNode && existingNode.name) || 'Player';
+            const dbSelected = userVal.selectedClass;
+            const selectedClass = dbSelected || ((typeof localStorage !== 'undefined' && uid===currentUserId) ? (localStorage.getItem('selectedClass') || 'warrior') : (existingNode && existingNode.classId) || 'warrior');
+            const classTemplate = CLASS_STATS[selectedClass] || CLASS_STATS.warrior;
+            const seedLocal = {
+              name: userName,
+              classId: selectedClass,
+              baseAtk: existingNode.baseAtk ?? classTemplate.baseAtk,
+              hp: existingNode.hp ?? classTemplate.hp,
+              maxHp: existingNode.maxHp ?? classTemplate.maxHp,
+              defense: existingNode.defense ?? classTemplate.defense ?? 0,
+              speed: (typeof existingNode.speed !== 'undefined' ? existingNode.speed : classTemplate.speed),
+              critChance: (typeof existingNode.critChance !== 'undefined' ? existingNode.critChance : classTemplate.critChance),
+              evasion: (typeof existingNode.evasion !== 'undefined' ? existingNode.evasion : classTemplate.evasion),
+              attackBoost: existingNode.attackBoost ?? classTemplate.attackBoost ?? 0,
+              fainted: existingNode.fainted ?? false,
+              abilityCooldowns: existingNode.abilityCooldowns ?? {},
+              status: existingNode.status ?? {},
+              abilities: Array.isArray(classTemplate.abilities) ? classTemplate.abilities.slice() : [],
+              mana: existingNode.mana ?? (classTemplate.mana || 0),
+              maxMana: existingNode.maxMana ?? (classTemplate.mana || 0)
+            };
+            // attempt to apply gear if we can fetch equipped map and gear items
+            try {
+              const equipped = (playersNode[uid] && playersNode[uid].equipped) ? playersNode[uid].equipped : (uid===currentUserId ? (JSON.parse(localStorage.getItem('armory_equip_v1')||'{}')||{}) : {});
+              const gearIds = equipped ? Object.values(equipped).filter(Boolean) : [];
+              if (gearIds.length && window.Gear && typeof Gear.applyGearListToStats === 'function') {
+                const items = (await Promise.all(gearIds.map(id => get(ref(db, `users/${uid}/gear/${id}`)).then(s => s.exists()?s.val():null).catch(()=>null)))).filter(Boolean);
+                if (items.length) {
+                  Gear.applyGearListToStats(seedLocal, items);
+                }
+              }
+            } catch (e) { /* ignore gear fetch/apply errors */ }
+            return seedLocal;
+          } catch (e) { return null; }
+        };
+
+        // Only perform seeding when the match appears to be pre-start (turnCounter not present or zero)
+        const needSeeding = (!matchData.turnCounter || matchData.turnCounter === 0);
+        if (needSeeding) {
+          const s1 = await buildSeedFor(p1, playersNode[p1]||{});
+          const s2 = await buildSeedFor(p2, playersNode[p2]||{});
+          const updates = {};
+          if (s1) updates[`players/${p1}`] = s1;
+          if (s2) updates[`players/${p2}`] = s2;
+          if (Object.keys(updates).length) {
+            try { await update(matchRef, updates); } catch (e) { console.warn('combined seed update failed', e); }
+          }
+        }
+      }
+    }
+  } catch (e) { console.warn('combined seeding logic failed', e); }
 
   // Listen to match state changes
   setupMatchListeners();
@@ -1296,6 +1788,18 @@ window.initializeBattle = async function(mId, userId) {
   try { await renderInventory(); } catch (e) { /* ignore */ }
   onValue(playerRef, () => { renderInventory().catch(console.error); });
   onValue(opponentRef, () => { renderInventory().catch(console.error); });
+  // Sync equipped map from match node to localStorage so clients' Gear state matches authoritative match data
+  onValue(playerRef, (snap) => {
+    try {
+      if (!snap.exists()) return;
+      const p = snap.val();
+      const eq = p && p.equipped ? p.equipped : null;
+      if (eq && typeof localStorage !== 'undefined') {
+        try { localStorage.setItem('armory_equip_v1', JSON.stringify(eq)); } catch(e){}
+        try { if (window && typeof window.onEquipChanged === 'function') window.onEquipChanged(eq); } catch(e){}
+      }
+    } catch (e) { /* ignore sync errors */ }
+  });
   
   // Check if game is already over or players are dead
   const initialMatchSnapshot = await get(matchRef);
@@ -1416,18 +1920,29 @@ function setupMatchListeners() {
     lastProcessedMoveActor = lastMoveActor;
     lastProcessedMove = lastMove;
     
-    // Generate message based on who made the move
+    // Generate message based on who made the move. We handle common
+    // canned moves and also support persisted messages for specials
+    // and status-blocks (stun/silence). If the match node contains a
+    // pre-built message (e.g. from chooseSpecial), prefer that.
     const wasMyMove = lastMoveActor === currentUserId;
-    
+
     const playerSnapshot = await get(playerRef);
     const opponentSnapshot = await get(opponentRef);
     const playerStats = playerSnapshot.val();
     const opponentStats = opponentSnapshot.val();
-    
+
     let message = "";
-    
-    if (wasMyMove) {
-      // My move - use first person
+
+    // If the server/client wrote a friendly persisted message, use it.
+    if (matchData.message) {
+      if (typeof matchData.message === 'object') {
+        message = wasMyMove ? (matchData.message.actor || matchData.message.text || '') : (matchData.message.opponent || matchData.message.text || '');
+      } else {
+        // legacy string message
+        message = matchData.message;
+      }
+    } else if (wasMyMove) {
+      // My move - use first person for built-in move types
       if (lastMove === "attack") {
         const damage = matchData.lastMoveDamage || 0;
         message = `You hit ${opponentStats?.name || "your opponent"} for ${damage} damage!`;
@@ -1438,6 +1953,14 @@ function setupMatchListeners() {
         message = "You brace yourself for the next attack!";
       } else if (lastMove === "prepare") {
         message = "You prepare for your next move.";
+      } else if (lastMove === 'stunned') {
+        message = "You are stunned and cannot act!";
+      } else if (lastMove === 'silenced') {
+        message = "You are silenced and cannot use specials!";
+      } else if (typeof lastMove === 'string' && lastMove.startsWith('special_')) {
+        // fallback for specials when no persisted message exists
+        const ability = lastMove.split('_')[1] || 'special';
+        message = `You used ${ability}!`;
       }
     } else {
       // Opponent's move - use third person
@@ -1452,6 +1975,14 @@ function setupMatchListeners() {
         message = `${opponentName} braces for your next attack!`;
       } else if (lastMove === "prepare") {
         message = `${opponentName} prepares for their next move.`;
+      } else if (lastMove === 'stunned') {
+        message = `${opponentName} was stunned and cannot act!`;
+      } else if (lastMove === 'silenced') {
+        message = `${opponentName} was silenced and cannot use specials!`;
+      } else if (typeof lastMove === 'string' && lastMove.startsWith('special_')) {
+        // fallback for specials when no persisted message exists
+        const ability = lastMove.split('_')[1] || 'special';
+        message = `${opponentName} used ${ability}!`;
       }
     }
     
@@ -1463,6 +1994,7 @@ function setupMatchListeners() {
   // Listen to match status changes (for game over)
   onValue(ref(db, `matches/${matchId}/status`), (snap) => {
     if (snap.exists() && snap.val() === "finished") {
+      try { localStorage.removeItem('in_match_v1'); } catch(e) {}
       // stop the inactivity watcher when match ends
       stopInactivityWatcher();
       disableButtons();
@@ -1515,24 +2047,58 @@ function setupMatchListeners() {
       const loserInfo = (typeof loserInfoRaw === 'string' || typeof loserInfoRaw === 'number') ? { id: loserInfoRaw } : (loserInfoRaw || null);
       const winnerInfo = (typeof winnerInfoRaw === 'string' || typeof winnerInfoRaw === 'number') ? { id: winnerInfoRaw } : (winnerInfoRaw || null);
 
-      // If loserInfo is present and has a uid, show to that user; otherwise if only id present and no winner yet, try to infer
-      if (loserInfo && loserInfo.id) {
-        const ownerUid = loserInfo.uid;
-        if (ownerUid) {
-          if (currentUserId === ownerUid) {
-            const meta = catalog[loserInfo.id] || { id: loserInfo.id, name: loserInfo.id };
-            rewardStatusEl.textContent = `You received: ${meta.name}`;
+      // Handle loser rewards; supports new shape { gear: {...}, item: {...} } or legacy single id
+      if (rewards && rewards.loser) {
+        const l = rewards.loser;
+        // gear portion
+        if (l.gear && l.gear.id) {
+          const ownerUid = l.gear.uid;
+          if (ownerUid && currentUserId === ownerUid) {
+            // fetch meta name if available
+            try {
+              const gsnap = await get(ref(db, `users/${ownerUid}/gear/${l.gear.id}`));
+              if (gsnap.exists()) {
+                const g = gsnap.val();
+                const metaName = (g && (g.name || g.pretty)) ? (g.name || g.pretty) : l.gear.id;
+                rewardStatusEl.textContent = `You received (gear): ${metaName}`;
+              } else {
+                const meta = catalog[l.gear.id] || { id: l.gear.id, name: l.gear.id };
+                rewardStatusEl.textContent = `You received (gear): ${meta.name}`;
+              }
+            } catch (e) { rewardStatusEl.textContent = `You received (gear): ${l.gear.id}`; }
             if (chooser) chooser.style.display = 'none';
           }
-        } else {
-          // no owner UID written: infer by checking match players if winner set
-          if (winnerId) {
-            const loserUid = (matchData?.p1 === winnerId) ? matchData?.p2 : matchData?.p1;
-            if (currentUserId === loserUid) {
-              const meta = catalog[loserInfo.id] || { id: loserInfo.id, name: loserInfo.id };
-              rewardStatusEl.textContent = `You received: ${meta.name}`;
-              if (chooser) chooser.style.display = 'none';
+        } else if (typeof l === 'string' || typeof l.id !== 'undefined') {
+          // legacy single-id behavior
+          const legacy = (typeof l === 'string' || typeof l === 'number') ? { id: l } : (l.id ? l : null);
+          if (legacy && legacy.id) {
+            const ownerUid = legacy.uid;
+            if (ownerUid) {
+              if (currentUserId === ownerUid) {
+                const meta = catalog[legacy.id] || { id: legacy.id, name: legacy.id };
+                rewardStatusEl.textContent = `You received: ${meta.name}`;
+                if (chooser) chooser.style.display = 'none';
+              }
+            } else {
+              if (winnerId) {
+                const loserUid = (matchData?.p1 === winnerId) ? matchData?.p2 : matchData?.p1;
+                if (currentUserId === loserUid) {
+                  const meta = catalog[legacy.id] || { id: legacy.id, name: legacy.id };
+                  rewardStatusEl.textContent = `You received: ${meta.name}`;
+                  if (chooser) chooser.style.display = 'none';
+                }
+              }
             }
+          }
+        }
+
+        // catalog item portion
+        if (l.item && l.item.id) {
+          const ownerUid2 = l.item.uid;
+          if (ownerUid2 && currentUserId === ownerUid2) {
+            const meta = catalog[l.item.id] || { id: l.item.id, name: l.item.id };
+            rewardStatusEl.textContent = `You received (item): ${meta.name}`;
+            if (chooser) chooser.style.display = 'none';
           }
         }
       }
@@ -1552,6 +2118,47 @@ function setupMatchListeners() {
           if (chooser) chooser.style.display = 'none';
         }
       }
+      // Additionally, if the recorded reward is a gear object, fetch it from DB and add to local armory
+      try {
+        // handle loser gear (support new shape rewards.loser.gear)
+        const loserPayload = rewards?.loser || null;
+        let loserGear = null;
+        if (loserPayload && loserPayload.gear && loserPayload.gear.id) {
+          loserGear = loserPayload.gear;
+        } else if (loserInfo && loserInfo.id && loserInfo.uid && (loserInfo.type === 'gear' || String(loserInfo.id).startsWith('g_'))) {
+          loserGear = loserInfo;
+        }
+        if (loserGear && window.Gear && currentUserId === loserGear.uid) {
+          try {
+            const gsnap = await get(ref(db, `users/${loserGear.uid}/gear/${loserGear.id}`));
+            if (gsnap.exists()) {
+              const g = gsnap.val();
+              try { await Gear.addGearToArmoryAndSync(g); } catch(e) { try { Gear.addGearToArmory(g); } catch(_){} }
+              if (rewardStatusEl && currentUserId === loserGear.uid) {
+                const meta = (catalog[loserGear.id] || { id: loserGear.id, name: g.name || loserGear.id });
+                rewardStatusEl.textContent = `You received: ${meta.name}`;
+              }
+            }
+          } catch (e) { console.warn('Could not fetch/attach loser gear locally', e); }
+        }
+
+        // handle winner gear
+        if (winnerInfo && winnerInfo.id && winnerInfo.uid && (winnerInfo.type === 'gear' || String(winnerInfo.id).startsWith('g_'))) {
+          if (window.Gear && currentUserId === winnerInfo.uid) {
+            try {
+              const gsnap = await get(ref(db, `users/${winnerInfo.uid}/gear/${winnerInfo.id}`));
+              if (gsnap.exists()) {
+                const g = gsnap.val();
+                try { await Gear.addGearToArmoryAndSync(g); } catch(e) { try { Gear.addGearToArmory(g); } catch(_){} }
+                if (rewardStatusEl && currentUserId === winnerInfo.uid) {
+                  const meta = (catalog[winnerInfo.id] || { id: winnerInfo.id, name: g.name || winnerInfo.id });
+                  rewardStatusEl.textContent = `You received: ${meta.name}`;
+                }
+              }
+            } catch (e) { console.warn('Could not fetch/attach winner gear locally', e); }
+          }
+        }
+      } catch (e) { /* non-fatal reward attach errors */ }
     } catch (e) {
       console.error('Error handling rewards listener', e);
     }
@@ -1704,6 +2311,25 @@ function setupMatchListeners() {
     }
   }
 
+// Helper: build a consistent set of updates to consume a one-time revive
+function buildConsumeReviveUpdates(stats = {}) {
+  const rawMax = Number(stats.maxHp || stats.maxHP || 100) || 100;
+  const intended = Math.max(1, Math.ceil(rawMax * 0.3));
+  const newHp = Math.min(rawMax, intended);
+  const newStatus = Object.assign({}, stats.status || {});
+  if (newStatus.poison) delete newStatus.poison;
+  if (newStatus.burn) delete newStatus.burn;
+  // Clear revive flags and prepare a minimal status object
+  return {
+    has_revive: null,
+    revivePreparedAt: null,
+    revivePreparedBy: null,
+    hp: newHp,
+    fainted: false,
+    status: Object.keys(newStatus).length ? newStatus : null
+  };
+}
+
 async function handlePlayerDeath(deadPlayerId) {
   // Check if game is already finished
   const matchSnapshot = await get(matchRef);
@@ -1722,14 +2348,11 @@ async function handlePlayerDeath(deadPlayerId) {
     const deadSnap = await get(deadPlayerRef);
     const deadStats = deadSnap.exists() ? deadSnap.val() : {};
     if (deadStats?.has_revive) {
-      // consume revive and restore to 30% HP
-      const newHp = Math.max(1, Math.ceil((deadStats.maxHp || 100) * 0.3));
-        // remove dangerous DOT status effects so revive isn't immediately countered by poison/burn
-        const newStatus = Object.assign({}, deadStats.status || {});
-        if (newStatus.poison) delete newStatus.poison;
-        if (newStatus.burn) delete newStatus.burn;
-        await update(deadPlayerRef, { has_revive: null, hp: newHp, fainted: false, status: Object.keys(newStatus).length ? newStatus : null });
-      logMessage('A Revive Scroll saved the player from defeat!');
+      // consume revive and restore to ~30% HP using centralized helper to ensure consistency
+      const consume = buildConsumeReviveUpdates(deadStats);
+      try { console.debug('[revive] consuming revive for', deadPlayerId, { consume, deadStats }); } catch (e) {}
+      await update(deadPlayerRef, consume);
+      logMessage('A Revive Scroll saved the player from defeat! (revive hp=' + (consume.hp || '?') + ')');
       return; // do not finish match
     }
   } catch (e) {
@@ -1797,37 +2420,81 @@ async function initiateRewardPhase(winnerUid, loserUid) {
   // filter out any legacy/removed tokens (e.g., 'jps') so they don't surface in the chooser
   let itemKeys = Object.keys(catalog || {}).filter(k => k !== 'jps');
 
-  // Immediately assign a random reward to the loser so they don't have to wait
+  // Assign loser rewards: always give one random gear (common) and one random catalog item
   try {
     const rewardsRef = ref(db, `matches/${matchId}/rewards`);
     const rewardsSnap = await get(rewardsRef);
     const existingRewards = rewardsSnap.exists() ? rewardsSnap.val() : {};
     if (!existingRewards || !existingRewards.loser) {
-      // choose random item for loser
-  const keys = Object.keys(catalog || {}).filter(k => k !== 'jps');
-  let randId = 'potion_small';
-  if (keys.length) randId = keys[Math.floor(Math.random() * keys.length)];
-      const randMeta = catalog[randId] || { id: randId, name: randId };
-      // award to loser user record
-      if (window && window.addItemToUser) {
-        try { await window.addItemToUser(loserUid, { id: randMeta.id, name: randMeta.name, qty: 1 }); } catch (e) { console.error('addItemToUser failed for loser', e); }
-      } else {
-        try {
-          const lItemRef = ref(db, `users/${loserUid}/items/${randMeta.id}`);
-          const s2 = await get(lItemRef);
-          const qty2 = (s2.exists() && s2.val().qty) ? Number(s2.val().qty) + 1 : 1;
-          await update(lItemRef, { id: randMeta.id, name: randMeta.name, qty: qty2 });
-        } catch (e) { console.error('Direct DB loser item award failed', e); }
-      }
-      // write the loser assignment into the match rewards so client UIs update
+      const loserPayload = {};
+      // Award a common gear if Gear module exists
       try {
-        // store as an object with id and uid so clients can unambiguously show the correct owner
-        await update(rewardsRef, { loser: { id: randId, uid: loserUid } });
-      } catch (e) { console.error('Could not write loser reward to match', e); }
+        if (typeof Gear !== 'undefined') {
+          const g = Gear.generateGear(null, 'common');
+          try {
+            await update(ref(db, `users/${loserUid}/gear/${g.id}`), g);
+            loserPayload.gear = { id: g.id, uid: loserUid, type: 'gear' };
+            if (loserUid === currentUserId) {
+              try { Gear.addGearToArmoryAndSync(g).catch(()=>{}); } catch(e){}
+            }
+          } catch (e) { console.error('Failed to award gear to loser', e); }
+        }
+      } catch (e) { /* ignore Gear generation errors */ }
+
+      // Award a random catalog item as well
+      try {
+        const keys = Object.keys(catalog || {}).filter(k => k !== 'jps');
+        let randId = 'potion_small';
+        if (keys.length) randId = keys[Math.floor(Math.random() * keys.length)];
+        const randMeta = catalog[randId] || { id: randId, name: randId };
+        if (window && window.addItemToUser) {
+          try { await window.addItemToUser(loserUid, { id: randMeta.id, name: randMeta.name, qty: 1 }); } catch (e) { console.error('addItemToUser failed for loser', e); }
+        } else {
+          try {
+            const lItemRef = ref(db, `users/${loserUid}/items/${randMeta.id}`);
+            const s2 = await get(lItemRef);
+            const qty2 = (s2.exists() && s2.val().qty) ? Number(s2.val().qty) + 1 : 1;
+            await update(lItemRef, { id: randMeta.id, name: randMeta.name, qty: qty2 });
+          } catch (e) { console.error('Direct DB loser item award failed', e); }
+        }
+        loserPayload.item = { id: randId, uid: loserUid, type: 'catalog' };
+      } catch (e) { console.error('Could not assign random catalog item to loser', e); }
+
+      // Persist combined loser payload
+      try { await update(rewardsRef, { loser: loserPayload }); } catch (e) { console.error('Could not write loser reward to match', e); }
     }
   } catch (e) {
-    console.error('Error assigning random loser reward', e);
+    console.error('Error assigning loser reward', e);
   }
+
+  // Prepare winner options (3 generated gear choices + 1 catalog choice) and persist
+  try {
+    const rewardsRef = ref(db, `matches/${matchId}/rewards`);
+    // Only create options if they don't already exist to avoid overwriting
+    const existing = (await get(rewardsRef)).exists() ? (await get(rewardsRef)).val() : {};
+    if (!existing || !existing.options) {
+      const options = { gears: [], catalogs: [], generatedAt: Date.now() };
+      try {
+        if (typeof Gear !== 'undefined') {
+          for (let i = 0; i < 3; i++) options.gears.push(Gear.generateGear(null, null));
+        }
+      } catch (e) { console.error('Could not generate winner gear options', e); }
+      try {
+        const keys = Object.keys(catalog || {}).filter(k => k !== 'jps');
+        const pickRandom = () => keys.length ? keys[Math.floor(Math.random() * keys.length)] : 'potion_small';
+        const seen = new Set();
+        for (let i = 0; i < 3; i++) {
+          let id = pickRandom();
+          // avoid duplicates where possible
+          let attempts = 0;
+          while (seen.has(id) && attempts++ < 6) id = pickRandom();
+          seen.add(id);
+          options.catalogs.push({ id, name: (catalog[id]?.name || id) });
+        }
+      } catch (e) { console.error('Could not generate catalog options', e); }
+      try { await update(rewardsRef, { options }); } catch (e) { console.error('Could not persist reward options', e); }
+    }
+  } catch (e) { console.error('Error preparing winner options', e); }
 
   if (currentUserId === winnerUid) {
     // render choices as image cards for clarity (limit to 12 items)
@@ -1840,42 +2507,154 @@ async function initiateRewardPhase(winnerUid, loserUid) {
   grid.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
   grid.style.gap = '12px';
   grid.style.justifyItems = 'center';
-    const visibleKeys = itemKeys.slice(0, 12);
-    visibleKeys.forEach(k => {
-      const meta = catalog[k] || { id: k, name: k };
-      const card = document.createElement('div');
-  card.style.width = '100%'; card.style.maxWidth = '220px'; card.style.border = '1px solid #ccc'; card.style.borderRadius = '6px'; card.style.overflow = 'hidden';
-                // dark card to match chooser panel and ensure text contrast
-                card.style.background = '#111'; card.style.color = '#fff'; card.style.boxSizing = 'border-box'; card.style.textAlign = 'center'; card.style.padding = '8px';
+    // If reward options exist in DB, render those (prefer deterministic generated gear),
+    // otherwise fall back to showing catalog items.
+    let options = null;
+    try {
+      const rSnap = await get(ref(db, `matches/${matchId}/rewards/options`));
+      if (rSnap.exists()) options = rSnap.val();
+      else {
+        const fullSnap = await get(ref(db, `matches/${matchId}/rewards`));
+        options = (fullSnap.exists() && fullSnap.val().options) ? fullSnap.val().options : null;
+      }
+    } catch (e) { console.warn('Could not fetch reward options to render chooser', e); }
 
-      const img = document.createElement('img');
-      const paths = getItemImagePaths(k);
-  img.src = paths.jpg; img.alt = meta.name || k; img.style.width = '100%'; img.style.height = '96px'; img.style.objectFit = 'contain';
-      img.onerror = function() { if (!this._triedSvg) { this._triedSvg = true; this.src = paths.svg; return; } this.style.opacity = '0.6'; };
-      card.appendChild(img);
-
-      const nm = document.createElement('div'); nm.textContent = meta.name || k; nm.style.fontWeight = '700'; nm.style.margin = '8px 0 6px 0'; card.appendChild(nm);
-  if (meta && meta.desc) { const desc = document.createElement('div'); desc.textContent = meta.desc; desc.style.fontSize = '12px'; desc.style.color = '#ccc'; desc.style.minHeight = '34px'; desc.style.marginBottom = '8px'; card.appendChild(desc); }
-
-  const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'primary-btn'; btn.style.width = '100%'; btn.textContent = 'Select';
-  // ensure button is visible on dark card
-  btn.style.backgroundColor = '#222'; btn.style.color = '#fff'; btn.style.border = '1px solid #333';
-      btn.addEventListener('click', async () => {
-        try {
-          btn.disabled = true;
-          await finalizeRewards(winnerUid, loserUid, k);
-          chooser.style.display = 'none';
-          status.textContent = `You received: ${meta.name}. Loser assigned a random reward.`;
-        } catch (e) { console.error('finalizeRewards error', e); status.textContent = '(error assigning rewards)'; }
+    if (options && ( (options.gears && options.gears.length) || (options.catalogs && options.catalogs.length) )) {
+      // Render catalog options section
+      if (options.catalogs && options.catalogs.length) {
+        const headerC = document.createElement('div'); headerC.style.fontWeight='700'; headerC.style.margin = '6px 0'; headerC.textContent = 'Choice of item:'; chooser.appendChild(headerC);
+        // Top row: exactly up to 3 catalog choices in a 3-column grid
+        const topRow = document.createElement('div');
+        topRow.style.display = 'grid';
+        topRow.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
+        topRow.style.gap = '12px';
+        topRow.style.justifyItems = 'center';
+        (options.catalogs.slice(0,3)).forEach((c) => {
+          const meta = catalog[c.id] || { id: c.id, name: c.name || c.id };
+          const card = document.createElement('div'); card.style.width='180px'; card.style.border='1px solid #ccc'; card.style.borderRadius='6px'; card.style.overflow='hidden'; card.style.background='#111'; card.style.color='#fff'; card.style.boxSizing='border-box'; card.style.textAlign='center'; card.style.padding='8px';
+          const paths = getItemImagePaths(meta.id);
+          const img = document.createElement('img'); img.src = paths.jpg; img.alt = meta.name || meta.id; img.style.width='100%'; img.style.height='80px'; img.style.objectFit='contain'; img.onerror = function(){ if(!this._triedSvg){ this._triedSvg=true; this.src = paths.svg; return; } this.style.opacity='0.6'; };
+          card.appendChild(img);
+          const nm = document.createElement('div'); nm.textContent = meta.name || meta.id; nm.style.fontWeight='700'; nm.style.margin='8px 0 6px 0'; card.appendChild(nm);
+          const btn = document.createElement('button'); btn.type='button'; btn.className='primary-btn'; btn.style.width='100%'; btn.textContent='Select'; btn.style.backgroundColor='#222'; btn.style.color='#fff'; btn.style.border='1px solid #333';
+          btn.addEventListener('click', async () => {
+            try {
+              btn.disabled = true;
+              // initialize selection storage
+              try { if (!window._rewardChooserSelection) window._rewardChooserSelection = { catalog: null, gear: null }; } catch(e) { window._rewardChooserSelection = { catalog: null, gear: null }; }
+              window._rewardChooserSelection.catalog = c.id;
+              status.textContent = `Selected item: ${meta.name}. Please also pick a gear item.`;
+              const sel = window._rewardChooserSelection || {};
+              if (sel.catalog && sel.gear) {
+                chooser.style.display = 'none';
+                const combined = { type: 'combined', catalogId: sel.catalog, gear: sel.gear };
+                await finalizeRewards(winnerUid, loserUid, combined);
+                status.textContent = `You received: ${meta.name} and gear. Loser assigned random rewards.`;
+              }
+            } catch(e){ console.error('finalizeRewards error', e); status.textContent='(error assigning rewards)'; }
+          });
+          card.appendChild(btn);
+          topRow.appendChild(card);
+        });
+        chooser.appendChild(topRow);
+      }
+      // Render gear options section
+      if (options.gears && options.gears.length) {
+        const headerG = document.createElement('div'); headerG.style.fontWeight='700'; headerG.style.margin = '12px 0 6px 0'; headerG.textContent = 'Choice of gear:'; chooser.appendChild(headerG);
+        // Bottom row: exactly up to 3 gear choices in a 3-column grid
+        const bottomRow = document.createElement('div');
+        bottomRow.style.display = 'grid';
+        bottomRow.style.gridTemplateColumns = 'repeat(3, minmax(0, 1fr))';
+        bottomRow.style.gap = '12px';
+        bottomRow.style.justifyItems = 'center';
+        (options.gears.slice(0,3)).forEach((g) => {
+          const meta = g || { id: (g && g.id) || '', name: (g && g.name) || ((g && g.id) || '') };
+          const card = document.createElement('div'); card.style.width='180px'; card.style.border='1px solid #ccc'; card.style.borderRadius='6px'; card.style.overflow='hidden'; card.style.background='#111'; card.style.color='#fff'; card.style.boxSizing='border-box'; card.style.textAlign='center'; card.style.padding='8px';
+          const img = document.createElement('img');
+          // compute candidate list and use the first, stepping on error
+          const candidates = getGearImageCandidates(g, meta.id);
+          img.src = candidates.length ? candidates[0] : 'img/gear/sword/split_1.png';
+          img.alt = meta.name || meta.id;
+          img.style.width='100%'; img.style.height='80px'; img.style.objectFit='contain';
+          img._candidateIndex = 0;
+          img.onerror = function(){
+            try {
+              if (!this._candidateIndex && this._candidateIndex !== 0) this._candidateIndex = 0;
+              this._candidateIndex++;
+              if (candidates && this._candidateIndex < candidates.length) {
+                this.src = candidates[this._candidateIndex];
+                return;
+              }
+              // final fallback: try item catalog images
+              if (!this._triedCatalogFallback) {
+                this._triedCatalogFallback = true;
+                try {
+                  const p = getItemImagePaths(meta.id);
+                  if (p && p.jpg) { this.src = p.jpg; return; }
+                  if (p && p.svg) { this.src = p.svg; return; }
+                } catch(e) {}
+              }
+            } catch(e) {}
+            this.style.opacity='0.6';
+          };
+          card.appendChild(img);
+          const nm = document.createElement('div'); nm.textContent = meta.name || meta.id; nm.style.fontWeight='700'; nm.style.margin='8px 0 6px 0'; card.appendChild(nm);
+          if (g && g.pretty) { const desc = document.createElement('div'); desc.textContent = g.pretty; desc.style.fontSize='12px'; desc.style.color='#ccc'; desc.style.minHeight='34px'; desc.style.marginBottom='8px'; card.appendChild(desc); }
+          const btn = document.createElement('button'); btn.type='button'; btn.className='primary-btn'; btn.style.width='100%'; btn.textContent='Select'; btn.style.backgroundColor='#222'; btn.style.color='#fff'; btn.style.border='1px solid #333';
+          btn.addEventListener('click', async () => {
+            try {
+              btn.disabled = true;
+              try { if (!window._rewardChooserSelection) window._rewardChooserSelection = { catalog: null, gear: null }; } catch(e) { window._rewardChooserSelection = { catalog: null, gear: null }; }
+              window._rewardChooserSelection.gear = g;
+              status.textContent = `Selected gear: ${g.name}. Please also pick an item.`;
+              const sel = window._rewardChooserSelection || {};
+              if (sel.catalog && sel.gear) {
+                chooser.style.display = 'none';
+                const combined = { type: 'combined', catalogId: sel.catalog, gear: sel.gear };
+                await finalizeRewards(winnerUid, loserUid, combined);
+                status.textContent = `You received gear and an item. Loser assigned random rewards.`;
+              }
+            } catch(e){ console.error('finalizeRewards error', e); status.textContent='(error assigning rewards)'; }
+          });
+          card.appendChild(btn);
+          bottomRow.appendChild(card);
+        });
+        chooser.appendChild(bottomRow);
+      }
+      chooser.style.display = '';
+    } else {
+      // Fallback: render a simple catalog grid as before
+      const visibleKeys = itemKeys.slice(0, 12);
+      visibleKeys.forEach(k => {
+        const meta = catalog[k] || { id: k, name: k };
+        const card = document.createElement('div');
+        card.style.width = '100%'; card.style.maxWidth = '220px'; card.style.border = '1px solid #ccc'; card.style.borderRadius = '6px'; card.style.overflow = 'hidden';
+        card.style.background = '#111'; card.style.color = '#fff'; card.style.boxSizing = 'border-box'; card.style.textAlign = 'center'; card.style.padding = '8px';
+        const img = document.createElement('img'); const paths = getItemImagePaths(k); img.src = paths.jpg; img.alt = meta.name || k; img.style.width='100%'; img.style.height='96px'; img.style.objectFit='contain'; img.onerror = function(){ if(!this._triedSvg){ this._triedSvg=true; this.src = paths.svg; return; } this.style.opacity='0.6'; };
+        card.appendChild(img);
+        const nm = document.createElement('div'); nm.textContent = meta.name || k; nm.style.fontWeight='700'; nm.style.margin='8px 0 6px 0'; card.appendChild(nm);
+        const btn = document.createElement('button'); btn.type='button'; btn.className='primary-btn'; btn.style.width='100%'; btn.textContent='Select'; btn.style.backgroundColor='#222'; btn.style.color='#fff'; btn.style.border='1px solid #333';
+        btn.addEventListener('click', async () => {
+          try {
+            btn.disabled = true;
+            try { if (!window._rewardChooserSelection) window._rewardChooserSelection = { catalog: null, gear: null }; } catch(e) { window._rewardChooserSelection = { catalog: null, gear: null }; }
+            window._rewardChooserSelection.catalog = k;
+            status.textContent = `Selected item: ${meta.name}. Please also pick a gear item.`;
+            const sel = window._rewardChooserSelection || {};
+            if (sel.catalog && sel.gear) {
+              chooser.style.display = 'none';
+              const combined = { type: 'combined', catalogId: sel.catalog, gear: sel.gear };
+              await finalizeRewards(winnerUid, loserUid, combined);
+              status.textContent = `You received: ${meta.name} and gear. Loser assigned random rewards.`;
+            }
+          } catch(e){ console.error('finalizeRewards error', e); status.textContent='(error assigning rewards)'; }
+        });
+        card.appendChild(btn);
+        grid.appendChild(card);
       });
-      card.appendChild(btn);
-      grid.appendChild(card);
-    });
-    if (itemKeys.length > visibleKeys.length) {
-      const more = document.createElement('div'); more.style.width = '100%'; more.style.textAlign = 'center'; more.style.color = '#ccc'; more.style.marginTop = '6px'; more.textContent = `Showing ${visibleKeys.length} of ${itemKeys.length} catalog items.`; chooser.appendChild(more);
+      chooser.appendChild(grid);
+      chooser.style.display = '';
     }
-    chooser.appendChild(grid);
-    chooser.style.display = '';
   } else if (currentUserId === loserUid) {
     // loser: show waiting text until DB updated
     chooser.style.display = 'none';
@@ -1887,33 +2666,112 @@ async function initiateRewardPhase(winnerUid, loserUid) {
   }
 }
 
-async function finalizeRewards(winnerUid, loserUid, chosenItemId) {
-  // Award chosen item to winner and random to loser; increment wins/losses.
-  // Attempt to use window.addItemToUser fallback to manual update.
+async function finalizeRewards(winnerUid, loserUid, chosenChoice) {
+  // chosenChoice is an object: { type: 'gear'|'catalog', id, gear? }
   try {
-    // NOTE: wins/losses are recorded server-side by cloud function onMatchFinished
-    // to keep authority centralized; the client will only write reward details
-    // (chosen items). This avoids double-counting.
+    const rewardsRef = ref(db, `matches/${matchId}/rewards`);
+    const rSnap = await get(rewardsRef);
+    const existingRewards = rSnap.exists() ? rSnap.val() : {};
 
-    // award chosen to winner
-    const catalog = (window.getItemCatalog) ? window.getItemCatalog() : {};
-    const chosenMeta = catalog[chosenItemId] || { id: chosenItemId, name: chosenItemId };
-    if (window && window.addItemToUser) {
-      await window.addItemToUser(winnerUid, { id: chosenMeta.id, name: chosenMeta.name, qty: 1 });
-    } else {
-      const wItemRef = ref(db, `users/${winnerUid}/items/${chosenMeta.id}`);
-      const s = await get(wItemRef);
-      const qty = (s.exists() && s.val().qty) ? Number(s.val().qty) + 1 : 1;
-      await update(wItemRef, { id: chosenMeta.id, name: chosenMeta.name, qty });
+    // Remove any auto-assigned winner gear (cleanup) if present
+    try {
+      const winnerInfo = existingRewards && existingRewards.winner ? (typeof existingRewards.winner === 'string' ? { id: existingRewards.winner } : existingRewards.winner) : null;
+      if (winnerInfo && winnerInfo.type === 'gear' && winnerInfo.uid === winnerUid && winnerInfo.id) {
+        try {
+          const gSnap = await get(ref(db, `users/${winnerUid}/gear/${winnerInfo.id}`));
+          if (gSnap.exists()) {
+            const gObj = gSnap.val();
+            if (gObj && gObj._auto) {
+              try { await set(ref(db, `users/${winnerUid}/gear/${winnerInfo.id}`), null); } catch(e) { await update(ref(db, `users/${winnerUid}/gear/${winnerInfo.id}`), null).catch(()=>{}); }
+            }
+          }
+        } catch (e) { console.warn('Could not remove auto winner gear', e); }
+      }
+    } catch (e) { console.warn('Error checking/removing auto winner gear', e); }
+
+    // Validate chosenChoice
+    if (!chosenChoice || !chosenChoice.type) {
+      throw new Error('Invalid reward choice');
     }
 
-    // write winner choice into match rewards (loser was assigned earlier)
+    // Award chosen reward
+    if (chosenChoice.type === 'combined') {
+      // composed payload: { type: 'combined', catalogId, gear }
+      const g = chosenChoice.gear || null;
+      const catalogId = chosenChoice.catalogId || null;
+      // persist gear first
+      if (g && g.id) {
+        try {
+          await update(ref(db, `users/${winnerUid}/gear/${g.id}`), g);
+          if (winnerUid === currentUserId && window.Gear) {
+            try { Gear.addGearToArmoryAndSync(g).catch(()=>{}); } catch(e){}
+          }
+        } catch (e) { console.error('Could not persist chosen gear for winner (combined)', e); }
+      }
+      // persist catalog item
+      if (catalogId) {
+        const catalog = (window.getItemCatalog) ? window.getItemCatalog() : {};
+        const chosenMeta = catalog[catalogId] || { id: catalogId, name: catalogId };
+        if (window && window.addItemToUser) {
+          await window.addItemToUser(winnerUid, { id: chosenMeta.id, name: chosenMeta.name, qty: 1 });
+        } else {
+          const wItemRef = ref(db, `users/${winnerUid}/items/${chosenMeta.id}`);
+          const s = await get(wItemRef);
+          const qty = (s.exists() && s.val().qty) ? Number(s.val().qty) + 1 : 1;
+          await update(wItemRef, { id: chosenMeta.id, name: chosenMeta.name, qty });
+        }
+      }
+      try { await update(rewardsRef, { winner: { type: 'combined', catalogId: catalogId || null, gearId: (g && g.id) ? g.id : null, uid: winnerUid } }); } catch (e) { console.error('Could not write winner combined reward to match', e); }
+
+    } else if (chosenChoice.type === 'gear') {
+      const g = (chosenChoice.gear) ? chosenChoice.gear : null;
+      if (!g || !g.id) {
+        throw new Error('Invalid gear choice payload');
+      }
+      try {
+        await update(ref(db, `users/${winnerUid}/gear/${g.id}`), g);
+        if (winnerUid === currentUserId && window.Gear) {
+          try { Gear.addGearToArmoryAndSync(g).catch(()=>{}); } catch(e){}
+        }
+        // persist winner reward record
+        await update(rewardsRef, { winner: { id: g.id, uid: winnerUid, type: 'gear' } });
+      } catch (e) { console.error('Could not persist chosen gear for winner', e); }
+
+    } else if (chosenChoice.type === 'catalog') {
+      const catalog = (window.getItemCatalog) ? window.getItemCatalog() : {};
+      const chosenId = chosenChoice.id;
+      const chosenMeta = catalog[chosenId] || { id: chosenId, name: chosenId };
+      if (window && window.addItemToUser) {
+        await window.addItemToUser(winnerUid, { id: chosenMeta.id, name: chosenMeta.name, qty: 1 });
+      } else {
+        const wItemRef = ref(db, `users/${winnerUid}/items/${chosenMeta.id}`);
+        const s = await get(wItemRef);
+        const qty = (s.exists() && s.val().qty) ? Number(s.val().qty) + 1 : 1;
+        await update(wItemRef, { id: chosenMeta.id, name: chosenMeta.name, qty });
+      }
+      try { await update(rewardsRef, { winner: { id: chosenId, uid: winnerUid, type: 'catalog' } }); } catch (e) { console.error('Could not write winner reward to match', e); }
+    }
+
+    // Optionally: small chance to also award additional random gear (legacy behavior)
     try {
-      await update(ref(db, `matches/${matchId}/rewards`), { winner: { id: chosenItemId, uid: winnerUid } });
-    } catch (e) { console.error('Could not write winner reward to match', e); }
+      if (typeof Gear !== 'undefined') {
+        const roll = Math.random();
+        const chance = 0.5;
+        if (roll < chance) {
+          const g2 = Gear.generateGear(null, null);
+          try {
+            await update(ref(db, `users/${winnerUid}/gear/${g2.id}`), g2);
+            if (winnerUid === currentUserId) {
+              try { Gear.addGearToArmoryAndSync(g2).catch(()=>{}); } catch(e){}
+            }
+            try { if (winnerUid === currentUserId) logMessage(`You received extra gear: ${g2.name}`); } catch (e) {}
+          } catch (e) { console.error('Could not persist extra winner gear', e); }
+        }
+      }
+    } catch (e) { /* non-fatal */ }
 
   } catch (e) {
-    console.error('awardItems error', e);
+    console.error('finalizeRewards error', e);
     throw e;
   }
 }
@@ -1998,6 +2856,7 @@ window.returnToQueue = async function() {
   
   // Reset battle state
   matchId = null;
+  try { localStorage.removeItem('in_match_v1'); } catch(e) {}
   currentUserId = null;
   opponentId = null;
   lastProcessedMoveActor = null;
@@ -2024,7 +2883,63 @@ window.forfeitMatch = async function() {
   }
 };
 
-function updatePlayerUI(stats, isPlayer) {
+async function updatePlayerUI(stats, isPlayer) {
+  // If the Gear module is present, render with equipped modifiers applied.
+  try {
+    // work on a copy so we don't mutate the canonical match node
+    stats = JSON.parse(JSON.stringify(stats || {}));
+    if (window.Gear && isPlayer) {
+      try {
+        // Prefer authoritative gear objects referenced by the match node so both
+        // clients apply identical gear bonuses. Try to read stats.equipped first,
+        // then fall back to the match node, and finally to local applyEquipToStats.
+        const uid = currentUserId;
+        let equippedMap = stats && stats.equipped && Object.keys(stats.equipped||{}).length ? stats.equipped : null;
+        if (!equippedMap && matchId && uid) {
+          try {
+            const mp = await get(ref(db, `matches/${matchId}/players/${uid}`));
+            if (mp.exists()) { const mv = mp.val() || {}; if (mv.equipped && Object.keys(mv.equipped||{}).length) equippedMap = mv.equipped; }
+          } catch (ee) { /* ignore */ }
+        }
+        if (equippedMap && typeof Gear.applyGearListToStats === 'function') {
+          const gearIds = Object.values(equippedMap||{}).filter(Boolean);
+          if (gearIds.length) {
+            const items = (await Promise.all(gearIds.map(id => get(ref(db, `users/${uid}/gear/${id}`)).then(s=>s.exists()?s.val():null).catch(()=>null)))).filter(Boolean);
+            if (items.length) Gear.applyGearListToStats(stats, items);
+          }
+        } else if (typeof Gear.applyEquipToStats === 'function') {
+          try { Gear.applyEquipToStats(stats); } catch (ee) { console.warn('applyEquipToStats threw', ee); }
+        }
+        if (typeof console !== 'undefined' && console.debug) console.debug('Player equip mods:', stats._equipMods || stats._equipModsApplied || null);
+      } catch (e) { console.warn('Applying player gear for UI failed', e); }
+    }
+    // If updating opponent view, try to apply their equipped gear list (if present in the match node)
+    if (window.Gear && !isPlayer) {
+      try {
+        // stats.equipped may be a map of slot->gearId. If missing, try to read authoritative equipped map from the match node.
+        if ((!stats.equipped || Object.keys(stats.equipped||{}).length === 0) && matchId && window.opponentId) {
+          try {
+            const mp = await get(ref(db, `matches/${matchId}/players/${window.opponentId}`));
+            if (mp.exists()) {
+              const mpv = mp.val() || {};
+              if (mpv.equipped && typeof mpv.equipped === 'object') stats.equipped = mpv.equipped;
+            }
+          } catch (ee) { /* ignore */ }
+        }
+        // stats.equipped should now be present if available
+        if (stats.equipped && typeof stats.equipped === 'object') {
+          const gearIds = Object.values(stats.equipped).filter(Boolean);
+          if (gearIds.length && window.opponentId) {
+            const promises = gearIds.map(id => get(ref(db, `users/${window.opponentId}/gear/${id}`)).then(s => s.exists() ? s.val() : null).catch(() => null));
+            const items = (await Promise.all(promises)).filter(Boolean);
+            if (items.length) Gear.applyGearListToStats(stats, items);
+            // attach items to stats for display below
+            stats.__fetchedEquipsForUI = items;
+          }
+        }
+      } catch (e) { console.warn('Could not fetch/apply opponent gear for UI', e); }
+    }
+  } catch (e) { console.error('applyEquipToStats failed in updatePlayerUI', e); }
   // Elements depending on whether we're updating player or enemy
   const hpBar = isPlayer ? document.getElementById("player-hp") : document.getElementById("enemy-hp");
   const nameElement = isPlayer ? document.getElementById("player-name") : document.getElementById("enemy-name");
@@ -2070,27 +2985,53 @@ function updatePlayerUI(stats, isPlayer) {
   const def = Number(stats?.defense ?? stats?.def ?? 0);
 
   // HP bar and text
-  if (hpBar) {
-    const hpPercent = Math.max(0, Math.min(100, (hp / Math.max(1, maxHp)) * 100));
-    hpBar.style.width = hpPercent + "%";
-  }
-  if (hpText) {
-    hpText.textContent = `HP: ${hp}/${maxHp}`;
-  }
-
-  // Mana bar and text
-  if (manaFill) {
-    const manaPercent = displayMaxMana > 0 ? Math.max(0, Math.min(100, (mana / displayMaxMana) * 100)) : 0;
-    manaFill.style.width = manaPercent + "%";
-  }
-  if (manaText) {
-    if (displayMaxMana > 0) {
-      manaText.textContent = `Mana: ${mana}/${displayMaxMana}`;
-    } else {
-      manaText.textContent = '';
+  try {
+    const equipContainer = isPlayer ? document.getElementById('player-equips') : document.getElementById('enemy-equips');
+    if (equipContainer) {
+      equipContainer.innerHTML = '';
+      if (isPlayer && window.Gear && typeof Gear.getEquippedItems === 'function') {
+        const items = Gear.getEquippedItems() || [];
+        if (!items.length) {
+          equipContainer.textContent = '(no gear equipped)';
+        } else {
+          for (const it of items) {
+            const span = document.createElement('span');
+            span.style.display = 'inline-block';
+            span.style.margin = '0 6px';
+            span.style.padding = '2px 6px';
+            span.style.borderRadius = '6px';
+            span.style.background = 'rgba(0,0,0,0.15)';
+            span.style.color = '#fff';
+            span.title = `${it.name || ''} — ${it.rarity || ''}`;
+            // small icon + name
+            const txt = document.createElement('span');
+            txt.textContent = it.name || it.id || '(item)';
+            span.appendChild(txt);
+            equipContainer.appendChild(span);
+          }
+        }
+      } else if (!isPlayer) {
+        const items = stats.__fetchedEquipsForUI || [];
+        if (!items.length) equipContainer.textContent = '(unknown)';
+        else {
+          for (const it of items) {
+            const span = document.createElement('span');
+            span.style.display = 'inline-block';
+            span.style.margin = '0 6px';
+            span.style.padding = '2px 6px';
+            span.style.borderRadius = '6px';
+            span.style.background = 'rgba(0,0,0,0.08)';
+            span.style.color = '#fff';
+            span.title = `${it.name || ''} — ${it.rarity || ''}`;
+            const txt = document.createElement('span');
+            txt.textContent = it.name || it.id || '(item)';
+            span.appendChild(txt);
+            equipContainer.appendChild(span);
+          }
+        }
+      }
     }
-  }
-
+  } catch (e) { console.warn('Could not render equips UI', e); }
   // ATK / DEF text
   if (statsText) {
     // Display attack boost (ATK) primarily, with base attack shown in parentheses
@@ -2104,7 +3045,33 @@ function updatePlayerUI(stats, isPlayer) {
   // Show crit/evasion as percentages for clarity
   const critPct = Math.round(crit * 100);
   const evaPct = Math.round(eva * 100);
-  statsText.innerHTML = `ATK: ${displayAtkBoost} (base ${baseAtk}) &nbsp; DEF: ${def} &nbsp; SPD: ${speed} &nbsp; CRIT: ${critPct}% &nbsp; EVA: ${evaPct}%`;
+  let statLine = `ATK: ${displayAtkBoost} (base ${baseAtk}) &nbsp; DEF: ${def} &nbsp; SPD: ${speed} &nbsp; CRIT: ${critPct}% &nbsp; EVA: ${evaPct}%`;
+  // show current gear modifiers if present
+  try {
+    if (stats && stats._equipMods) {
+      const gm = stats._equipMods;
+      const parts = [];
+      if (gm.attack) parts.push(`+${gm.attack} ATK`);
+      if (gm.defense) parts.push(`+${gm.defense} DEF`);
+      if (gm.hp) parts.push(`+${gm.hp} HP`);
+      if (parts.length) statLine += ` | Gear: ${parts.join(', ')}`;
+    }
+  } catch (e) { /* ignore */ }
+  // Update HP and Mana UI (bars and text)
+  try {
+    if (hpText) hpText.textContent = `HP: ${hp}/${maxHp}`;
+    if (hpBar) {
+      // hpBar is the inner fill element
+      const pct = maxHp > 0 ? Math.max(0, Math.min(100, (hp / maxHp * 100))) : 0;
+      hpBar.style.width = pct + '%';
+    }
+    if (manaText) manaText.textContent = `Mana: ${mana}/${displayMaxMana || 0}`;
+    if (manaFill) {
+      const mpPct = displayMaxMana > 0 ? Math.max(0, Math.min(100, (mana / displayMaxMana * 100))) : 0;
+      manaFill.style.width = (mpPct) + '%';
+    }
+  } catch (e) { console.warn('Could not update HP/Mana bars', e); }
+  statsText.innerHTML = statLine;
     // Replace native title with styled tooltip
     try {
       statsText.classList.add('has-tooltip');
@@ -2155,6 +3122,40 @@ function updatePlayerUI(stats, isPlayer) {
     }
   }
 }
+
+// Called by armory UI when equip state changes. Re-evaluates UI and optionally writes a
+// client-side preview of equipped stats into the match node for convenience.
+window.onEquipChanged = async function(equipMap) {
+  try {
+    if (window.Gear && typeof Gear.applyEquipToStats === 'function') {
+      if (matchId && currentUserId && playerRef) {
+        const snap = await get(playerRef);
+        const stats = snap.exists() ? snap.val() : null;
+        if (stats) {
+          const copy = JSON.parse(JSON.stringify(stats));
+          Gear.applyEquipToStats(copy);
+          // write a non-authoritative preview so other clients may display equip-influenced numbers
+          try { await update(playerRef, { clientEquippedStats: { baseAtk: copy.baseAtk, defense: copy.defense, maxHp: copy.maxHp } }); } catch(e){}
+          // update our UI with the modified copy
+          try { updatePlayerUI(copy, true); } catch(e){}
+        }
+        // update opponent view too if present
+        try {
+          const os = await get(opponentRef);
+          if (os.exists()) {
+            const oStats = os.val();
+            const ocopy = JSON.parse(JSON.stringify(oStats));
+            Gear.applyEquipToStats(ocopy);
+            try { updatePlayerUI(ocopy, false); } catch(e){}
+          }
+        } catch(e){}
+      } else {
+        // Not in a match: just refresh local display if possible
+        try { const local = window.player || null; if (local) { const c = JSON.parse(JSON.stringify(local)); Gear.applyEquipToStats(c); updatePlayerUI(c, true); } } catch(e){}
+      }
+    }
+  } catch (e) { console.error('onEquipChanged failed', e); }
+};
 // Renders the player's special ability buttons and updates their disabled state
 async function renderSpecialButtons() {
   const specials = document.getElementById('specials');
@@ -2249,7 +3250,11 @@ function disableButtons() {
 }
 
 async function chooseMove(move) {
+  console.log('[chooseMove] invoked with move=', move);
+  // scope-wide flag to allow gear/abilities to request keeping the turn
+  let keepTurnThisAction = false;
   if (!matchId || !currentUserId) {
+    console.log('[chooseMove] not in match or no user');
     logMessage("Not in a match!");
     return;
   }
@@ -2257,6 +3262,7 @@ async function chooseMove(move) {
   // Check if it's the player's turn
   const turnSnapshot = await get(currentTurnRef);
   if (!turnSnapshot.exists() || turnSnapshot.val() !== currentUserId) {
+    console.log('[chooseMove] not your turn; currentTurn=', turnSnapshot.exists() ? turnSnapshot.val() : null);
     logMessage("It's not your turn!");
     return;
   }
@@ -2264,6 +3270,7 @@ async function chooseMove(move) {
   // Get current player stats
   const playerSnapshot = await get(playerRef);
   const playerStats = playerSnapshot.val();
+  console.log('[chooseMove] playerStats fetched', playerStats ? { hp: playerStats.hp, fainted: playerStats.fainted, abilityCooldowns: playerStats.abilityCooldowns } : null);
 
   if (!playerStats || playerStats.fainted) {
     logMessage("You cannot move, you have fainted!");
@@ -2280,15 +3287,62 @@ async function chooseMove(move) {
   }
 
   // --- process status effects for the acting player before their action ---
-  try {
-    const statusRes = processStatusEffectsLocal(playerStats);
+    try {
+  // Create local calculation copies and apply equips so gear-derived passive effects (regen, manaRegen, etc.) are visible
+    let calcPlayer = Object.assign({}, playerStats ? JSON.parse(JSON.stringify(playerStats)) : {});
+    let calcOpponent = Object.assign({}, opponentStats ? JSON.parse(JSON.stringify(opponentStats)) : {});
+    try {
+      if (typeof Gear !== 'undefined') {
+        try {
+          // Apply player equips using authoritative gear objects when available
+          const uid = currentUserId;
+          let equippedMapP = calcPlayer && calcPlayer.equipped && Object.keys(calcPlayer.equipped||{}).length ? calcPlayer.equipped : null;
+          if (!equippedMapP && matchId && uid) {
+            try { const mp = await get(ref(db, `matches/${matchId}/players/${uid}`)); if (mp.exists()) { const mv = mp.val() || {}; if (mv.equipped && Object.keys(mv.equipped||{}).length) equippedMapP = mv.equipped; } } catch(e){}
+          }
+          if (equippedMapP && Gear.applyGearListToStats) {
+            const gearIds = Object.values(equippedMapP||{}).filter(Boolean);
+            if (gearIds.length) {
+              const items = (await Promise.all(gearIds.map(id => get(ref(db, `users/${uid}/gear/${id}`)).then(s=>s.exists()?s.val():null).catch(()=>null)))).filter(Boolean);
+              if (items.length) Gear.applyGearListToStats(calcPlayer, items);
+            }
+          } else if (Gear.applyEquipToStats) {
+            Gear.applyEquipToStats(calcPlayer);
+          }
+        } catch (ee) { console.warn('Applying player gear for tick failed', ee); }
+        // Apply opponent's equips by fetching their equipped item objects from DB (avoid using local equip map)
+        try {
+          if (calcOpponent && calcOpponent.equipped && Gear.applyGearListToStats) {
+            const gearIds = Object.values(calcOpponent.equipped || {}).filter(Boolean);
+            if (gearIds.length) {
+              const items = (await Promise.all(gearIds.map(id => get(ref(db, `users/${opponentId}/gear/${id}`)).then(s => s.exists() ? s.val() : null).catch(() => null)))).filter(Boolean);
+              if (items.length) Gear.applyGearListToStats(calcOpponent, items);
+            }
+          } else if (Gear.applyEquipToStats) {
+            // fallback: best-effort apply local equips (rare)
+            Gear.applyEquipToStats(calcOpponent);
+          }
+        } catch (ee) { console.warn('Applying opponent gear for tick failed', ee); }
+      }
+    } catch (e) { console.warn('Applying equips to local calc copies failed', e); }
+
+  // local control: if gear grants an immediate extra-action this turn we'll set this flag
+    const statusRes = processStatusEffectsLocal(calcPlayer, calcOpponent);
+  console.log('[chooseMove] statusRes', statusRes);
     if (statusRes.messages && statusRes.messages.length) statusRes.messages.forEach(m => logMessage(m));
-    if (statusRes.updates && Object.keys(statusRes.updates).length) {
+    if ((statusRes.updates && Object.keys(statusRes.updates).length) || (statusRes.opponentUpdates && Object.keys(statusRes.opponentUpdates).length)) {
       // Respect dark_inversion when applying status tick updates (e.g., regen, burn, poison)
-  const adjustedStatus = applyDarkInversionToUpdates(playerStats, opponentStats, statusRes.updates, {}, true);
-      await update(playerRef, adjustedStatus.playerUpdates);
-      const refreshed = await get(playerRef);
-      Object.assign(playerStats, refreshed.val());
+      const adjustedStatus = applyDarkInversionToUpdates(playerStats, opponentStats, statusRes.updates || {}, statusRes.opponentUpdates || {}, true);
+      if (adjustedStatus.playerUpdates && Object.keys(adjustedStatus.playerUpdates).length) {
+        await update(playerRef, adjustedStatus.playerUpdates);
+      }
+      if (adjustedStatus.opponentUpdates && Object.keys(adjustedStatus.opponentUpdates).length) {
+        await update(opponentRef, adjustedStatus.opponentUpdates);
+      }
+      const [refreshedP, refreshedO] = await Promise.all([get(playerRef), get(opponentRef)]);
+      Object.assign(playerStats, refreshedP.val());
+      Object.assign(opponentStats, refreshedO.val());
+      console.log('[chooseMove] after status updates, playerStats now', { hp: playerStats.hp, status: playerStats.status, abilityCooldowns: playerStats.abilityCooldowns });
     }
   } catch (err) {
     console.error('Error while processing statuses:', err);
@@ -2299,6 +3353,44 @@ async function chooseMove(move) {
     logMessage("You cannot move, you have fainted!");
     return;
   }
+
+  // Create calculation copies and apply equipped gear modifiers so gear affects combat
+  let calcPlayer = JSON.parse(JSON.stringify(playerStats));
+  let calcOpponent = JSON.parse(JSON.stringify(opponentStats));
+  try {
+    if (window.Gear) {
+      try {
+        // prefer authoritative gear objects for player's calc
+        const uid = currentUserId;
+        let equippedMapP = calcPlayer && calcPlayer.equipped && Object.keys(calcPlayer.equipped||{}).length ? calcPlayer.equipped : null;
+        if (!equippedMapP && matchId && uid) {
+          try { const mp = await get(ref(db, `matches/${matchId}/players/${uid}`)); if (mp.exists()) { const mv = mp.val() || {}; if (mv.equipped && Object.keys(mv.equipped||{}).length) equippedMapP = mv.equipped; } } catch(e){}
+        }
+        if (equippedMapP && typeof Gear.applyGearListToStats === 'function') {
+          const gearIds = Object.values(equippedMapP||{}).filter(Boolean);
+          if (gearIds.length) {
+            const items = (await Promise.all(gearIds.map(id => get(ref(db, `users/${uid}/gear/${id}`)).then(s=>s.exists()?s.val():null).catch(()=>null)))).filter(Boolean);
+            if (items.length) Gear.applyGearListToStats(calcPlayer, items);
+          }
+        } else if (typeof Gear.applyEquipToStats === 'function') {
+          Gear.applyEquipToStats(calcPlayer);
+        }
+      } catch (ee) { console.warn('Applying player gear failed', ee); }
+      // ensure opponent equips are applied by fetching their gear objects
+      try {
+        if (calcOpponent && calcOpponent.equipped && typeof Gear.applyGearListToStats === 'function') {
+          const gearIds = Object.values(calcOpponent.equipped || {}).filter(Boolean);
+          if (gearIds.length) {
+            const items = (await Promise.all(gearIds.map(id => get(ref(db, `users/${opponentId}/gear/${id}`)).then(s => s.exists() ? s.val() : null).catch(() => null)))).filter(Boolean);
+            if (items.length) Gear.applyGearListToStats(calcOpponent, items);
+          }
+        } else if (typeof Gear.applyEquipToStats === 'function') {
+          // fallback
+          Gear.applyEquipToStats(calcOpponent);
+        }
+      } catch (ee) { console.warn('Applying opponent gear failed', ee); }
+    }
+  } catch (e) { console.error('applyEquipToStats failed in chooseMove', e); }
 
   // Handle stun: if stunned, decrement and end turn
   if (playerStats.status && playerStats.status.stun) {
@@ -2319,18 +3411,24 @@ async function chooseMove(move) {
 
   // Tick player's ability cooldowns and write back if changed
   const newPlayerCd = tickCooldownsObject(playerStats.abilityCooldowns || {});
+  console.log('[chooseMove] newPlayerCd', newPlayerCd);
   if (JSON.stringify(newPlayerCd) !== JSON.stringify(playerStats.abilityCooldowns || {})) {
     await update(playerRef, { abilityCooldowns: newPlayerCd });
     playerStats.abilityCooldowns = newPlayerCd;
   }
 
-  // Regen small mana amount each turn (if applicable)
+  // Regen small mana amount each turn (if applicable). Include gear-provided manaRegen when present.
   if (playerStats.maxMana > 0) {
-    const newMana = regenManaValue(playerStats, 2);
-    if (newMana !== playerStats.mana) {
-      await update(playerRef, { mana: newMana });
-      playerStats.mana = newMana;
-    }
+    try {
+      // prefer calcPlayer (gear-applied) mana regen values when available
+      const extraManaFromGear = Number((typeof calcPlayer !== 'undefined' && calcPlayer._equipEnchants && calcPlayer._equipEnchants.manaRegen) ? calcPlayer._equipEnchants.manaRegen : (calcPlayer && calcPlayer._equipMods && calcPlayer._equipMods.manaRegen ? calcPlayer._equipMods.manaRegen : 0)) || 0;
+      const baseAmount = 2;
+      const newMana = regenManaValue(playerStats, baseAmount + extraManaFromGear);
+      if (newMana !== playerStats.mana) {
+        await update(playerRef, { mana: newMana });
+        playerStats.mana = newMana;
+      }
+    } catch (e) { console.warn('Mana regen error', e); }
   }
 
   let message = "";
@@ -2346,16 +3444,189 @@ async function chooseMove(move) {
 
   // Apply move
   if (move === "attack") {
-  const tempBoost = (playerStats.status && playerStats.status.strength_boost) ? Number(playerStats.status.strength_boost.amount || 0) : 0;
-  const damage = Math.floor(Math.random() * 10) + 10 + (playerStats.attackBoost || 0) + tempBoost;
-    const opponentDefense = opponentStats.defense || 0;
-    const actualDamage = Math.max(0, damage - opponentDefense);
-    moveDamage = actualDamage;
-    const newOpponentHp = Math.max(0, (opponentStats.hp || 100) - actualDamage);
-    
-    opponentUpdates.hp = newOpponentHp;
+    console.log('[chooseMove] proceeding to attack branch');
+    // Build base damage components
+    const tempBoost = (calcPlayer.status && calcPlayer.status.strength_boost) ? Number(calcPlayer.status.strength_boost.amount || 0) : 0;
+    const baseAtkValue = Number(calcPlayer.attack || calcPlayer.baseAtk || 0);
+    const atkBoost = Number(calcPlayer.attackBoost || 0);
+    const damage = Math.floor(Math.random() * 10) + 10 + baseAtkValue + atkBoost + tempBoost;
+
+    // Determine whether we should ignore defense due to pierce (wind element) or enchants
+    let opponentDefense = Number(calcOpponent.defense || 0);
+    let ignoreDefense = false;
+    try {
+      const windPower = (calcPlayer._equipElements && calcPlayer._equipElements.wind) || 0;
+      const pierceChance = Math.min(0.6, windPower / 200);
+      if (Math.random() < pierceChance) {
+        ignoreDefense = true;
+      }
+      const pEnchants = (calcPlayer._equipEnchants) ? calcPlayer._equipEnchants : {};
+      if (pEnchants.ignoreDefenseChance && Math.random() < Number(pEnchants.ignoreDefenseChance)) {
+        ignoreDefense = true;
+        playerUpdates = Object.assign(playerUpdates || {}, { lastAction: (playerUpdates && playerUpdates.lastAction) ? playerUpdates.lastAction + ' (ignored defense)' : 'Ignored opponent defense!' });
+      }
+    } catch (e) { }
+
+    // Pre-hit: consume any pierce status on the defender so a previously-applied pierce affects this hit.
+    let preHitStatus = null;
+    try {
+      if (opponentStats && opponentStats.status && opponentStats.status.pierce) {
+        preHitStatus = Object.assign({}, opponentStats.status || {});
+        preHitStatus.pierce = Object.assign({}, opponentStats.status.pierce || {});
+        preHitStatus.pierce.turns = (preHitStatus.pierce.turns || 1) - 1;
+        if (preHitStatus.pierce.turns <= 0) delete preHitStatus.pierce;
+        ignoreDefense = true; // consume pierce -> ignore defense for this hit
+        playerUpdates = Object.assign(playerUpdates || {}, { lastAction: (playerUpdates && playerUpdates.lastAction) ? playerUpdates.lastAction + ' (consumed pierce on defender)' : 'Consumed defender pierce!' });
+      }
+    } catch (e) { /* ignore pre-hit pierce errors */ }
+
+    // Use the centralized helper to compute base damage (handles evasion and crit)
+    try {
+      const baseRes = applyDamageToObject({ hp: calcOpponent.hp, defense: opponentDefense, evasion: calcOpponent.evasion || 0 }, damage, { ignoreDefense: ignoreDefense, attacker: calcPlayer });
+      if (baseRes && baseRes.dodged) {
+        // opponent dodged
+        moveDamage = 0;
+        opponentUpdates.lastAction = `${opponentStats.name || 'Opponent'} dodged the attack.`;
+        matchUpdates.currentTurn = opponentId;
+        matchUpdates.lastMoveActor = currentUserId;
+        matchUpdates.lastMove = 'attack_dodged';
+      } else {
+        const baseDamage = baseRes ? (baseRes.damage || 0) : 0;
+        const isCrit = baseRes ? !!baseRes.isCrit : false;
+        moveDamage = baseDamage;
+
+        // Apply elemental on-hit effects from attacker to opponent (PvP)
+        try {
+          if (window.Gear && typeof Gear.applyOnHit === 'function') {
+            const res = Gear.applyOnHit(calcPlayer, calcOpponent, baseDamage, { pvp: true });
+            if (res && res.targetStatus && Object.keys(res.targetStatus).length) {
+              const baseStatus = Object.assign({}, opponentStats.status || {}, preHitStatus || {});
+              const merged = Object.assign({}, baseStatus, res.targetStatus || {});
+              opponentUpdates.status = merged;
+            } else if (preHitStatus) {
+              opponentUpdates.status = Object.assign({}, preHitStatus);
+            }
+            if (res && res.attackerUpdates && Object.keys(res.attackerUpdates).length) {
+              playerUpdates = Object.assign(playerUpdates || {}, res.attackerUpdates);
+            }
+            // neutralReduce applies after damage calculation
+            if (res && typeof res.neutralReduce === 'number' && res.neutralReduce > 0) {
+              const reduced = Math.floor(baseDamage * (1 - res.neutralReduce));
+              moveDamage = reduced;
+            }
+          } else if (preHitStatus) {
+            opponentUpdates.status = Object.assign({}, preHitStatus);
+          }
+        } catch (e) { console.error('PvP applyOnHit failed', e); }
+
+        // honor mana-shield on the defender (convert some damage to mana if available)
+        const oEnchants = (calcOpponent._equipEnchants) ? calcOpponent._equipEnchants : {};
+        let damageToApply = moveDamage;
+        if (oEnchants.manaShieldChance && Math.random() < Number(oEnchants.manaShieldChance)) {
+          const manaAvail = Number(opponentStats.mana || 0);
+          const manaAbsorb = Math.min(manaAvail, damageToApply);
+          if (manaAbsorb > 0) {
+            damageToApply = Math.max(0, damageToApply - manaAbsorb);
+            opponentUpdates.mana = Math.max(0, manaAvail - manaAbsorb);
+            playerUpdates = Object.assign(playerUpdates || {}, { lastAction: (playerUpdates && playerUpdates.lastAction) ? playerUpdates.lastAction + ' (part absorbed by mana)' : 'Opponent used Mana Shield!' });
+          }
+        }
+
+        // attacker execute / vampirism / extra damage checks (from enchants)
+        const attackerEnchants = (calcPlayer._equipEnchants) ? calcPlayer._equipEnchants : {};
+        if (attackerEnchants.executeChance && Math.random() < Number(attackerEnchants.executeChance)) {
+          damageToApply += Number(attackerEnchants.executeDamage || 0);
+          matchUpdates._executeTriggered = true;
+        }
+        let vampTriggered = false;
+        if (attackerEnchants.vampirismChance && Math.random() < Number(attackerEnchants.vampirismChance)) {
+          const vampD = Number(attackerEnchants.vampirismDamage || 0);
+          if (vampD > 0) {
+            damageToApply += vampD;
+            vampTriggered = true;
+          }
+        }
+
+        // extra action: if gear grants an immediate extra action chance, keep the turn
+        try {
+          if (attackerEnchants.extraActionChance && Math.random() < Number(attackerEnchants.extraActionChance)) {
+            keepTurnThisAction = true;
+            playerUpdates = Object.assign(playerUpdates || {}, { lastAction: (playerUpdates && playerUpdates.lastAction) ? playerUpdates.lastAction + ' (extra action)' : 'Gained an extra action from gear!' });
+          }
+        } catch (e) { /* ignore extra-action RNG errors */ }
+
+        // apply final damage to opponent (after all modifiers)
+        const newOpponentHp = Math.max(0, (opponentStats.hp || 100) - damageToApply);
+        opponentUpdates.hp = newOpponentHp;
+        if (isCrit) opponentUpdates._lastCrit = true;
+
+        // reflect: defender reflects a percentage of damage back to attacker
+        if (oEnchants.reflectPercent && Number(oEnchants.reflectPercent) > 0) {
+          try {
+            const refPct = Number(oEnchants.reflectPercent || 0);
+            const reflectD = Math.max(0, Math.round(damageToApply * refPct));
+            if (reflectD > 0) {
+              const refRes = applyDamageToObject({ hp: playerStats.hp, defense: playerStats.defense || 0, evasion: playerStats.evasion || 0 }, reflectD, { attacker: calcOpponent });
+              if (refRes && typeof refRes.newHp !== 'undefined') {
+                playerUpdates.hp = refRes.newHp;
+                playerUpdates._reflected = refRes.damage || reflectD;
+              }
+            }
+          } catch (e) { console.error('Reflect processing failed', e); }
+        }
+
+        // counter: defender may deal flat counter damage back
+        if (oEnchants.counterChance && Math.random() < Number(oEnchants.counterChance)) {
+          try {
+            const counterD = Number(oEnchants.counterDamage || 0) || 0;
+            if (counterD > 0) {
+              const ctrRes = applyDamageToObject({ hp: playerStats.hp, defense: playerStats.defense || 0, evasion: playerStats.evasion || 0 }, counterD, { attacker: calcOpponent });
+              if (ctrRes && typeof ctrRes.newHp !== 'undefined') {
+                playerUpdates.hp = ctrRes.newHp;
+                playerUpdates._countered = ctrRes.damage || counterD;
+              }
+            }
+          } catch (e) { console.error('Counter processing failed', e); }
+        }
+
+        // lifesteal: heal attacker proportionally to damage done
+        if (calcPlayer._lifestealPercent) {
+          try {
+            const percent = Number(calcPlayer._lifestealPercent || 0);
+            if (percent > 0 && damageToApply > 0) {
+              const heal = Math.max(0, Math.round(damageToApply * percent));
+              const curHp = ('hp' in playerUpdates) ? Number(playerUpdates.hp) : Number(playerStats.hp || 0);
+              const maxHpLocal = Number(playerStats.maxHp || playerStats.maxHP || 100);
+              playerUpdates.hp = Math.min(maxHpLocal, (curHp || 0) + heal);
+              playerUpdates._lifesteal = heal;
+            }
+          } catch (e) { /* ignore lifesteal errors */ }
+        }
+
+        // vampirism heal: apply after damage if vamp triggered
+        if (vampTriggered) {
+          const vampHeal = Number(attackerEnchants.vampirismDamage || 0) || 0;
+          if (vampHeal > 0) {
+            const curHp = ('hp' in playerUpdates) ? Number(playerUpdates.hp) : Number(playerStats.hp || 0);
+            const maxHpLocal = Number(playerStats.maxHp || playerStats.maxHP || 100);
+            playerUpdates.hp = Math.min(maxHpLocal, (curHp || 0) + vampHeal);
+            playerUpdates._vampirism = vampHeal;
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error computing attack damage using centralized helper', e);
+    }
   } else if (move === "heal") {
     moveHeal = Math.floor(Math.random() * 15) + 5;
+    // Reduce generic Heal effectiveness for Paladin players to balance the class
+    try {
+      const cls = playerStats.classId || playerStats.class || null;
+      if (cls === 'paladin') {
+        moveHeal = Math.floor(moveHeal * 0.5);
+        try { console.debug('[PvP] reduced generic heal for paladin to', moveHeal); } catch (e) {}
+      }
+    } catch (e) {}
     const currentHp = playerStats.hp || 100;
     const maxHp = playerStats.maxHp || 100;
     const newHp = Math.min(maxHp, currentHp + moveHeal);
@@ -2421,16 +3692,21 @@ async function chooseMove(move) {
   // Update turn counter and switch turns (unless game over)
   if (!gameOver) {
     matchUpdates.turnCounter = turnCounter;
-    // If player has an extraTurns buffer, consume one and keep the turn
+    // If player has an extraTurns buffer or we triggered a one-time extra-action this move, keep the turn
     const extra = (playerStats.status && playerStats.status.extraTurns) ? Number(playerStats.status.extraTurns) : 0;
-    if (extra > 0) {
-      // decrement extraTurns and persist it
-      const newStatus = Object.assign({}, playerStats.status || {});
-      newStatus.extraTurns = Math.max(0, extra - 1);
-      if (newStatus.extraTurns <= 0) delete newStatus.extraTurns;
-      matchUpdates.currentTurn = currentUserId;
-      // also write back updated status for player
-      playerUpdates.status = Object.keys(newStatus).length ? newStatus : null;
+    if (extra > 0 || keepTurnThisAction) {
+      if (extra > 0) {
+        // decrement extraTurns and persist it
+        const newStatus = Object.assign({}, playerStats.status || {});
+        newStatus.extraTurns = Math.max(0, extra - 1);
+        if (newStatus.extraTurns <= 0) delete newStatus.extraTurns;
+        matchUpdates.currentTurn = currentUserId;
+        // also write back updated status for player
+        playerUpdates.status = Object.keys(newStatus).length ? newStatus : null;
+      } else {
+        // one-time immediate extra action: keep turn for this move but don't persist extraTurns
+        matchUpdates.currentTurn = currentUserId;
+      }
     } else {
       matchUpdates.currentTurn = opponentId;
     }
@@ -2460,18 +3736,35 @@ async function chooseMove(move) {
   }
 
   if (postOpponentHp <= 0) {
-    adjusted.opponentUpdates.fainted = true;
-    matchUpdates.status = "finished";
-    matchUpdates.winner = currentUserId;
-    matchUpdates.message = `You defeated ${opponentStats.name || "your opponent"}!`;
-    gameOver = true;
+    const opponentHasRevive = (typeof adjusted.opponentUpdates.has_revive !== 'undefined') ? adjusted.opponentUpdates.has_revive : opponentStats.has_revive;
+    if (opponentHasRevive) {
+      // consume revive for opponent
+      const consumeOpp = buildConsumeReviveUpdates(opponentStats);
+      adjusted.opponentUpdates = Object.assign(adjusted.opponentUpdates || {}, consumeOpp);
+      try { console.debug('[revive] consuming revive for opponent (chooseMove)', { consumeOpp, opponentStats }); } catch (e) {}
+      logMessage('Opponent was saved by a Revive Scroll!');
+    } else {
+      adjusted.opponentUpdates.fainted = true;
+      matchUpdates.status = "finished";
+      matchUpdates.winner = currentUserId;
+      matchUpdates.message = `You defeated ${opponentStats.name || "your opponent"}!`;
+      gameOver = true;
+    }
   }
   if (postPlayerHp <= 0) {
-    adjusted.playerUpdates.fainted = true;
-    matchUpdates.status = "finished";
-    matchUpdates.winner = opponentId;
-    matchUpdates.message = `${opponentStats.name || 'Opponent'} defeated you!`;
-    gameOver = true;
+    const playerHasRevive = (typeof adjusted.playerUpdates.has_revive !== 'undefined') ? adjusted.playerUpdates.has_revive : playerStats.has_revive;
+    if (playerHasRevive) {
+      const consumePlayer = buildConsumeReviveUpdates(playerStats);
+      adjusted.playerUpdates = Object.assign(adjusted.playerUpdates || {}, consumePlayer);
+      try { console.debug('[revive] consuming revive for player (chooseMove)', { consumePlayer, playerStats }); } catch (e) {}
+      logMessage('Your Revive Scroll saved you from defeat!');
+    } else {
+      adjusted.playerUpdates.fainted = true;
+      matchUpdates.status = "finished";
+      matchUpdates.winner = opponentId;
+      matchUpdates.message = `${opponentStats.name || 'Opponent'} defeated you!`;
+      gameOver = true;
+    }
   }
 
   const updatePromises = [];
@@ -2532,6 +3825,78 @@ async function chooseSpecial(abilityId) {
     return;
   }
 
+  // Check silence: prevents using specials (acts similarly to stun but only blocks specials)
+  if (playerStats.status && playerStats.status.silence) {
+    logMessage("You are silenced and cannot use specials!");
+    const newStatus = Object.assign({}, playerStats.status || {});
+    newStatus.silence.turns = (newStatus.silence.turns || 1) - 1;
+    const pUpdates = { status: Object.keys(newStatus).length ? newStatus : null };
+    if (newStatus.silence.turns <= 0) { delete newStatus.silence; pUpdates.status = Object.keys(newStatus).length ? newStatus : null; }
+    await update(playerRef, pUpdates);
+    await update(matchRef, { currentTurn: opponentId, lastMoveActor: currentUserId, lastMove: 'silenced' });
+    disableButtons();
+    return;
+  }
+
+  // --- process status effects for the acting player before their action ---
+  // (mirror chooseMove behavior so special abilities can't bypass ticks/stuns)
+  try {
+    // create calc copies and apply gear so passive equip effects count in status ticks
+    let calcPlayerForTick = Object.assign({}, playerStats ? JSON.parse(JSON.stringify(playerStats)) : {});
+    let calcOpponentForTick = Object.assign({}, opponentStats ? JSON.parse(JSON.stringify(opponentStats)) : {});
+    try {
+      if (typeof Gear !== 'undefined') {
+        if (Gear.applyEquipToStats) Gear.applyEquipToStats(calcPlayerForTick);
+        try {
+          if (calcOpponentForTick && calcOpponentForTick.equipped && Gear.applyGearListToStats) {
+            const gearIds = Object.values(calcOpponentForTick.equipped || {}).filter(Boolean);
+            if (gearIds.length) {
+              const items = (await Promise.all(gearIds.map(id => get(ref(db, `users/${opponentId}/gear/${id}`)).then(s => s.exists() ? s.val() : null).catch(() => null)))).filter(Boolean);
+              if (items.length) Gear.applyGearListToStats(calcOpponentForTick, items);
+            }
+          } else if (Gear.applyEquipToStats) {
+            Gear.applyEquipToStats(calcOpponentForTick);
+          }
+        } catch (ee) { console.warn('applyEquipToStats for special tick opponent failed', ee); }
+      }
+    } catch (e) { console.warn('applyEquipToStats failed for tick in chooseSpecial', e); }
+    const statusRes = processStatusEffectsLocal(calcPlayerForTick, calcOpponentForTick);
+    if (statusRes.messages && statusRes.messages.length) statusRes.messages.forEach(m => logMessage(m));
+    if ((statusRes.updates && Object.keys(statusRes.updates).length) || (statusRes.opponentUpdates && Object.keys(statusRes.opponentUpdates).length)) {
+      const adjustedStatus = applyDarkInversionToUpdates(playerStats, opponentStats, statusRes.updates || {}, statusRes.opponentUpdates || {}, true);
+      if (adjustedStatus.playerUpdates && Object.keys(adjustedStatus.playerUpdates).length) {
+        await update(playerRef, adjustedStatus.playerUpdates);
+      }
+      if (adjustedStatus.opponentUpdates && Object.keys(adjustedStatus.opponentUpdates).length) {
+        await update(opponentRef, adjustedStatus.opponentUpdates);
+      }
+      const [refreshedP, refreshedO] = await Promise.all([get(playerRef), get(opponentRef)]);
+      Object.assign(playerStats, refreshedP.val());
+      Object.assign(opponentStats, refreshedO.val());
+    }
+  } catch (err) {
+    console.error('Error while processing statuses in chooseSpecial:', err);
+  }
+
+  // Re-check faint after status effects
+  if (!playerStats || playerStats.fainted || playerStats.hp <= 0) {
+    logMessage("You cannot move, you have fainted!");
+    return;
+  }
+
+  // Re-check stun after status ticks (defensive)
+  if (playerStats.status && playerStats.status.stun) {
+    logMessage("You are stunned and cannot act!");
+    const newStatus = Object.assign({}, playerStats.status || {});
+    newStatus.stun.turns = (newStatus.stun.turns || 1) - 1;
+    const pUpdates = { status: Object.keys(newStatus).length ? newStatus : null };
+    if (newStatus.stun.turns <= 0) { delete newStatus.stun; pUpdates.status = Object.keys(newStatus).length ? newStatus : null; }
+    await update(playerRef, pUpdates);
+    await update(matchRef, { currentTurn: opponentId, lastMoveActor: currentUserId, lastMove: 'stunned' });
+    disableButtons();
+    return;
+  }
+
   // Ability availability
   if (!canUseAbilityLocal(playerStats, abilityId)) {
     logMessage("Special unavailable (cooldown or not enough mana)." );
@@ -2541,27 +3906,163 @@ async function chooseSpecial(abilityId) {
   const handler = abilityHandlers[abilityId];
   if (!handler) { logMessage('Unknown ability.'); return; }
 
-  const result = handler(playerStats, opponentStats) || {};
+  // prepare calc copies and apply gear so enchants like extraActionChance are visible
+  let keepTurnThisAction = false;
+  let calcPlayer = JSON.parse(JSON.stringify(playerStats));
+  let calcOpponent = JSON.parse(JSON.stringify(opponentStats));
+  try {
+    if (window.Gear) {
+      try {
+        // Prefer authoritative gear objects for both calcPlayer and calcOpponent
+        const uid = currentUserId;
+        // player
+        try {
+          let equippedMapP = calcPlayer && calcPlayer.equipped && Object.keys(calcPlayer.equipped||{}).length ? calcPlayer.equipped : null;
+          if (!equippedMapP && matchId && uid) {
+            try { const mp = await get(ref(db, `matches/${matchId}/players/${uid}`)); if (mp.exists()) { const mv = mp.val() || {}; if (mv.equipped && Object.keys(mv.equipped||{}).length) equippedMapP = mv.equipped; } } catch(e){}
+          }
+          if (equippedMapP && typeof Gear.applyGearListToStats === 'function') {
+            const gearIds = Object.values(equippedMapP||{}).filter(Boolean);
+            if (gearIds.length) {
+              const items = (await Promise.all(gearIds.map(id => get(ref(db, `users/${uid}/gear/${id}`)).then(s=>s.exists()?s.val():null).catch(()=>null)))).filter(Boolean);
+              if (items.length) Gear.applyGearListToStats(calcPlayer, items);
+            }
+          } else if (typeof Gear.applyEquipToStats === 'function') {
+            Gear.applyEquipToStats(calcPlayer);
+          }
+        } catch(e) { console.warn('applyEquipToStats for calcPlayer (special) failed', e); }
+        // opponent
+        try {
+          if (calcOpponent && calcOpponent.equipped && Gear.applyGearListToStats) {
+            const gearIds = Object.values(calcOpponent.equipped || {}).filter(Boolean);
+            if (gearIds.length) {
+              const items = (await Promise.all(gearIds.map(id => get(ref(db, `users/${opponentId}/gear/${id}`)).then(s => s.exists() ? s.val() : null).catch(() => null)))).filter(Boolean);
+              if (items.length) Gear.applyGearListToStats(calcOpponent, items);
+            }
+          } else if (typeof Gear.applyEquipToStats === 'function') {
+            Gear.applyEquipToStats(calcOpponent);
+          }
+        } catch(e) { console.warn('applyEquipToStats for calcOpponent (special) failed', e); }
+      } catch (e) { console.warn('applyEquipToStats failed in chooseSpecial', e); }
+    }
+  } catch (e) { console.error('applyEquipToStats failed in chooseSpecial', e); }
+
+  // Use calc copies (with gear applied) so specials benefit from equip bonuses
+  const result = handler(calcPlayer, calcOpponent) || {};
+
+  // Check gear-based extra action chance on the acting player's calc stats
+  try {
+    const attackerEnchants = (calcPlayer._equipEnchants) ? calcPlayer._equipEnchants : {};
+    if (attackerEnchants.extraActionChance && Math.random() < Number(attackerEnchants.extraActionChance)) {
+      keepTurnThisAction = true;
+      // annotate playerUpdates so UI can show a message
+      result.playerUpdates = Object.assign(result.playerUpdates || {}, { lastAction: (result.playerUpdates && result.playerUpdates.lastAction) ? result.playerUpdates.lastAction + ' (extra action)' : 'Gained an extra action from gear!' });
+    }
+  } catch (e) { /* ignore */ }
+  // Defensive re-fetch to avoid races: ensure the player wasn't stunned by a simultaneous tick
+  try {
+    const latestP = (await get(playerRef)).val() || {};
+    if (latestP.status && latestP.status.stun) {
+      logMessage('Action aborted: you were stunned by a simultaneous effect.');
+      // decrement stun and end turn
+      const newStatus = Object.assign({}, latestP.status || {});
+      newStatus.stun.turns = (newStatus.stun.turns || 1) - 1;
+      const pUpdates = { status: Object.keys(newStatus).length ? newStatus : null };
+      if (newStatus.stun.turns <= 0) { delete newStatus.stun; pUpdates.status = Object.keys(newStatus).length ? newStatus : null; }
+      await update(playerRef, pUpdates);
+      await update(matchRef, { currentTurn: opponentId, lastMoveActor: currentUserId, lastMove: 'stunned' });
+      disableButtons();
+      return;
+    }
+  } catch (e) { console.error('Error verifying latest player status before applying special:', e); }
   const playerUpdates = result.playerUpdates || {};
   const opponentUpdates = result.opponentUpdates || {};
   const matchUpdates = Object.assign({}, result.matchUpdates || {});
-  const message = result.message || `${playerStats.name || 'You'} used ${abilityId}`;
+  // Defensive: make sure handler-provided messages are plain strings and not DOM nodes, objects, or raw UIDs
+  const safeString = (v) => {
+    if (typeof v !== 'string') return null;
+    // Reject obvious DOM stringifications like [object HTMLDivElement]
+    if (/\[object\s+HTML/i.test(v)) return null;
+    // Reject raw-looking uids being used as names (alphanumeric tokens with no spaces and length > 6)
+    try {
+      const suspectIdRegex = /\b[0-9a-zA-Z_-]{6,}\b/g;
+      const found = v.match(suspectIdRegex) || [];
+      for (const token of found) {
+        if ((token === currentUserId) || (token === opponentId) || (token.length >= 8 && !/\s/.test(token) && token === token.toLowerCase())) {
+          return null;
+        }
+      }
+    } catch (e) {}
+    return v;
+  };
+  let rawMessage = safeString(result && result.message) || safeString(result && result.actorMessage) || null;
+  if (!rawMessage) {
+    const display = (playerStats && (playerStats.name || playerStats.displayName)) ? (playerStats.name || playerStats.displayName) : null;
+    rawMessage = display ? `${display} used ${abilityId}` : null;
+  }
 
   matchUpdates.lastMove = matchUpdates.lastMove || `special_${abilityId}`;
   matchUpdates.lastMoveActor = currentUserId;
   if (result.lastMoveDamage) matchUpdates.lastMoveDamage = result.lastMoveDamage;
+  // Build actor/opponent phrasing robustly from the handler's message string or from result.lastMoveDamage
+  const playerDisplayName = (playerStats && (playerStats.name || playerStats.displayName)) ? (playerStats.name || playerStats.displayName) : null;
+  const escapeRegExp = (s) => s ? s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : s;
+  let actorMsg = '';
+  let opponentMsg = '';
+  if (result && typeof result.actorMessage === 'string' && safeString(result.actorMessage)) actorMsg = result.actorMessage;
+  if (result && typeof result.opponentMessage === 'string' && safeString(result.opponentMessage)) opponentMsg = result.opponentMessage;
+  // If handler provided neither or they were unsafe, derive from damage/ability
+  const abilityName = (ABILITIES && ABILITIES[abilityId] && ABILITIES[abilityId].name) ? ABILITIES[abilityId].name : abilityId;
+  const makeVerb = (name) => {
+    // naive past tense: lowercase and append 'ed' (works well enough for short verbs like Rend, Stun, etc.)
+    const w = String(name || '').toLowerCase().replace(/\s+/g,' ');
+    if (!w) return `used ${name}`;
+    // if it already ends with 'e', add 'd'
+    if (w.endsWith('e')) return `${w}d`;
+    return `${w}ed`;
+  };
+  const verb = makeVerb(abilityName);
+  const dmg = (typeof result.lastMoveDamage !== 'undefined' && result.lastMoveDamage !== null) ? Number(result.lastMoveDamage) : null;
+  if (!actorMsg || !opponentMsg) {
+    if (dmg !== null && !isNaN(dmg)) {
+      actorMsg = actorMsg || `You ${verb} the enemy for ${dmg} damage`;
+      opponentMsg = opponentMsg || `${playerDisplayName || 'Your opponent'} ${verb} you for ${dmg} damage`;
+    } else if (playerDisplayName) {
+      // If message mentions 'You', keep it for actor and replace with playerDisplayName for opponent
+      const base = String(rawMessage || `You used ${abilityId}`);
+      if (/\bYou\b/.test(base)) {
+        actorMsg = actorMsg || base;
+        opponentMsg = opponentMsg || base.replace(/\bYou\b/g, playerDisplayName);
+      } else if (new RegExp(escapeRegExp(playerDisplayName)).test(base)) {
+        actorMsg = actorMsg || base.replace(new RegExp(escapeRegExp(playerDisplayName), 'g'), 'You');
+        opponentMsg = opponentMsg || base;
+      } else {
+        actorMsg = actorMsg || `You used ${abilityName}`;
+        opponentMsg = opponentMsg || `${playerDisplayName} used ${abilityName}`;
+      }
+    } else {
+      actorMsg = actorMsg || `You used ${abilityName}`;
+      opponentMsg = opponentMsg || `Your opponent used ${abilityName}`;
+    }
+  }
+  matchUpdates.message = { actor: actorMsg, opponent: opponentMsg };
   // determine next turn, consuming extraTurns if present
   const currentMatchSnap = await get(matchRef);
   matchUpdates.turnCounter = (currentMatchSnap.val()?.turnCounter || 0) + 1;
   const extra = (playerStats.status && playerStats.status.extraTurns) ? Number(playerStats.status.extraTurns) : 0;
-  if (extra > 0) {
-    // consume one extra turn and keep turn with current player
-    const newStatus = Object.assign({}, playerStats.status || {});
-    newStatus.extraTurns = Math.max(0, extra - 1);
-    if (newStatus.extraTurns <= 0) delete newStatus.extraTurns;
-    // merge into playerUpdates so it gets written
-    playerUpdates.status = Object.keys(newStatus).length ? newStatus : null;
-    matchUpdates.currentTurn = currentUserId;
+  if (extra > 0 || keepTurnThisAction) {
+    if (extra > 0) {
+      // consume one extra turn and keep turn with current player
+      const newStatus = Object.assign({}, playerStats.status || {});
+      newStatus.extraTurns = Math.max(0, extra - 1);
+      if (newStatus.extraTurns <= 0) delete newStatus.extraTurns;
+      // merge into playerUpdates so it gets written
+      playerUpdates.status = Object.keys(newStatus).length ? newStatus : null;
+      matchUpdates.currentTurn = currentUserId;
+    } else {
+      // one-time immediate extra action: keep turn for this move but don't persist extraTurns
+      matchUpdates.currentTurn = currentUserId;
+    }
   } else {
     matchUpdates.currentTurn = opponentId;
   }
@@ -2573,34 +4074,84 @@ async function chooseSpecial(abilityId) {
   // Re-evaluate fainting / game over based on adjusted HP values (post-inversion)
   const postPlayerHp = (typeof adjusted.playerUpdates.hp !== 'undefined') ? adjusted.playerUpdates.hp : playerStats.hp;
   const postOpponentHp = (typeof adjusted.opponentUpdates.hp !== 'undefined') ? adjusted.opponentUpdates.hp : opponentStats.hp;
-  // Clear any prior finish/winner/message set by the ability handler; decide outcome from post-inversion HP
+  // Clear any prior finish/winner set by the ability handler; decide outcome from post-inversion HP
+  // NOTE: keep any crafted `message` we built above — do not delete it (avoids losing sanitized messages and prevents legacy DOM/string persistence)
   if (matchUpdates) {
     delete matchUpdates.status;
     delete matchUpdates.winner;
-    delete matchUpdates.message;
+    // preserve matchUpdates.message (it should be an object {actor,opponent} or will be sanitized below)
   }
 
   if (postOpponentHp <= 0) {
-    adjusted.opponentUpdates.fainted = true;
-    matchUpdates.status = matchUpdates.status || "finished";
-    matchUpdates.winner = matchUpdates.winner || currentUserId;
-    matchUpdates.message = matchUpdates.message || `You defeated ${opponentStats.name || "your opponent"}!`;
+    const opponentHasRevive = (typeof adjusted.opponentUpdates.has_revive !== 'undefined') ? adjusted.opponentUpdates.has_revive : opponentStats.has_revive;
+    if (opponentHasRevive) {
+      const consumeOpp = buildConsumeReviveUpdates(opponentStats);
+      adjusted.opponentUpdates = Object.assign(adjusted.opponentUpdates || {}, consumeOpp);
+      try { console.debug('[revive] consuming revive for opponent (chooseSpecial)', { consumeOpp, opponentStats }); } catch (e) {}
+      logMessage('Opponent was saved by a Revive Scroll!');
+    } else {
+      adjusted.opponentUpdates.fainted = true;
+      matchUpdates.status = matchUpdates.status || "finished";
+      matchUpdates.winner = matchUpdates.winner || currentUserId;
+      matchUpdates.message = matchUpdates.message || `You defeated ${opponentStats.name || "your opponent"}!`;
+    }
   }
   if (postPlayerHp <= 0) {
-    adjusted.playerUpdates.fainted = true;
-    matchUpdates.status = matchUpdates.status || "finished";
-    matchUpdates.winner = matchUpdates.winner || opponentId;
-    matchUpdates.message = matchUpdates.message || `${opponentStats.name || 'Opponent'} defeated you!`;
+    const playerHasRevive = (typeof adjusted.playerUpdates.has_revive !== 'undefined') ? adjusted.playerUpdates.has_revive : playerStats.has_revive;
+    if (playerHasRevive) {
+      const consumePlayer = buildConsumeReviveUpdates(playerStats);
+      adjusted.playerUpdates = Object.assign(adjusted.playerUpdates || {}, consumePlayer);
+      try { console.debug('[revive] consuming revive for player (chooseSpecial)', { consumePlayer, playerStats }); } catch (e) {}
+      logMessage('Your Revive Scroll saved you from defeat!');
+    } else {
+      adjusted.playerUpdates.fainted = true;
+      matchUpdates.status = matchUpdates.status || "finished";
+      matchUpdates.winner = matchUpdates.winner || opponentId;
+      matchUpdates.message = matchUpdates.message || `${opponentStats.name || 'Opponent'} defeated you!`;
+    }
   }
 
   const updatePromises = [];
   if (Object.keys(adjusted.playerUpdates).length) updatePromises.push(update(playerRef, adjusted.playerUpdates));
   if (Object.keys(adjusted.opponentUpdates).length) updatePromises.push(update(opponentRef, adjusted.opponentUpdates));
+  // Sanitize matchUpdates.message before persisting to DB to avoid saving DOM stringifications or raw uids
+  try {
+    if (matchUpdates && matchUpdates.message) {
+      // If it's a simple string, convert to { actor, opponent }
+      if (typeof matchUpdates.message === 'string') {
+        const s = matchUpdates.message;
+        const clean = safeString(s) || null;
+        if (clean) {
+          // prefer actor/opponent style: assume actor (winner) saw 'You' phrasing when they were actor
+          matchUpdates.message = { actor: clean, opponent: clean };
+        } else {
+          // fallback: build deterministic phrasing
+          const display = (playerStats && (playerStats.name || playerStats.displayName)) ? (playerStats.name || playerStats.displayName) : 'Player';
+          matchUpdates.message = { actor: `You used ${abilityId}`, opponent: `${display} used ${abilityId}` };
+        }
+      } else if (typeof matchUpdates.message === 'object') {
+        // ensure actor/opponent fields are safe strings
+        const a = safeString(matchUpdates.message.actor) || null;
+        const o = safeString(matchUpdates.message.opponent) || null;
+        if (a && o) {
+          matchUpdates.message = { actor: a, opponent: o };
+        } else {
+          const display = (playerStats && (playerStats.name || playerStats.displayName)) ? (playerStats.name || playerStats.displayName) : 'Player';
+          const dmg = (typeof matchUpdates.lastMoveDamage !== 'undefined' && matchUpdates.lastMoveDamage !== null) ? Number(matchUpdates.lastMoveDamage) : null;
+          if (dmg !== null && !isNaN(dmg)) {
+            matchUpdates.message = { actor: `You ${makeVerb(ABILITIES[abilityId]?.name||abilityId)} the enemy for ${dmg} damage`, opponent: `${display} ${makeVerb(ABILITIES[abilityId]?.name||abilityId)} you for ${dmg} damage` };
+          } else {
+            matchUpdates.message = { actor: `You used ${abilityName}`, opponent: `${display} used ${abilityName}` };
+          }
+        }
+      }
+    }
+  } catch (e) { console.warn('Could not sanitize matchUpdates.message before persist', e); }
   if (Object.keys(matchUpdates).length) updatePromises.push(update(matchRef, matchUpdates));
 
   await Promise.all(updatePromises);
-
-  logMessage(message);
+  // log actor-side message locally
+  try { logMessage(matchUpdates.message.actor || actorMsg || ''); } catch(e) {}
 }
 window.chooseSpecial = chooseSpecial;
 
@@ -2786,6 +4337,12 @@ async function useItem(itemId) {
     } else if (itemId === 'revive_scroll') {
       // set a one-time revive flag on the player's match node so death handler consumes it
       playerUpdates.has_revive = true;
+      // add a timestamp so we can trace revive preparation events in the DB for debugging
+  try { playerUpdates.revivePreparedAt = serverTimestamp(); } catch(e) { playerUpdates.revivePreparedAt = Date.now(); }
+  // record which player prepared the revive (helps debug race conditions)
+  try { playerUpdates.revivePreparedBy = currentUserId; } catch(e) { playerUpdates.revivePreparedBy = currentUserId; }
+      // reflect immediately in the local snapshot/UI so the player sees the prepared revive
+      try { playerStats.has_revive = true; updateUI(); console.debug('[PvP] prepared revive locally for player'); } catch (e) {}
       matchUpdates.lastMove = 'use_item_revive_scroll';
       matchUpdates.lastMoveActor = currentUserId;
       logMessage('Revive Scroll prepared: you will be revived automatically if you fall.');
@@ -2832,15 +4389,10 @@ async function useItem(itemId) {
     if (postOpponentHp <= 0) {
       const opponentHasRevive = (typeof adjusted.opponentUpdates.has_revive !== 'undefined') ? adjusted.opponentUpdates.has_revive : opponentStats.has_revive;
       if (opponentHasRevive) {
-        // Consume revive for opponent: restore to 30% HP, clear revive flag and remove dangerous DOTs
-        const newHp = Math.max(1, Math.ceil((opponentStats.maxHp || 100) * 0.3));
-        const newStatus = Object.assign({}, opponentStats.status || {});
-        if (newStatus.poison) delete newStatus.poison;
-        if (newStatus.burn) delete newStatus.burn;
-        adjusted.opponentUpdates.hp = newHp;
-        adjusted.opponentUpdates.fainted = false;
-        adjusted.opponentUpdates.has_revive = null;
-        adjusted.opponentUpdates.status = Object.keys(newStatus).length ? newStatus : null;
+        // Consume revive for opponent using centralized helper
+        const consumeOpp = buildConsumeReviveUpdates(opponentStats);
+        adjusted.opponentUpdates = Object.assign(adjusted.opponentUpdates || {}, consumeOpp);
+        try { console.debug('[revive] consuming revive for opponent', { consumeOpp, opponentStats }); } catch (e) {}
         logMessage('Opponent was saved by a Revive Scroll!');
       } else {
         adjusted.opponentUpdates.fainted = true;
@@ -2852,15 +4404,10 @@ async function useItem(itemId) {
     if (postPlayerHp <= 0) {
       const playerHasRevive = (typeof adjusted.playerUpdates.has_revive !== 'undefined') ? adjusted.playerUpdates.has_revive : playerStats.has_revive;
       if (playerHasRevive) {
-        // Consume revive for player: restore to 30% HP, clear revive flag and remove dangerous DOTs
-        const newHp = Math.max(1, Math.ceil((playerStats.maxHp || 100) * 0.3));
-        const newStatus = Object.assign({}, playerStats.status || {});
-        if (newStatus.poison) delete newStatus.poison;
-        if (newStatus.burn) delete newStatus.burn;
-        adjusted.playerUpdates.hp = newHp;
-        adjusted.playerUpdates.fainted = false;
-        adjusted.playerUpdates.has_revive = null;
-        adjusted.playerUpdates.status = Object.keys(newStatus).length ? newStatus : null;
+        // Consume revive for player using centralized helper
+        const consumePlayer = buildConsumeReviveUpdates(playerStats);
+        adjusted.playerUpdates = Object.assign(adjusted.playerUpdates || {}, consumePlayer);
+        try { console.debug('[revive] consuming revive for player', { consumePlayer, playerStats }); } catch (e) {}
         logMessage('Your Revive Scroll saved you from defeat!');
       } else {
         adjusted.playerUpdates.fainted = true;

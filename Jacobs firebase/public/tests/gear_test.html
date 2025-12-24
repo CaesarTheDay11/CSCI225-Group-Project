@@ -1,0 +1,83 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Gear Smoke Tests</title>
+  <style>
+    body { font-family: sans-serif; padding: 16px; }
+    .pass { color: green }
+    .fail { color: red }
+    pre { background:#f6f6f6; padding:8px }
+  </style>
+</head>
+<body>
+  <h1>Gear smoke tests</h1>
+  <div id="results"></div>
+
+  <script src="../js/gear.js"></script>
+  <script src="../js/battle.js"></script>
+  <script src="../PVE/PVEbattle.js"></script>
+  <script>
+    function log(msg, ok) {
+      const d = document.getElementById('results');
+      const el = document.createElement('div');
+      el.innerHTML = msg;
+      if (ok === true) el.className = 'pass';
+      if (ok === false) el.className = 'fail';
+      d.appendChild(el);
+      console.log(msg);
+    }
+
+    (function runTests(){
+      try {
+        // cleanup armory/equip
+        localStorage.removeItem('armory_v1');
+        localStorage.removeItem('armory_equip_v1');
+
+        // create a deterministic gear item: +10 attack
+        const item = { id: 'test_atk_10', name: 'Test Attack +10', slot: 'ring1', baseStatName: 'attack', baseStatValue: 10, rand1: 0, rand2: 0, rarity: 'common', createdAt: Date.now() };
+        Gear.addGearToArmory(item);
+        // equip it
+        localStorage.setItem('armory_equip_v1', JSON.stringify({ ring1: item.id }));
+
+        // compute modifiers
+        const mods = Gear.computeEquipModifiers();
+        log('Computed modifiers: ' + JSON.stringify(mods), (mods.attack === 10));
+
+        // simulate a player stats object
+        const orig = { baseAtk: 5, attack: 5, attackBoost: 0, defense: 2, hp: 50, maxHp: 100 };
+        const copy = JSON.parse(JSON.stringify(orig));
+        Gear.applyEquipToStats(copy);
+        log('Original baseAtk 5, after equip baseAtk: ' + copy.baseAtk, (copy.baseAtk === 15));
+
+        // simulate damage calculation used by chooseMove (deterministic delta check)
+        const dmgNoGear = 10 + orig.baseAtk + orig.attackBoost; // random portion excluded for deterministic check
+        const dmgWithGear = 10 + copy.baseAtk + copy.attackBoost;
+        log('Damage without gear: ' + dmgNoGear + ' with gear: ' + dmgWithGear, (dmgWithGear - dmgNoGear === 10));
+
+        // Test PvP revive helper
+        if (typeof buildConsumeReviveUpdates === 'function') {
+          const dead = { maxHp: 100, has_revive: true };
+          const res = buildConsumeReviveUpdates(dead);
+          log('PvP revive produced hp ' + res.hp + ' and has_revive=' + res.has_revive, (res.hp === 30 && res.has_revive === false));
+        } else {
+          log('PvP revive helper not found', false);
+        }
+
+        // Test PVE revive helper
+        if (typeof buildConsumeReviveUpdatesPVE === 'function') {
+          const pdead = { maxHp: 123, has_revive: true, status: { poison: true, burn: true } };
+          const r2 = buildConsumeReviveUpdatesPVE(pdead);
+          log('PVE revive hp=' + r2.hp + ' status=' + JSON.stringify(r2.status) , (r2.hp === Math.ceil(123*0.3) && (!r2.status || (!r2.status.poison && !r2.status.burn))));
+        } else {
+          log('PVE revive helper not found', false);
+        }
+
+        log('Smoke tests finished.', true);
+      } catch (e) {
+        log('Smoke tests failed with exception: ' + e, false);
+      }
+    })();
+  </script>
+</body>
+</html>

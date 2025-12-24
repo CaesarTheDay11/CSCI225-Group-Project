@@ -27,10 +27,18 @@ onValue(connectedRef, (snap) => {
   console.log("connected:", snap.val());
 });
 
+// Small utility helpers used by UI code
+function capitalize(str) {
+  if (str === null || typeof str === 'undefined') return '';
+  try { str = String(str); } catch (e) { return '';} 
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 let uid;
 let queueRef;
 let detachMatchListener = null;
 let detachProfileListener = null;
+let detachGearListener = null;
 
 // Ensure login/signup handlers are loaded anywhere app.js runs
 import("./login.js").catch((err) => {
@@ -59,6 +67,8 @@ onAuthStateChanged(auth, async (user) => {
 
   if (user) {
     uid = user.uid;
+    // expose globally for other modules (gear sync, PVE pages) and emulator tests
+    try { window.currentUserUid = uid; } catch (e) {}
     // write a minimal profile if missing
     try { await writeUserData(user.uid, user.displayName || user.email); } catch (e) { console.error('writeUserData failed', e); }
 
@@ -101,6 +111,46 @@ onAuthStateChanged(auth, async (user) => {
 
     // seed starter items if necessary
     try { await seedStarterItemsIfMissing(uid); } catch (e) { console.error('Error seeding starter items for user', e); }
+    // attempt to sync armory from server into localStorage so armory UI reflects DB state
+    try {
+      if (typeof window.Gear !== 'undefined' && typeof window.Gear.syncArmoryFromServer === 'function') {
+        try { await window.Gear.syncArmoryFromServer(uid); } catch (e) { /* ignore */ }
+      } else {
+        // If Gear isn't loaded yet, try again shortly
+        setTimeout(() => { try { if (window.Gear && typeof window.Gear.syncArmoryFromServer === 'function') window.Gear.syncArmoryFromServer(uid); } catch (e) {} }, 800);
+      }
+    } catch (e) { console.error('Error syncing armory from server', e); }
+
+    // Start a realtime listener to keep local armory in sync with server changes
+    try {
+      // remove existing if present
+      if (detachGearListener) {
+        try { detachGearListener(); } catch (e) {}
+        detachGearListener = null;
+      }
+      // prefer using Gear.syncArmoryFromServer when available inside the listener
+      const gearRef = ref(db, `users/${uid}/gear`);
+      detachGearListener = onValue(gearRef, async (snap) => {
+        try {
+          if (typeof window.Gear !== 'undefined' && typeof window.Gear.syncArmoryFromServer === 'function') {
+            try { await window.Gear.syncArmoryFromServer(uid); } catch (e) { /* ignore */ }
+          } else {
+            // manual merge fallback
+            const serverGear = snap.exists() ? snap.val() : {};
+            const localRaw = (typeof localStorage !== 'undefined') ? localStorage.getItem('armory_v1') : null;
+            const localList = localRaw ? JSON.parse(localRaw) : [];
+            const byId = {};
+            for (const g of localList) byId[g.id] = g;
+            for (const k of Object.keys(serverGear || {})) {
+              const g = serverGear[k]; if (g && g.id) byId[g.id] = g;
+            }
+            const merged = Object.keys(byId).map(id => byId[id]);
+            try { localStorage.setItem('armory_v1', JSON.stringify(merged)); } catch (e) {}
+            try { if (typeof window.renderArmory === 'function') window.renderArmory(); } catch (e) {}
+          }
+        } catch (e) { console.error('gear listener handler failed', e); }
+      });
+    } catch (e) { console.error('Could not start gear realtime listener', e); }
 
     // match listener
     const matchRef = ref(db, `users/${uid}/currentMatch`);
@@ -128,6 +178,7 @@ onAuthStateChanged(auth, async (user) => {
 
   } else {
     // signed out
+    try { window.currentUserUid = null; } catch (e) {}
     if (userDisplay) userDisplay.textContent = 'Not signed in';
     if (battleElement) battleElement.style.display = 'none';
     if (signOutBtn) signOutBtn.style.display = 'none';
@@ -243,7 +294,7 @@ function initClassSelector() {
   if (!classButtons || classButtons.length === 0) {
     console.warn('[class-select] no class buttons found in DOM — creating fallback buttons');
   // Use the same class set exposed in signup.html
-  const classes = ['warrior','mage','archer','cleric','rogue','dark_mage','necromancer','paladin','druid','knight','monk','wild_magic_sorcerer'];
+  const classes = ['warrior','mage','archer','cleric','rogue','dark_mage','necromancer','paladin','druid','knight','monk','wild_magic_sorcerer','artificer','valkyrie','barbarian'];
     let grid = container.querySelector('.class-grid');
     if (!grid) {
       grid = document.createElement('div');
@@ -373,6 +424,60 @@ async function seedStarterItemsIfMissing(uid) {
       await update(ref(db, `users/${uid}`), { items: starter });
       console.log('Seeded starter items for user', uid);
     }
+    // seed starter gear for new users (ensure at least 2 gear items exist)
+    try {
+      const gearSnap = await get(ref(db, `users/${uid}/gear`));
+      const existing = gearSnap.exists() ? gearSnap.val() : {};
+      const existingCount = existing ? Object.keys(existing).length : 0;
+      const TARGET = 2;
+      const toSeed = Math.max(0, TARGET - existingCount);
+      for (let i = 0; i < toSeed; i++) {
+        // Prefer using the client Gear helper when available for consistency
+        let g = null;
+        try {
+          if (typeof Gear !== 'undefined' && typeof Gear.generateGear === 'function') {
+            g = Gear.generateGear(null, null);
+          }
+        } catch (e) { /* ignore and fallback */ }
+
+        if (!g) {
+            // fallback: simple starter generator that mirrors Gear.slotBaseRange to pick an appropriate stat
+            const SLOTS = ['helmet','chestplate','bracers','pants','boots','ring1','ring2','necklace','bow','sword','dagger','staff','mace','axe','crossbow','hammer','spear','shield'];
+            const ELEMENTS = ['fire','electric','ice','wind','earth','neutral'];
+            const slot = SLOTS[Math.floor(Math.random()*SLOTS.length)];
+            const element = ELEMENTS[Math.floor(Math.random()*ELEMENTS.length)];
+            // pick base range similar to Gear.slotBaseRange
+            function slotBaseRangeLocal(slotName) {
+              switch(slotName) {
+                case 'helmet': return { stat: 'defense', min: 1, max: 6 };
+                case 'chestplate': return { stat: 'defense', min: 4, max: 12 };
+                case 'bracers': return { stat: 'attack', min: 1, max: 5 };
+                case 'pants': return { stat: 'defense', min: 1, max: 6 };
+                case 'boots': return { stat: 'defense', min: 1, max: 4 };
+                case 'ring1': case 'ring2': return { stat: 'attack', min: 1, max: 5 };
+                case 'necklace': return { stat: 'attack', min: 1, max: 6 };
+                case 'bow': case 'sword': case 'dagger': case 'staff': case 'mace': case 'axe': case 'crossbow': case 'hammer': case 'spear': return { stat: 'attack', min: 4, max: 14 };
+                case 'shield': return { stat: 'defense', min: 3, max: 10 };
+                default: return { stat: 'defense', min: 1, max: 3 };
+              }
+            }
+            const baseRange = slotBaseRangeLocal(slot);
+            const baseVal = Math.floor(Math.random() * (baseRange.max - baseRange.min + 1)) + baseRange.min;
+            // ensure at least some variation: rand1/rand2 pick from 0..max but prefer non-zero by allowing ranges
+            const rand1Max = Math.max(1, Math.round(baseVal * 0.6));
+            const rand2Max = Math.max(1, Math.round(baseVal * 0.4));
+            const rand1 = Math.floor(Math.random() * (rand1Max + 1));
+            const rand2 = Math.floor(Math.random() * (rand2Max + 1));
+            const id = 'starter_' + Math.random().toString(36).slice(2,9);
+            g = { id, name: `${element.charAt(0).toUpperCase()+element.slice(1)} ${slot}`, slot, baseStatName: baseRange.stat, baseStatValue: baseVal, rand1, rand2, rarity: 'common', element, createdAt: Date.now() };
+        }
+
+        try {
+          await update(ref(db, `users/${uid}/gear/${g.id}`), g);
+          console.log('Seeded starter gear for user', uid, g);
+        } catch(e) { console.error('Could not seed starter gear', e); }
+      }
+    } catch (e) { console.error('seedStarterItemsIfMissing (gear) error', e); }
   } catch (e) {
     console.error('seedStarterItemsIfMissing error', e);
   }
