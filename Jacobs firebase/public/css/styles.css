@@ -404,7 +404,8 @@ body {
 }
 
 .queueBtn {
-  display: none;
+  /* Make queue buttons visible by default; scripts may still toggle visibility */
+  display: inline-block;
   margin-top: 2%;
   background-color: whitesmoke;
   width: 25%;
@@ -412,7 +413,11 @@ body {
   font-size: 20px;
   border: 2px solid #000;
   border-radius: 10px;
+}
 
+/* Slight spacing for the Quick Match button so it sits to the right of Find a Match */
+#quickMatchBtn {
+  margin-left: 8px;
 }
 
 

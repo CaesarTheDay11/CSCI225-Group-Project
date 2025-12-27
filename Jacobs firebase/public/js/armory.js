@@ -44,8 +44,8 @@
         necklace: ['necklace','amulet'],
         // broaden melee aliases to include concrete weapon folders so legacy/generic items
         // with names like 'sword' or 'staff' will find matching assets in img/gear/<type>/
-        melee1: ['melee','melee1','weapon','sword','spear','axe','dagger','staff','mace','hammer'],
-        melee2: ['melee','melee2','weapon','sword','spear','axe','dagger','staff','mace','hammer'],
+  left_weapon: ['melee','left_weapon','weapon','sword','spear','axe','dagger','staff','mace','hammer'],
+  right_weapon: ['melee','right_weapon','weapon','sword','spear','axe','dagger','staff','mace','hammer'],
         ranged: ['ranged','bow','crossbow','gun','weapon']
       };
       const slotCandidates = SLOT_ALIASES[g.slot] ? SLOT_ALIASES[g.slot].slice() : [g.slot];
@@ -150,7 +150,7 @@
     } catch(e) { /* ignore banner errors */ }
     clearNode(slotsContainer);
     const equip = loadEquip();
-    const SLOTS = (typeof Gear !== 'undefined' && Gear.SLOTS) ? Gear.SLOTS : ['helmet','chestplate','left_greave','right_greave','pants','boots','ring1','ring2','necklace','weapon1','weapon2'];
+  const SLOTS = (typeof Gear !== 'undefined' && Gear.SLOTS) ? Gear.SLOTS : ['helmet','chestplate','left_greave','right_greave','pants','boots','ring1','ring2','necklace','left_weapon','right_weapon'];
     for (const s of SLOTS) {
       const slotCard = document.createElement('div'); slotCard.className = 'slot-card'; slotCard.dataset.slot = s;
       const title = document.createElement('div'); title.className='slot-title'; title.textContent = s.replace(/_/g,' ');
@@ -184,14 +184,18 @@
     }
   }
 
-  // Helper: map a slot string (legacy or new) to a simple category: 'melee', 'ranged', or 'other'
+  // Helper: map a slot string (legacy or new) to a simple category: 'melee', 'ranged', 'ring', or 'other'
+  // This extended classifier lets us accept weapons into left/right weapon slots, allow rings in either ring slot,
+  // and restrict ranged items to ranged slots.
   function slotCategory(slotName) {
     if (!slotName) return 'other';
     const s = String(slotName).toLowerCase();
+    // ring keywords
+    if (s.indexOf('ring') !== -1) return 'ring';
     // ranged keywords
     if (s.indexOf('bow') !== -1 || s.indexOf('crossbow') !== -1 || s.indexOf('ranged') !== -1) return 'ranged';
-    // melee keywords
-    if (s.indexOf('sword') !== -1 || s.indexOf('dagger') !== -1 || s.indexOf('mace') !== -1 || s.indexOf('axe') !== -1 || s.indexOf('hammer') !== -1 || s.indexOf('spear') !== -1 || s.indexOf('staff') !== -1 || s.indexOf('melee') !== -1) return 'melee';
+    // melee/weapon keywords (includes left_weapon/right_weapon aliases)
+    if (s.indexOf('sword') !== -1 || s.indexOf('dagger') !== -1 || s.indexOf('mace') !== -1 || s.indexOf('axe') !== -1 || s.indexOf('hammer') !== -1 || s.indexOf('spear') !== -1 || s.indexOf('staff') !== -1 || s.indexOf('melee') !== -1 || s.indexOf('weapon') !== -1) return 'melee';
     return 'other';
   }
 
@@ -200,14 +204,29 @@
     const list = Gear.getArmory();
     const g = list.find(x=>x.id===gearId);
     if (!g) { alert('Item not found'); return; }
-    // allow equip if exact slot matches, or if categories align (legacy item slots -> new melee/ranged slots)
+    // allow equip if exact slot matches, or if categories align
     const targetCat = slotCategory(slot);
     const itemCat = slotCategory(g.slot);
-    if (!(g.slot === slot || (targetCat !== 'other' && targetCat === itemCat))) {
+
+    const allowed = (g.slot === slot) ||
+      // rings can go into either ring1 or ring2
+      (itemCat === 'ring' && targetCat === 'ring') ||
+      // melee weapons (including legacy 'melee' items) can go into left/right weapon slots
+      (itemCat === 'melee' && targetCat === 'melee') ||
+      // ranged items only to ranged slot
+      (itemCat === 'ranged' && targetCat === 'ranged');
+
+    if (!allowed) {
       alert(`This item is ${g.slot} and cannot be equipped in ${slot}`);
       return;
     }
+
+    // prevent the same gear item being equipped into multiple slots simultaneously.
+    // If this gear id is found in another slot, remove it first.
     const eq = loadEquip();
+    for (const s in eq) {
+      if (eq[s] === gearId && s !== slot) delete eq[s];
+    }
     eq[slot] = gearId;
     saveEquip(eq);
     render();
@@ -280,9 +299,15 @@
           // persist the inferred secondaries into the stored armory so future renders are direct
           try {
             const updated = Object.assign({}, g, { randStats: inferred });
-            // remove old entry then add updated one
-            try { if (window.Gear && typeof window.Gear.removeGearById === 'function') window.Gear.removeGearById(g.id); } catch (e) {}
-            try { if (window.Gear && typeof window.Gear.addGearToArmory === 'function') window.Gear.addGearToArmory(updated); } catch (e) {}
+            // remove old entry then add updated one (attempt server sync when available)
+            (async ()=>{
+              try {
+                if (window.Gear && typeof window.Gear.removeGearByIdAndSync === 'function') await window.Gear.removeGearByIdAndSync(g.id);
+                else if (window.Gear && typeof window.Gear.removeGearById === 'function') window.Gear.removeGearById(g.id);
+                if (window.Gear && typeof window.Gear.addGearToArmoryAndSync === 'function') await window.Gear.addGearToArmoryAndSync(updated);
+                else if (window.Gear && typeof window.Gear.addGearToArmory === 'function') window.Gear.addGearToArmory(updated);
+              } catch(e) { /* ignore sync errors */ }
+            })();
             // use updated for display
             for (const inf of inferred) if (inf) interpretedList.push(inf);
           } catch (e) { /* ignore persistence errors and fall back to transient display */
@@ -386,8 +411,8 @@
         }
       } catch (e) {}
 
-      // Remove action buttons (drag/drop handles unequip/delete). Show card content only.
-  card.appendChild(top); card.appendChild(slot); card.appendChild(stats); card.appendChild(enchantsDiv);
+      // Append content (drag-to-trash handles deletion). No explicit delete button to keep UI minimal.
+      card.appendChild(top); card.appendChild(slot); card.appendChild(stats); card.appendChild(enchantsDiv);
       el.appendChild(card);
     }
   }
@@ -412,6 +437,8 @@
     } catch (e) { container.textContent = '(error computing aggregate)'; }
   }
 
+  
+
   // Drop handlers for global unequip and trash areas
   function setupGlobalDrops() {
     try {
@@ -434,7 +461,11 @@
           dz2.addEventListener('dragover', (ev)=>{ ev.preventDefault(); dz2.classList.add('can-drop'); });
           dz2.addEventListener('dragleave', ()=> dz2.classList.remove('can-drop'));
           dz2.addEventListener('drop', (ev)=>{ ev.preventDefault(); dz2.classList.remove('can-drop'); const gid = ev.dataTransfer.getData('text/gear-id'); if (!gid) return; if (isInMatch()) { alert('Cannot delete items during an active match.'); return; } if (!confirm('Delete gear permanently?')) return; // remove gear and clean equip map
-            try { Gear.removeGearById(gid); } catch (e) { /* ignore */ } const eq = loadEquip(); for (const s in eq) if (eq[s] === gid) delete eq[s]; saveEquip(eq); render(); });
+            (async ()=>{
+              try { if (Gear && typeof Gear.removeGearByIdAndSync === 'function') await Gear.removeGearByIdAndSync(gid); else Gear.removeGearById(gid); } catch (e) { /* ignore */ }
+              const eq = loadEquip(); for (const s in eq) if (eq[s] === gid) delete eq[s]; saveEquip(eq); render();
+            })();
+          });
           trash.dataset.dropInit = '1';
         }
       }

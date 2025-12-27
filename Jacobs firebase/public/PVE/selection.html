@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Select Class & Enemy</title>
+  <title>Arena Battlegrounds — Select Class</title>
   <link rel="stylesheet" href="css/style.css">
   <!-- include shared styles (class selector, buttons, modals) from root css -->
   <link rel="stylesheet" href="../css/styles.css">
@@ -143,6 +143,30 @@
       <button id="backBtn" class="class-btn" onclick="location.href='../TitleScreen.html'">Back</button>
     </div>
   </div>
+
+  <script type="module">
+    // Bootstrap firebase globals and redirect unauthenticated users to the login page
+    try {
+      import('../js/firebase.js').then(({ auth, db }) => {
+        Promise.all([
+          import('https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js'),
+          import('https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js')
+        ]).then(([dbMod, authMod]) => {
+          try {
+            const { ref, get, update } = dbMod;
+            const { onAuthStateChanged } = authMod;
+            window.db = db;
+            window.ref = ref;
+            window.get = get;
+            window.update = update;
+            window.auth = auth;
+            onAuthStateChanged(auth, (user) => { window.currentUserUid = user ? user.uid : null; if (!user) { try { window.location.href = '../index.html'; } catch(e){} } });
+            console.debug('[pve/selection] firebase bootstrap complete');
+          } catch (e) { console.warn('[pve/selection] firebase bootstrap failed', e); }
+        }).catch(e => console.warn('[pve/selection] import error', e));
+      }).catch(e => console.warn('[pve/selection] could not import firebase module', e));
+    } catch (e) { console.warn('[pve/selection] bootstrap error', e); }
+  </script>
 
   <script>
     //this sets up grid-style selection for buttons (class-grid)

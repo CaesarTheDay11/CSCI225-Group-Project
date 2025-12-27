@@ -3,14 +3,24 @@
 // Each gear item: { id, name, slot, baseStatName, baseStatValue, rand1, rand2, rarity, createdAt }
 (function(global) {
   const STORAGE_KEY = 'armory_v1';
-  // Updated slots per user request. Using a single 'ring' slot (can be extended to ring1/ring2 later)
-  // Reduced slot set: keep armor/accessory slots, add two melee and one ranged weapon slots + shield
-  const SLOTS = ['helmet','chestplate','bracers','pants','boots','ring1','ring2','necklace','melee1','melee2','ranged','shield'];
+  // Updated slots per user request. Two ring slots (either may hold a ring) and explicit left/right weapon slots
+  // Reduced slot set: keep armor/accessory slots, add left/right weapon and one ranged slot + shield
+  const SLOTS = ['helmet','chestplate','bracers','pants','boots','ring1','ring2','necklace','left_weapon','right_weapon','ranged','shield'];
   const RARITIES = [ 'common', 'uncommon', 'rare', 'epic', 'legendary' ];
   const ELEMENTS = ['fire','electric','ice','wind','earth','neutral'];
+  // Generation-time scaling: bake multipliers into generated items so displayed
+  // item numbers reflect effective stats (HP x3, defense x1.4). Modifier-time
+  // scaling is disabled to avoid double-application.
+  const GEN_HP_FACTOR = 4.0; // multiply HP baseStatValue by 4 at generation (increase HP power)
+  const GEN_DEFENSE_FACTOR = 1.4; // multiply defense baseStatValue by 1.4 at generation
+
+  // Runtime modifier scaling (disabled; handled at generation)
+  const ATTACK_FACTOR = 1.0; // no attack scaling at modifier time
+  const DEFENSE_FACTOR = 1.0; // no defense scaling at modifier time
+  const HP_FACTOR = 1.0; // no HP scaling at modifier time
   // Secondary types and a compact choice space: 10 unique secondary types X 3 variants = 30 choices
   // Order secondary types so index ranges map as: 0-2=lifesteal, 3-5=regen, 6-8=attack, etc.
-  const SECONDARY_TYPES = ['lifesteal','regen','attack','defense','hp','speed','critChance','evasion','pierce','maxHpPercent'];
+  const SECONDARY_TYPES = ['lifesteal','regen','attack','defense','hp','speed','critChance','evasion','accuracy','pierce','maxHpPercent'];
   const SECONDARY_VARIANT_COUNT = 3; // low/mid/high
 
   // Interpret a compact secondary choice index into a { type, value } pair using the item's base stat value.
@@ -25,15 +35,20 @@
     let value = 0;
     // deterministic scales so interpretation is stable (no extra randomness on display)
     switch (type) {
-      case 'attack':
+      case 'attack': {
+        // Reduce attack secondary contributions so items don't dominate damage output.
+        // Smaller scales than before to keep weapons from blowing out damage.
+        const scales = [0.05, 0.12, 0.22];
+        value = Math.max(0, Math.round(baseVal * scales[variant]));
+      } break;
       case 'defense': {
-        const scales = [0.15, 0.35, 0.6];
+        // Balanced defense contributions: still meaningful but less spiky than before.
+        const scales = [0.4, 0.8, 1.2];
         value = Math.max(0, Math.round(baseVal * scales[variant]));
       } break;
       case 'hp': {
-        // Boost HP secondary scales so health-focused items are competitive with attack
-        // Old: [0.8,1.5,2.5] — increase to be more impactful
-        const scales = [1.2, 2.2, 4.0];
+        // Balanced HP secondaries: meaningful but capped to avoid runaway health
+        const scales = [1.0, 1.8, 3.0];
         value = Math.max(1, Math.round(baseVal * scales[variant]));
       } break;
       case 'speed': {
@@ -47,6 +62,11 @@
         const scales = [0.01, 0.02, 0.03];
         value = +(Math.round(scales[variant] * 10000) / 10000) || scales[variant];
       } break;
+      case 'accuracy': {
+        // Accuracy is a direct counter to evasion. Provide small fractional accuracy values.
+        const scales = [0.02, 0.04, 0.06];
+        value = +(Math.round(scales[variant] * 10000) / 10000) || scales[variant];
+      } break;
       case 'regen': {
         const scales = [0.12, 0.3, 0.6];
         value = Math.max(1, Math.round(baseVal * scales[variant]));
@@ -55,7 +75,8 @@
         const vals = [1,2,3]; value = vals[variant];
       } break;
       case 'maxHpPercent': {
-        const vals = [3,6,12]; value = vals[variant];
+        // Increase percentage bonus for max HP to make HP-focused gear more impactful
+        const vals = [5,10,20]; value = vals[variant];
       } break;
       default: value = 0; break;
     }
@@ -82,28 +103,29 @@
     switch(slot) {
       // Armor pieces: boost base ranges so armor has meaningful impact across rarities
       case 'helmet': return { stat: 'defense', min: 2, max: 8 };
-      case 'chestplate': return { stat: 'defense', min: 6, max: 18 };
-      case 'bracers': return { stat: 'attack', min: 2, max: 8 };
+  case 'chestplate': return { stat: 'defense', min: 5, max: 14 };
+  case 'bracers': return { stat: 'attack', min: 1, max: 5 };
       case 'pants': return { stat: 'defense', min: 2, max: 8 };
       // boots should be noticeably better so they matter in early loot
-      case 'boots': return { stat: 'defense', min: 3, max: 8 };
+  case 'boots': return { stat: 'defense', min: 3, max: 7 };
       // rings provide modest attack bonuses but slightly bumped
-  case 'ring1': case 'ring2': return { stat: 'hp', min: 4, max: 12 };
+  case 'ring1': case 'ring2': return { stat: 'hp', min: 10, max: 22 };
       // necklaces/amulets act as regen items (HP regen / mana regen)
       case 'necklace': return { stat: 'regen', min: 2, max: 10 };
-      // weapons: two melee slots and one ranged slot (unchanged attack ranges)
-      case 'melee1': case 'melee2': return { stat: 'attack', min: 4, max: 14 };
-      case 'ranged': return { stat: 'attack', min: 4, max: 12 };
+      // weapons: left and right weapon slots and one ranged slot (unchanged attack ranges)
+      // Reduce weapon base attack ranges so items are less likely to blow out damage values.
+    case 'left_weapon': case 'right_weapon': return { stat: 'attack', min: 2, max: 8 };
+  case 'ranged': return { stat: 'attack', min: 2, max: 7 };
       // shields now stronger
-      case 'shield': return { stat: 'defense', min: 4, max: 12 };
+  case 'shield': return { stat: 'defense', min: 3, max: 10 };
       default: return { stat: 'defense', min: 1, max: 3 };
     }
   }
 
   function pickRarity() {
     const roll = Math.random();
-    if (roll < 0.60) return 'common';
-    if (roll < 0.85) return 'uncommon';
+    if (roll < 0.70) return 'common';
+    if (roll < 0.90) return 'uncommon';
     if (roll < 0.95) return 'rare';
     if (roll < 0.99) return 'epic';
     return 'legendary';
@@ -134,8 +156,8 @@
 
     // map technical slots to concrete user-facing names
     const SLOT_MAP = {
-      melee1: ['sword','spear','axe','mace','hammer','dagger','staff'],
-      melee2: ['sword','spear','axe','mace','hammer','dagger','staff'],
+      left_weapon: ['sword','spear','axe','mace','hammer','dagger','staff'],
+      right_weapon: ['sword','spear','axe','mace','hammer','dagger','staff'],
       ranged: ['bow','crossbow','gun'],
       sword: ['sword'], spear: ['spear'], axe: ['axe'], hammer: ['hammer'], mace: ['mace'], staff: ['staff'], dagger: ['dagger'],
       bow: ['bow'], crossbow: ['crossbow'], gun: ['gun'],
@@ -206,8 +228,12 @@
     if (!SLOTS.includes(slot)) slot = SLOTS[Math.floor(Math.random()*SLOTS.length)];
     const rarity = forcedRarity || pickRarity();
     const rmul = rarityMultiplier(rarity);
-    const base = slotBaseRange(slot);
-    const baseVal = Math.max(1, Math.round(randomBetween(base.min, base.max) * rmul));
+  const base = slotBaseRange(slot);
+  const baseVal = Math.max(1, Math.round(randomBetween(base.min, base.max) * rmul));
+  // Apply generation-time scaling so HP/defense show their effective values on the item
+  let scaledBaseVal = baseVal;
+  if (base.stat === 'hp') scaledBaseVal = Math.max(1, Math.round(baseVal * GEN_HP_FACTOR));
+  else if (base.stat === 'defense') scaledBaseVal = Math.max(1, Math.round(baseVal * GEN_DEFENSE_FACTOR));
   // two randomized secondary choice indexes (compact choice space 0..totalChoices-1)
   const totalChoices = SECONDARY_TYPES.length * SECONDARY_VARIANT_COUNT;
   const rand1 = Math.floor(Math.random() * totalChoices);
@@ -223,6 +249,22 @@
     const baseStatType = base.stat;
     const chooseIndex = () => {
       if (!availableChoices.length) return null;
+      // If the item's primary is attack, bias secondaries toward hp/defense occasionally
+      if (baseStatType === 'attack') {
+        try {
+          const biased = availableChoices.filter(c => {
+            const t = SECONDARY_TYPES[Math.floor(c / SECONDARY_VARIANT_COUNT)];
+            return t === 'hp' || t === 'defense';
+          });
+          // 60% chance to pick a HP/DEF biased secondary when available
+          if (biased.length && Math.random() < 0.6) {
+            const pick = biased[Math.floor(Math.random() * biased.length)];
+            const idx = availableChoices.indexOf(pick);
+            if (idx !== -1) availableChoices.splice(idx, 1);
+            return pick;
+          }
+        } catch (e) {}
+      }
       // attempt up to 4 tries to pick a non-base-type choice
       for (let attempt = 0; attempt < 4; attempt++) {
         const idx = Math.floor(Math.random() * availableChoices.length);
@@ -250,7 +292,8 @@
       name: prettyName(slot, rarity) + ' (' + element.charAt(0).toUpperCase() + element.slice(1) + ')',
       slot,
       baseStatName: base.stat,
-      baseStatValue: baseVal,
+      // store scaled base stat so UI reflects effective stat values
+      baseStatValue: scaledBaseVal,
       element,
   rand1,
   rand2,
@@ -283,8 +326,8 @@
         // scale values with rarity multiplier (rmul)
         switch(type) {
           case 'regen':
-            // small HP per turn, scales with baseVal
-            val = randomBetween(1, Math.max(1, Math.round(Math.max(1, baseVal * 0.12) * rmul)));
+            // small HP per turn, scales with scaledBaseVal
+            val = randomBetween(1, Math.max(1, Math.round(Math.max(1, scaledBaseVal * 0.12) * rmul)));
             break;
           case 'lifesteal':
             // fractional lifesteal (0.02 - 0.10) scaled by rarity, keep as fraction
@@ -351,9 +394,9 @@
     // Compute a conservative element-power number for an item used to derive proc chances.
     // Uses baseStatValue plus any numeric secondary contributions (attack/defense/hp/speed/pierce).
     function computeItemElementPower(item) {
-      try {
-        const baseV = Number(item.baseStatValue || 0) || 0;
-        let power = baseV;
+    try {
+      const baseV = Number(item.baseStatValue || 0) || 0;
+      let power = baseV;
         const addFromInterp = (interp) => {
           if (!interp || typeof interp.type === 'undefined') return 0;
           const t = interp.type;
@@ -379,25 +422,27 @@
           // Note: do NOT blindly add raw rand1/rand2 indices as numeric power because
           // in the compact choice representation rand1/rand2 are indexes (0..N-1).
         }
-        return power;
+        // Reduce elemental power so elements remain impactful but do not overpower direct stats.
+        // Scale down by ~45% to make proc chances and DOTs more conservative.
+        return Math.max(0, Math.round(power * 0.45));
       } catch (e) { return Number(item.baseStatValue || 0) || 0; }
     }
 
   function computeEquipModifiers() {
-    const equipped = getEquippedItems();
-    const mods = { attack: 0, defense: 0, hp: 0, elements: {} };
+  const equipped = getEquippedItems();
+  const mods = { attack: 0, defense: 0, hp: 0, elements: {}, accuracy: 0 };
     for (const it of equipped) {
       // Prefer new randStats when present; otherwise infer named secondaries from legacy rand1/rand2
       const baseV = Number(it.baseStatValue || 0);
       let usedRandStats = null;
-      if (Array.isArray(it.randStats) && it.randStats.length) {
+    if (Array.isArray(it.randStats) && it.randStats.length) {
         // first add primary base value to the stat implied by baseStatName
   const stat = (it.baseStatName || '').toLowerCase();
-  if (stat.indexOf('attack') !== -1 || stat.indexOf('atk') !== -1) mods.attack += baseV;
-  else if (stat.indexOf('def') !== -1) mods.defense += baseV;
-  else if (stat.indexOf('hp') !== -1) mods.hp += baseV;
+  if (stat.indexOf('attack') !== -1 || stat.indexOf('atk') !== -1) mods.attack += Math.round(baseV * ATTACK_FACTOR);
+  else if (stat.indexOf('def') !== -1) mods.defense += Math.round(baseV * DEFENSE_FACTOR);
+  else if (stat.indexOf('hp') !== -1) mods.hp += Math.round(baseV * HP_FACTOR);
   else if (stat.indexOf('regen') !== -1) { mods.regenPerTurn = (mods.regenPerTurn || 0) + baseV; mods.manaRegen = (mods.manaRegen || 0) + Math.max(0, Math.round(baseV * 0.5)); }
-  else mods.defense += baseV;
+  else mods.defense += Math.round(baseV * DEFENSE_FACTOR);
         // apply each named secondary appropriately — support both legacy {type,value} and compact {choice}
         for (const rs of it.randStats) {
           if (!rs) continue;
@@ -406,9 +451,10 @@
           else if (typeof rs.type !== 'undefined') interp = { type: rs.type, value: Number(rs.value || 0) };
           if (!interp) continue;
           const val = Number(interp.value || 0);
-          if (interp.type === 'attack') mods.attack += val;
-          else if (interp.type === 'defense') mods.defense += val;
-          else if (interp.type === 'hp') mods.hp += val;
+          if (interp.type === 'attack') mods.attack += Math.round(Number(val || 0) * ATTACK_FACTOR);
+          else if (interp.type === 'defense') mods.defense += Math.round(Number(val || 0) * DEFENSE_FACTOR);
+          else if (interp.type === 'hp') mods.hp += Math.round(Number(val || 0) * HP_FACTOR);
+          else if (interp.type === 'accuracy') mods.accuracy = (mods.accuracy || 0) + val;
           else {
             mods[interp.type] = (mods[interp.type] || 0) + val;
           }
@@ -419,18 +465,18 @@
         const inferred = inferLegacyRandStats(it);
         usedRandStats = inferred;
   const stat = (it.baseStatName || '').toLowerCase();
-  // primary base always applies to canonical stat
-  if (stat.indexOf('attack') !== -1 || stat.indexOf('atk') !== -1) mods.attack += baseV;
-  else if (stat.indexOf('def') !== -1) mods.defense += baseV;
-  else if (stat.indexOf('hp') !== -1) mods.hp += baseV;
+  // primary base always applies to canonical stat (apply scaling factors)
+  if (stat.indexOf('attack') !== -1 || stat.indexOf('atk') !== -1) mods.attack += Math.round(baseV * ATTACK_FACTOR);
+  else if (stat.indexOf('def') !== -1) mods.defense += Math.round(baseV * DEFENSE_FACTOR);
+  else if (stat.indexOf('hp') !== -1) mods.hp += Math.round(baseV * HP_FACTOR);
   else if (stat.indexOf('regen') !== -1) { mods.regenPerTurn = (mods.regenPerTurn || 0) + baseV; mods.manaRegen = (mods.manaRegen || 0) + Math.max(0, Math.round(baseV * 0.5)); }
-  else mods.defense += baseV;
+  else mods.defense += Math.round(baseV * DEFENSE_FACTOR);
         for (const rs of inferred) {
           if (!rs) continue;
           const val = Number(rs.value || 0);
-          if (rs.type === 'attack') mods.attack += val;
-          else if (rs.type === 'defense') mods.defense += val;
-          else if (rs.type === 'hp') mods.hp += val;
+          if (rs.type === 'attack') mods.attack += Math.round(val * ATTACK_FACTOR);
+          else if (rs.type === 'defense') mods.defense += Math.round(val * DEFENSE_FACTOR);
+          else if (rs.type === 'hp') mods.hp += Math.round(val * HP_FACTOR);
           else mods[rs.type] = (mods[rs.type] || 0) + val;
         }
       }
@@ -462,6 +508,7 @@
               case 'critChance': mods.critChance = (mods.critChance || 0) + (base * 2); mods.executeChance = (mods.executeChance || 0) + 0.15; mods.executeDamage = (mods.executeDamage || 0) + 10; break;
               case 'critDamage': mods.critDamageBonus = (mods.critDamageBonus || 0) + (base * 2); mods.critOverkill = (mods.critOverkill || 0) + 0.2; break;
               case 'evasion': mods.evasion = (mods.evasion || 0) + (base * 2); mods.counterChance = (mods.counterChance || 0) + 0.25; mods.counterDamage = (mods.counterDamage || 0) + 6; break;
+              case 'accuracy': mods.accuracy = (mods.accuracy || 0) + (base * 2); break;
               case 'maxHpPercent': mods.maxHpPercent = (mods.maxHpPercent || 0) + (base * 2); mods.reflectPercent = (mods.reflectPercent || 0) + 0.05; break;
               case 'speed': mods.speed = (mods.speed || 0) + (base * 2); mods.extraActionChance = (mods.extraActionChance || 0) + 0.15; break;
               case 'pierce': mods.pierce = (mods.pierce || 0) + (base * 2); mods.ignoreDefenseChance = (mods.ignoreDefenseChance || 0) + 0.20; break;
@@ -477,6 +524,7 @@
             case 'critChance': mods.critChance = (mods.critChance || 0) + Number(e.value || 0); break;
             case 'critDamage': mods.critDamageBonus = (mods.critDamageBonus || 0) + Number(e.value || 0); break;
             case 'evasion': mods.evasion = (mods.evasion || 0) + Number(e.value || 0); break;
+            case 'accuracy': mods.accuracy = (mods.accuracy || 0) + Number(e.value || 0); break;
             case 'maxHpPercent': mods.maxHpPercent = (mods.maxHpPercent || 0) + Number(e.value || 0); break;
             case 'speed': mods.speed = (mods.speed || 0) + Number(e.value || 0); break;
             case 'pierce': mods.pierce = (mods.pierce || 0) + Number(e.value || 0); break;
@@ -523,7 +571,7 @@
 
   // Compute modifiers from an explicit gear list (array of gear objects)
   function computeModifiersFromList(gearList) {
-    const mods = { attack: 0, defense: 0, hp: 0, elements: {} };
+  const mods = { attack: 0, defense: 0, hp: 0, elements: {}, accuracy: 0 };
     if (!Array.isArray(gearList)) return mods;
     for (const it of gearList) {
       const baseV = Number(it.baseStatValue || 0);
@@ -546,6 +594,7 @@
           if (interp.type === 'attack') mods.attack += val;
           else if (interp.type === 'defense') mods.defense += val;
           else if (interp.type === 'hp') mods.hp += val;
+          else if (interp.type === 'accuracy') mods.accuracy = (mods.accuracy || 0) + val;
           else mods[interp.type] = (mods[interp.type] || 0) + val;
         }
         usedRandStats = it.randStats;
@@ -610,6 +659,7 @@
               case 'critChance': mods.critChance = (mods.critChance || 0) + (base * 2); mods.executeChance = (mods.executeChance || 0) + 0.15; mods.executeDamage = (mods.executeDamage || 0) + 10; break;
               case 'critDamage': mods.critDamageBonus = (mods.critDamageBonus || 0) + (base * 2); mods.critOverkill = (mods.critOverkill || 0) + 0.2; break;
               case 'evasion': mods.evasion = (mods.evasion || 0) + (base * 2); mods.counterChance = (mods.counterChance || 0) + 0.25; mods.counterDamage = (mods.counterDamage || 0) + 6; break;
+              case 'accuracy': mods.accuracy = (mods.accuracy || 0) + (base * 2); break;
               case 'maxHpPercent': mods.maxHpPercent = (mods.maxHpPercent || 0) + (base * 2); mods.reflectPercent = (mods.reflectPercent || 0) + 0.05; break;
               case 'speed': mods.speed = (mods.speed || 0) + (base * 2); mods.extraActionChance = (mods.extraActionChance || 0) + 0.15; break;
               case 'pierce': mods.pierce = (mods.pierce || 0) + (base * 2); mods.ignoreDefenseChance = (mods.ignoreDefenseChance || 0) + 0.20; break;
@@ -626,6 +676,7 @@
             case 'critChance': mods.critChance = (mods.critChance || 0) + Number(e.value || 0); break;
             case 'critDamage': mods.critDamageBonus = (mods.critDamageBonus || 0) + Number(e.value || 0); break;
             case 'evasion': mods.evasion = (mods.evasion || 0) + Number(e.value || 0); break;
+            case 'accuracy': mods.accuracy = (mods.accuracy || 0) + Number(e.value || 0); break;
             case 'maxHpPercent': mods.maxHpPercent = (mods.maxHpPercent || 0) + Number(e.value || 0); break;
             case 'speed': mods.speed = (mods.speed || 0) + Number(e.value || 0); break;
             case 'pierce': mods.pierce = (mods.pierce || 0) + Number(e.value || 0); break;
@@ -666,11 +717,29 @@
       if (mods.regenPerTurn) stats._regenPerTurn = (stats._regenPerTurn || 0) + (mods.regenPerTurn || 0);
       if (mods.lifestealPercent) stats._lifestealPercent = (stats._lifestealPercent || 0) + (mods.lifestealPercent || 0);
       if (mods.maxHpPercent) {
-        const add = Math.round(((mods.maxHpPercent||0)/100) * (stats._orig_maxHp || stats.maxHp || 100));
-        stats.maxHp = (stats.maxHp || stats._orig_maxHp || 100) + add;
-        stats.hp = Math.min(stats.maxHp, (stats.hp || 0) + add);
+        // Apply percent-based max HP increases relative to the original max HP snapshot.
+        // To avoid surprising jumps in current HP, scale current HP proportionally to the new max HP
+        const origMax = Number(stats._orig_maxHp || stats.maxHp || 100) || 100;
+        const add = Math.round(((mods.maxHpPercent||0)/100) * origMax);
+        const prevMaxBeforePercent = Number(stats.maxHp || origMax) || origMax; // includes any flat HP additions already applied
+        const newMax = prevMaxBeforePercent + add;
+        // Maintain same percentage of HP as before the percent increase
+        const curHp = Number(stats.hp || 0);
+        let newHp = curHp;
+        try {
+          if (prevMaxBeforePercent > 0) {
+            const pct = curHp / prevMaxBeforePercent;
+            newHp = Math.min(newMax, Math.round(pct * newMax));
+          } else {
+            newHp = Math.min(newMax, curHp + add);
+          }
+        } catch (e) { newHp = Math.min(newMax, curHp + add); }
+        stats.maxHp = newMax;
+        stats.hp = newHp;
       }
       stats._equipEnchants = (mods) ? mods : {};
+      // apply accuracy so battle code can use it to counter evasion
+      if (mods.accuracy) stats.accuracy = (stats.accuracy || 0) + (mods.accuracy || 0);
       stats._equipApplied = true;
     } catch (e) { console.error('applyGearListToStats failed', e); }
     return stats;
@@ -712,11 +781,26 @@
       if (mods.regenPerTurn) stats._regenPerTurn = (stats._regenPerTurn || 0) + (mods.regenPerTurn || 0);
       if (mods.lifestealPercent) stats._lifestealPercent = (stats._lifestealPercent || 0) + (mods.lifestealPercent || 0);
       if (mods.maxHpPercent) {
-        const add = Math.round(((mods.maxHpPercent||0)/100) * (stats._orig_maxHp || stats.maxHp || 100));
-        stats.maxHp = (stats.maxHp || stats._orig_maxHp || 100) + add;
-        stats.hp = Math.min(stats.maxHp, (stats.hp || 0) + add);
+        const origMax = Number(stats._orig_maxHp || stats.maxHp || 100) || 100;
+        const add = Math.round(((mods.maxHpPercent||0)/100) * origMax);
+        const prevMaxBeforePercent = Number(stats.maxHp || origMax) || origMax;
+        const newMax = prevMaxBeforePercent + add;
+        const curHp = Number(stats.hp || 0);
+        let newHp = curHp;
+        try {
+          if (prevMaxBeforePercent > 0) {
+            const pct = curHp / prevMaxBeforePercent;
+            newHp = Math.min(newMax, Math.round(pct * newMax));
+          } else {
+            newHp = Math.min(newMax, curHp + add);
+          }
+        } catch (e) { newHp = Math.min(newMax, curHp + add); }
+        stats.maxHp = newMax;
+        stats.hp = newHp;
       }
       stats._equipEnchants = (mods) ? mods : {};
+      // apply accuracy so battle code can use it to counter evasion
+      if (mods.accuracy) stats.accuracy = (stats.accuracy || 0) + (mods.accuracy || 0);
       stats._equipApplied = true;
     } catch (e) { console.error('applyEquipToStats failed', e); }
     return stats;
@@ -887,6 +971,30 @@
   function getArmory() { return loadArmory(); }
   function removeGearById(id) { const list = loadArmory().filter(g => g.id !== id); saveArmory(list); }
 
+  // Remove gear locally and attempt to remove from server-side storage when possible.
+  async function removeGearByIdAndSync(id) {
+    try {
+      // remove locally first
+      removeGearById(id);
+      // attempt server-side removal: prefer app-provided helper
+      if (window && typeof window.removeGearFromUser === 'function') {
+        const uid = (typeof window !== 'undefined') ? window.currentUserUid : null;
+        if (uid) { await window.removeGearFromUser(uid, id); return true; }
+      }
+      // fallback: use firebase helpers if available (update parent with null for the key)
+      if (typeof db !== 'undefined' && typeof ref === 'function' && typeof update === 'function') {
+        const uid = (typeof window !== 'undefined') ? window.currentUserUid : null;
+        if (!uid) return false;
+        const gearParentRef = ref(db, `users/${uid}/gear`);
+        const payload = {};
+        payload[id] = null;
+        await update(gearParentRef, payload);
+        return true;
+      }
+    } catch (e) { console.error('removeGearByIdAndSync failed', e); }
+    return false;
+  }
+
   // expose
   global.Gear = {
     generateGear,
@@ -910,5 +1018,7 @@
     SLOTS
     ,
     prettyName
+    ,
+    removeGearByIdAndSync
   };
 })(window);

@@ -87,10 +87,12 @@ onAuthStateChanged(auth, async (user) => {
       if (userDisplay) userDisplay.textContent = `Signed in as ${name}${classLabel}`;
     });
 
-    // ensure presence/queue behavior
-    queueRef = ref(db, `queue/${uid}`);
-    onDisconnect(queueRef).remove();
-    if (queueBtnEl) queueBtnEl.style.display = 'inline';
+  // ensure presence/queue behavior
+  queueRef = ref(db, `queue/${uid}`);
+  onDisconnect(queueRef).remove();
+  if (queueBtnEl) queueBtnEl.style.display = 'inline';
+  // show quick match button alongside the main queue button when signed in
+  try { const quickEl = document.getElementById('quickMatchBtn'); if (quickEl) quickEl.style.display = 'inline-block'; } catch(e) {}
     document.querySelectorAll('.not-logged-in-vis').forEach((el) => (el.style.display = 'none'));
 
     // apply any pending signup profile info stored transiently
@@ -152,12 +154,14 @@ onAuthStateChanged(auth, async (user) => {
       });
     } catch (e) { console.error('Could not start gear realtime listener', e); }
 
-    // match listener
+    // match listener - hide/show both the main queue and quick-match buttons when in a match
     const matchRef = ref(db, `users/${uid}/currentMatch`);
     detachMatchListener = onValue(matchRef, (snap) => {
+      const quickEl = document.getElementById('quickMatchBtn');
       if (snap.exists()) {
         const matchId = snap.val();
         if (queueBtnEl) queueBtnEl.style.display = 'none';
+        if (quickEl) quickEl.style.display = 'none';
         if (battleElement) battleElement.style.display = 'block';
         // hide class selector when in a match
         const cs = document.getElementById('class-select'); if (cs) cs.style.display = 'none';
@@ -171,6 +175,7 @@ onAuthStateChanged(auth, async (user) => {
         }, 100);
       } else {
         if (queueBtnEl) queueBtnEl.style.display = 'inline';
+        if (quickEl) quickEl.style.display = 'inline-block';
         if (battleElement) battleElement.style.display = 'none';
         const cs2 = document.getElementById('class-select'); if (cs2) cs2.style.display = '';
       }
@@ -219,11 +224,16 @@ try {
   console.error('Signup form listener setup failed', e);
 }
 
-async function updateQueueData() {
-  // write queue entry and show searching state
+async function updateQueueData(forceAi = false, suppressUi = false) {
+  // write queue entry and optionally show searching state
+  // suppressUi = true will NOT toggle the 'Finding a Match...' UI (used by Quick Match)
   // TODO: store rank value later for skill based matchmaking
-  document.getElementsByClassName("queueBtn")[0].textContent = "Finding a Match...";
-  document.getElementById("battle").style.display = "none"; // Hide battle UI while searching
+  if (!suppressUi) {
+    const qbtns = document.getElementsByClassName("queueBtn");
+    if (qbtns && qbtns[0]) qbtns[0].textContent = "Finding a Match...";
+    const battleEl = document.getElementById("battle");
+    if (battleEl) battleEl.style.display = "none"; // Hide battle UI while searching
+  }
   // ensure selectedClass is written to DB before adding to queue (avoid race)
   try {
     const local = (typeof localStorage !== 'undefined') ? localStorage.getItem('selectedClass') : null;
@@ -236,12 +246,30 @@ async function updateQueueData() {
   // write queue entry that includes selectedClass to avoid cross-node races
   try {
     const local = (typeof localStorage !== 'undefined') ? localStorage.getItem('selectedClass') : null;
-    const payload = { uid: uid };
+  const payload = { uid: uid };
     if (local) payload.selectedClass = local;
-    if (queueRef) {
-      await set(queueRef, payload);
-    } else {
-      await set(ref(db, `queue/${uid}`), payload);
+  if (forceAi) payload.forceAi = true;
+    console.debug('[app] updateQueueData payload:', { uid, forceAi, payload });
+    if (!uid) {
+      console.warn('[app] updateQueueData called but no uid is set (not signed in?)');
+    }
+    try {
+      // If requesting an immediate AI match, remove any pre-existing queue entry
+      // first so the server's onValueCreated trigger reliably fires for a fresh create.
+      if (forceAi && queueRef) {
+        try {
+          console.debug('[app] Quick Match: removing existing queue entry before creating a fresh one');
+          await queueRef.remove();
+        } catch (e) { console.debug('[app] Quick Match: failed to remove existing queue entry (ignoring)', e); }
+      }
+      if (queueRef) {
+        await set(queueRef, payload);
+      } else {
+        await set(ref(db, `queue/${uid}`), payload);
+      }
+      console.debug('[app] queue entry written');
+    } catch (err) {
+      console.error('[app] failed to write queue entry', err);
     }
   } catch (err) {
     console.error('Error writing queue entry', err);
@@ -250,10 +278,34 @@ async function updateQueueData() {
 
 const _queueBtnEl = document.getElementById("queueBtn");
 if (_queueBtnEl) {
-  _queueBtnEl.addEventListener("click", (e) => { updateQueueData().catch(console.error); }, false);
+  _queueBtnEl.addEventListener("click", (e) => { updateQueueData(false).catch(console.error); }, false);
 } else {
   console.debug('[app] queueBtn not found on this page; skipping queue button wiring');
 }
+
+// Quick Match button: request an immediate AI match without toggling the "Finding a Match" UI
+try {
+  const quickEl = document.getElementById('quickMatchBtn');
+  if (quickEl) quickEl.addEventListener('click', (e) => { updateQueueData(true, true).catch(console.error); }, false);
+} catch (e) { console.debug('quickMatchBtn not present', e); }
+
+// Wire sign out button (make sure this is available on pages with the button)
+try {
+  const signOutBtnEl = document.getElementById('signOutBtn');
+  if (signOutBtnEl) {
+    signOutBtnEl.addEventListener('click', async (ev) => {
+      ev.preventDefault();
+      try {
+        await signOut(auth);
+        // clear transient local flags that indicate in-match or equip state
+        try { if (typeof localStorage !== 'undefined') { localStorage.removeItem('in_match_v1'); } } catch(e){}
+      } catch (err) {
+        console.error('Sign out failed', err);
+        try { alert('Sign out failed. See console for details.'); } catch(e){}
+      }
+    }, false);
+  }
+} catch (e) { console.warn('Sign out button wiring failed', e); }
 
 // Class selection UI wiring (visible before joining a match)
 function initClassSelector() {
@@ -463,13 +515,17 @@ async function seedStarterItemsIfMissing(uid) {
             }
             const baseRange = slotBaseRangeLocal(slot);
             const baseVal = Math.floor(Math.random() * (baseRange.max - baseRange.min + 1)) + baseRange.min;
+            // Apply generation-time scaling for hp/defense so starter items reflect effective stats
+            let scaledBaseVal = baseVal;
+            if (baseRange.stat === 'hp') scaledBaseVal = Math.max(1, Math.round(baseVal * 3.0));
+            else if (baseRange.stat === 'defense') scaledBaseVal = Math.max(1, Math.round(baseVal * 1.4));
             // ensure at least some variation: rand1/rand2 pick from 0..max but prefer non-zero by allowing ranges
-            const rand1Max = Math.max(1, Math.round(baseVal * 0.6));
-            const rand2Max = Math.max(1, Math.round(baseVal * 0.4));
+            const rand1Max = Math.max(1, Math.round(scaledBaseVal * 0.6));
+            const rand2Max = Math.max(1, Math.round(scaledBaseVal * 0.4));
             const rand1 = Math.floor(Math.random() * (rand1Max + 1));
             const rand2 = Math.floor(Math.random() * (rand2Max + 1));
             const id = 'starter_' + Math.random().toString(36).slice(2,9);
-            g = { id, name: `${element.charAt(0).toUpperCase()+element.slice(1)} ${slot}`, slot, baseStatName: baseRange.stat, baseStatValue: baseVal, rand1, rand2, rarity: 'common', element, createdAt: Date.now() };
+            g = { id, name: `${element.charAt(0).toUpperCase()+element.slice(1)} ${slot}`, slot, baseStatName: baseRange.stat, baseStatValue: scaledBaseVal, rand1, rand2, rarity: 'common', element, createdAt: Date.now() };
         }
 
         try {

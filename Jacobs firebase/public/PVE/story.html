@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Story — Arena BattleGrounds</title>
+  <title>Arena Battlegrounds — Story</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="css/style.css">
     <style>
@@ -20,6 +20,29 @@
       .secondary-btn{ background:#444; color:#fff; border:none; padding:8px 12px; border-radius:6px; }
     </style>
   </head>
+    <script type="module">
+      // Bootstrap firebase globals and redirect unauthenticated users to the login page
+      try {
+        import('../js/firebase.js').then(({ auth, db }) => {
+          Promise.all([
+            import('https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js'),
+            import('https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js')
+          ]).then(([dbMod, authMod]) => {
+            try {
+              const { ref, get, update } = dbMod;
+              const { onAuthStateChanged } = authMod;
+              window.db = db;
+              window.ref = ref;
+              window.get = get;
+              window.update = update;
+              window.auth = auth;
+              onAuthStateChanged(auth, (user) => { window.currentUserUid = user ? user.uid : null; if (!user) { try { window.location.href = '../index.html'; } catch(e){} } });
+              console.debug('[pve/story] firebase bootstrap complete');
+            } catch (e) { console.warn('[pve/story] firebase bootstrap failed', e); }
+          }).catch(e => console.warn('[pve/story] import error', e));
+        }).catch(e => console.warn('[pve/story] could not import firebase module', e));
+      } catch (e) { console.warn('[pve/story] bootstrap error', e); }
+    </script>
   <body>
     <div class="container mt-4">
       <h1 class="text-center">The Tale of Eight Monsters</h1>

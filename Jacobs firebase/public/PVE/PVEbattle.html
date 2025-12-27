@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Arena BattleGrounds</title>
+    <title>Arena Battlegrounds — PvE Battle</title>
     <!-- shared multiplayer styles for selectors, buttons, and modals -->
     <link rel="stylesheet" href="../css/styles.css">
         <!-- Keep the PVE battle visible even when app-level scripts toggle display for multiplayer pages -->
@@ -95,7 +95,30 @@
             import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js';
             onAuthStateChanged(auth, (user) => { window.currentUserUid = user ? user.uid : null; });
         </script>
-        <script src="PVEbattle.js"></script>
+            <script type="module">
+                // Bootstrap firebase globals and redirect unauthenticated users to the login page
+                try {
+                    import('../js/firebase.js').then(({ auth, db }) => {
+                        Promise.all([
+                            import('https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js'),
+                            import('https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js')
+                        ]).then(([dbMod, authMod]) => {
+                            try {
+                                const { ref, get, update } = dbMod;
+                                const { onAuthStateChanged } = authMod;
+                                window.db = db;
+                                window.ref = ref;
+                                window.get = get;
+                                window.update = update;
+                                window.auth = auth;
+                                onAuthStateChanged(auth, (user) => { window.currentUserUid = user ? user.uid : null; if (!user) { try { window.location.href = '../index.html'; } catch(e){} } });
+                                console.debug('[pve/battle] firebase bootstrap complete');
+                            } catch (e) { console.warn('[pve/battle] firebase bootstrap failed', e); }
+                        }).catch(e => console.warn('[pve/battle] import error', e));
+                    }).catch(e => console.warn('[pve/battle] could not import firebase module', e));
+                } catch (e) { console.warn('[pve/battle] bootstrap error', e); }
+            </script>
+            <script src="PVEbattle.js"></script>
 </body>
 
 </html>

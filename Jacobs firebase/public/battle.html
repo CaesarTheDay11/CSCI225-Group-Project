@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arena BattleGrounds</title>
+  <title>Arena Battlegrounds — PvP Battle</title>
   <link href="css/styles.css" rel="stylesheet">
 </head>
 
@@ -24,6 +24,7 @@
 
 <body>
   <button class="queueBtn" id="queueBtn"> Find a Match </button>
+  <button class="queueBtn" id="quickMatchBtn"> Quick Match </button>
   <!-- Forfeit button area: top-right, below nav/bar -->
   <div id="forfeit-area" style="position:fixed; top:72px; right:16px; z-index:900; text-align:right;">
     <button id="forfeitBtn" style="display:none; padding:8px 12px; background:#b33; color:#fff; border-radius:6px; border:none; cursor:pointer;" onclick="forfeitMatch()">Forfeit Match</button>
@@ -152,6 +153,29 @@
     </div>
   </div>
 
+  <script type="module">
+    // Bootstrap firebase globals and redirect unauthenticated users to the login page
+    try {
+      import('./js/firebase.js').then(({ auth, db }) => {
+        Promise.all([
+          import('https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js'),
+          import('https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js')
+        ]).then(([dbMod, authMod]) => {
+          try {
+            const { ref, get, update } = dbMod;
+            const { onAuthStateChanged } = authMod;
+            window.db = db;
+            window.ref = ref;
+            window.get = get;
+            window.update = update;
+            window.auth = auth;
+            onAuthStateChanged(auth, (user) => { window.currentUserUid = user ? user.uid : null; if (!user) { try { window.location.href = 'index.html'; } catch(e){} } });
+            console.debug('[battle] firebase bootstrap complete');
+          } catch (e) { console.warn('[battle] firebase bootstrap failed', e); }
+        }).catch(e => console.warn('[battle] import error', e));
+      }).catch(e => console.warn('[battle] could not import firebase module', e));
+    } catch (e) { console.warn('[battle] bootstrap error', e); }
+  </script>
   <script type="module" src="js/app.js"> </script>
   <script src="js/gear.js"></script>
   <script type="module" src="js/battle.js"></script>

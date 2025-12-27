@@ -1,38 +1,24 @@
+
+
 const CLASS_STATS = {
-    warrior: { name: 'Warrior', hp: 120, maxHp: 120, baseAtk: 12, defense: 4, speed: 5, critChance: 0.04, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['warrior_rend', 'warrior_shout', 'warrior_whirlwind'] },
-    mage: { name: 'Mage', hp: 80, maxHp: 80, baseAtk: 16, defense: 1, speed: 6, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['mage_fireball', 'mage_iceblast', 'mage_arcane_burst'], mana: 30 },
-    archer: { name: 'Archer', hp: 95, maxHp: 95, baseAtk: 14, defense: 2, speed: 8, critChance: 0.12, evasion: 0.06, attackBoost: 0, fainted: false, abilities: ['archer_volley', 'archer_poison', 'archer_trap'] },
-    cleric: { name: 'Cleric', hp: 90, maxHp: 90, baseAtk: 8, defense: 2, speed: 5, critChance: 0.03, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['cleric_heal', 'cleric_smite', 'cleric_shield'], mana: 30 },
-    knight: { name: 'Knight', hp: 140, maxHp: 140, baseAtk: 13, defense: 6, speed: 4, critChance: 0.03, evasion: 0.01, attackBoost: 0, fainted: false, abilities: ['knight_guard', 'knight_charge', 'knight_bastion'] },
-    rogue: { name: 'Rogue', hp: 85, maxHp: 85, baseAtk: 18, defense: 1, speed: 9, critChance: 0.15, evasion: 0.08, attackBoost: 0, fainted: false, abilities: ['rogue_backstab', 'rogue_poisoned_dagger', 'rogue_evade'] },
-    paladin: { name: 'Paladin', hp: 130, maxHp: 130, baseAtk: 11, defense: 5, speed: 5, critChance: 0.04, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['paladin_aura', 'paladin_holy_strike', 'paladin_bless'], mana: 15 },
-    dark_mage: { name: 'Dark Mage', hp: 75, maxHp: 75, baseAtk: 12, defense: 1, speed: 6, critChance: 0.05, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 },
-    necromancer: { name: 'Necromancer', hp: 80, maxHp: 80, baseAtk: 10, defense: 2, speed: 6, critChance: 0.05, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['necro_summon_skeleton', 'necro_spirit_shackles', 'necro_dark_inversion'], mana: 40 },
-    monk: { name: 'Monk', hp: 105, maxHp: 105, baseAtk: 20, defense: 3, speed: 8, critChance: 0.07, evasion: 0.05, attackBoost: 0, fainted: false, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 },
-    wild_magic_sorcerer: { name: 'Wild Magic Sorcerer', hp: 85, maxHp: 85, baseAtk: 14, defense: 1, speed: 6, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 },
-    druid: { name: 'Druid', hp: 100, maxHp: 100, baseAtk: 12, defense: 2, speed: 6, critChance: 0.05, evasion: 0.04, attackBoost: 0, fainted: false, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 }
-    ,artificer: { name: 'Artificer', hp: 125, maxHp: 125, baseAtk: 16, defense: 6, speed: 5, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['artificer_turret','artificer_shock','artificer_repair_field'], mana: 40 }
-    ,valkyrie: { name: 'Valkyrie', hp: 130, maxHp: 130, baseAtk: 14, defense: 3, speed: 8, critChance: 0.06, evasion: 0.05, attackBoost: 0, fainted: false, abilities: ['valkyrie_spear','valkyrie_aerial_sweep','valkyrie_guard'], mana: 30 }
-    ,barbarian: { name: 'Barbarian', hp: 140, maxHp: 140, baseAtk: 12, defense: 1, speed: 6, critChance: 0.05, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['barbarian_berserk_slam','barbarian_war_cry','barbarian_reckless_strike'], mana: 0 }
+    warrior: { name: 'Warrior', hp: 210, maxHp: 210, baseAtk: 24, defense: 9, speed: 5, critChance: 0.04, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['warrior_rend', 'warrior_shout', 'warrior_whirlwind'] },
+    mage:    { name: 'Mage',    hp: 120, maxHp: 120, baseAtk: 24, defense: 2, speed: 6, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['mage_fireball', 'mage_iceblast', 'mage_arcane_burst'], mana: 30 },
+    archer:  { name: 'Archer',  hp: 143, maxHp: 143, baseAtk: 21, defense: 3, speed: 8, critChance: 0.12, evasion: 0.06, attackBoost: 0, fainted: false, abilities: ['archer_volley', 'archer_poison', 'archer_trap'] },
+    cleric:  { name: 'Cleric',  hp: 135, maxHp: 135, baseAtk: 12, defense: 3, speed: 5, critChance: 0.03, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['cleric_heal', 'cleric_smite', 'cleric_shield'], mana: 30 },
+    knight:  { name: 'Knight',  hp: 210, maxHp: 210, baseAtk: 20, defense: 9, speed: 4, critChance: 0.03, evasion: 0.01, attackBoost: 0, fainted: false, abilities: ['knight_guard', 'knight_charge', 'knight_bastion'], mana: 0 },
+    rogue:   { name: 'Rogue',   hp: 128, maxHp: 128, baseAtk: 27, defense: 2, speed: 9, critChance: 0.15, evasion: 0.08, attackBoost: 0, fainted: false, abilities: ['rogue_backstab', 'rogue_poisoned_dagger', 'rogue_evade'], mana: 0 },
+    paladin: { name: 'Paladin', hp: 195, maxHp: 195, baseAtk: 17, defense: 8, speed: 5, critChance: 0.04, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['paladin_aura', 'paladin_holy_strike', 'paladin_bless'], mana: 15 },
+    dark_mage: { name: 'Dark Mage', hp: 113, maxHp: 113, baseAtk: 18, defense: 2, speed: 6, critChance: 0.05, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['necro_siphon', 'necro_raise', 'necro_curse'], mana: 35 },
+    necromancer: { name: 'Necromancer', hp: 120, maxHp: 120, baseAtk: 15, defense: 3, speed: 6, critChance: 0.05, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['necro_summon_skeleton', 'necro_spirit_shackles', 'necro_dark_inversion'], mana: 40 },
+    monk:    { name: 'Monk',    hp: 188, maxHp: 188, baseAtk: 30, defense: 6, speed: 8, critChance: 0.08, evasion: 0.05, attackBoost: 0, fainted: false, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 },
+    wild_magic_sorcerer: { name: 'Wild Magic Sorcerer', hp: 128, maxHp: 128, baseAtk: 21, defense: 2, speed: 6, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 },
+    druid:   { name: 'Druid',   hp: 165, maxHp: 165, baseAtk: 21, defense: 5, speed: 6, critChance: 0.05, evasion: 0.04, attackBoost: 0, fainted: false, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 },
+    artificer: { name: 'Artificer', hp: 140, maxHp: 140, baseAtk: 24, defense: 9, speed: 5, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['artificer_turret','artificer_shock','artificer_repair_field'], mana: 40 },
+    valkyrie: { name: 'Valkyrie', hp: 195, maxHp: 195, baseAtk: 21, defense: 5, speed: 8, critChance: 0.06, evasion: 0.05, attackBoost: 0, fainted: false, abilities: ['valkyrie_spear','valkyrie_aerial_sweep','valkyrie_guard'], mana: 30 },
+    barbarian: { name: 'Barbarian', hp: 210, maxHp: 210, baseAtk: 22, defense: 4, speed: 6, critChance: 0.05, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['barbarian_berserk_slam','barbarian_war_cry','barbarian_reckless_strike'] }
 };
 
 const ENEMY_STATS = {
-    // Added combat stats (speed, critChance, evasion) so PVE uses the same properties
-    slime: { name: 'Slime', hp: 40, maxHp: 40, baseAtk: 6, defense: 0, attackBoost: 0, fainted: false, abilities: ['slime_splatter'], speed: 3, critChance: 0.02, evasion: 0.01 },
-    gladiator: { name: 'Gladiator', hp: 80, maxHp: 80, baseAtk: 11, defense: 2, attackBoost: 0, fainted: false, abilities: ['gladiator_charge'], speed: 5, critChance: 0.05, evasion: 0.02 },
-    boss: { name: 'Boss', hp: 200, maxHp: 200, baseAtk: 18, defense: 4, attackBoost: 0, fainted: false, abilities: ['boss_earthquake'], speed: 4, critChance: 0.06, evasion: 0.03 }
-    ,
-    // New enemies added per request — each has three abilities and gradually increase in difficulty
-    // Scale new enemies up so they are boss-level or above; start ogre at 200 and increase from there
-    ogre: { name: 'Ogre', hp: 200, maxHp: 200, baseAtk: 18, defense: 5, attackBoost: 0, fainted: false, abilities: ['ogre_smash', 'ogre_roar', 'ogre_ground_stomp'], speed: 3, critChance: 0.04, evasion: 0.02 },
-    griffin: { name: 'Griffin', hp: 220, maxHp: 220, baseAtk: 20, defense: 5, attackBoost: 0, fainted: false, abilities: ['griffin_dive', 'griffin_talon_rake', 'griffin_wing_gust'], speed: 8, critChance: 0.10, evasion: 0.10 },
-    werewolf: { name: 'Werewolf', hp: 240, maxHp: 240, baseAtk: 22, defense: 6, attackBoost: 0, fainted: false, abilities: ['werewolf_frenzy', 'werewolf_howl', 'werewolf_feral_leap'], speed: 10, critChance: 0.11, evasion: 0.07 },
-    serpent: { name: 'Serpent', hp: 260, maxHp: 260, baseAtk: 18, defense: 4, attackBoost: 0, fainted: false, abilities: ['serpent_bite', 'serpent_coil', 'serpent_venom_spit'], speed: 9, critChance: 0.07, evasion: 0.14 },
-    centaur: { name: 'Centaur', hp: 280, maxHp: 280, baseAtk: 20, defense: 6, attackBoost: 0, fainted: false, abilities: ['centaur_trample', 'centaur_arch_shot', 'centaur_charge'], speed: 8, critChance: 0.08, evasion: 0.06 },
-    // Turtle removed — tortoise absorbed defensive abilities; boost tortoise stats to match new difficulty
-    tortoise: { name: 'Tortoise', hp: 300, maxHp: 300, baseAtk: 16, defense: 14, attackBoost: 0, fainted: false, abilities: ['tortoise_shell_guard', 'turtle_withdraw', 'turtle_rolling_charge'], speed: 2, critChance: 0.02, evasion: 0.01 },
-    phoenix: { name: 'Phoenix', hp: 320, maxHp: 320, baseAtk: 24, defense: 6, attackBoost: 0, fainted: false, abilities: ['phoenix_ember', 'phoenix_wingstorm', 'phoenix_rebirth'], speed: 11, critChance: 0.14, evasion: 0.09 },
-    dragon: { name: 'Dragon', hp: 340, maxHp: 340, baseAtk: 36, defense: 10, attackBoost: 0, fainted: false, abilities: ['dragon_fire_breath', 'dragon_claw', 'dragon_roar'], speed: 6, critChance: 0.16, evasion: 0.05 },
     // Final story antagonist (the Stranger) — base stats; health may be adjusted by campaign choices
     stranger: { name: 'Stranger', hp: 420, maxHp: 420, baseAtk: 32, defense: 9, attackBoost: 0, fainted: false, abilities: ['dragon_fire_breath','dragon_claw','dragon_roar'], speed: 7, critChance: 0.12, evasion: 0.04 }
 };
@@ -706,18 +692,16 @@ const abilityHandlers = {
         const buffAmount = 8;
         user.attackBoost = prevBoost + buffAmount;
         const baseAtk = user.baseAtk || 12;
-        const turretTurns = 3;
-        const buff = 2;
-        user.status = user.status || {};
-        // slightly reduce turret per-turn damage scaling
-        user.status.turret = { turns: turretTurns, dmg: Math.max(16, Math.floor(base * 1.6)), ignoreDefense: true };
+        user.status.turret = { turns: 3, dmg: Math.max(20, Math.floor(baseAtk * 2.0)), ignoreDefense: true, stunChance: 0.25 };
+        user.status.turret_buff = { turns: 3, amount: buffAmount, prevBoost: prevBoost };
+        user.mana = Math.max(0, (user.mana || 0) - (ABILITIES.artificer_turret.cost || 0));
+        return `${user.name} deploys a Turret and gains +${buffAmount} ATK while it's active.`;
     },
 
     artificer_shock(user, target) {
         // Arc Shock: reduced damage to match PvP changes
-        const base = user.baseAtk || 12;
-        // reduce shock's burst multiplier
-        let raw = Math.floor(Math.random() * 10) + Math.floor(base * 1.0) + 6;
+        const base = user.baseAtk || 20;
+        const raw = Math.floor(Math.random() * 12) + Math.floor(base * 1.2) + 4;
         // Arc Shock pierces defenses (ignores target.defense) and always stuns
         const dealt = applyDamage(target, raw, { ignoreDefense: true, attacker: user });
         target.status = target.status || {};
@@ -839,11 +823,10 @@ const abilityHandlers = {
 
     monk_flurry(user, target) {
         const base = user.baseAtk || 12;
-        let total = 0; for (let i=0;i<3;i++) total += Math.floor(Math.random()*8) + Math.floor(base/2);
+        let total = 0; for (let i=0;i<3;i++) total += Math.floor(Math.random()*6) + Math.floor(base/2);
     const dealt = applyDamage(target, total, { attacker: user });
         target.status = target.status || {};
-        // stronger weaken for PVE Monk
-        const weakenAmt = 8;
+        const weakenAmt = 4;
         if (!target.status.weaken) target.status.weaken = { turns: 2, amount: weakenAmt, prevBoost: (target.attackBoost || 0) };
         else { target.status.weaken.amount = (target.status.weaken.amount || 0) + weakenAmt; target.status.weaken.turns = Math.max(target.status.weaken.turns || 0, 2); }
         user.mana = Math.max(0, (user.mana || 0) - (ABILITIES.monk_flurry ? ABILITIES.monk_flurry.cost : 0));
@@ -853,8 +836,7 @@ const abilityHandlers = {
     monk_stunning_blow(user, target) {
         const base = user.baseAtk || 14; const raw = Math.floor(Math.random()*12) + base;
     const dealt = applyDamage(target, raw, { attacker: user });
-        // increase stun chance to make Monk more consistent in PVE
-        if (Math.random() < 0.75) {
+        if (Math.random() < 0.5) {
             target.status = target.status || {};
             target.status.stun = { turns: 1 };
         }
@@ -1628,7 +1610,9 @@ function handleEnemyDefeat() {
         }
     } catch (e) { /* ignore */ }
     // accumulate drop chance based on enemy defeated
-    const DROP_CHANCES = { slime: 5, gladiator: 10, boss: 25 };
+    // Reduce per-enemy drop contributions so runs don't accumulate guaranteed drops too quickly.
+    // Previously slime=5, gladiator=10, boss=25 (felt too generous) — scale down roughly 50%.
+    const DROP_CHANCES = { slime: 2, gladiator: 5, boss: 12 };
     try { pveRunDropChance = Math.min(100, pveRunDropChance + (DROP_CHANCES[currentEnemyId] || 0)); } catch (e) { }
 
     // Story campaign handling: if a campaign is active, present spare/kill choice for campaign monsters
@@ -2172,8 +2156,15 @@ function applyDarkInversionToUpdates(playerStats, opponentStats, playerUpdates =
             return updatesObj;
         };
 
-        invertIfNeeded(p, playerStats);
-        invertIfNeeded(o, opponentStats);
+        // Respect actingIsPlayer: when the acting client is the 'playerStats', only invert
+        // incoming effects to the acting player. When actingIsPlayer is false, invert
+        // incoming effects to the opponent instead. This prevents outgoing attacks from
+        // being flipped into heals on targets that have dark_inversion.
+        if (actingIsPlayer) {
+            invertIfNeeded(p, playerStats);
+        } else {
+            invertIfNeeded(o, opponentStats);
+        }
     } catch (e) {
         console.error('applyDarkInversionToUpdates failed', e);
     }
@@ -2362,8 +2353,6 @@ function enemyTurn() {
         const pick = available[Math.floor(Math.random() * available.length)];
         let result;
         try {
-            // Ensure player's equip modifiers are applied so ability handlers see correct gear-modified stats
-            try { if (window.Gear && typeof Gear.applyEquipToStats === 'function') Gear.applyEquipToStats(player); } catch(e){}
             result = (abilityHandlers[pick] && abilityHandlers[pick](enemy, player)) || `${enemy.name} used ${pick}`;
         } catch (err) {
             console.error('enemy ability handler threw', pick, err);
@@ -2471,12 +2460,8 @@ function applyDamage(target, rawDamage, opts = {}) {
     if (considerHit && critChance > 0) {
         try {
             if (Math.random() < critChance) {
-                // honor any gear-provided crit damage bonus (stored as percent points)
-                const critBonusPct = Number((attacker && (attacker._critDamageBonus || (attacker._equipEnchants && attacker._equipEnchants.critDamageBonus))) || 0) || 0;
-                const baseMultiplier = 1.5; // default +50%
-                const multiplier = baseMultiplier + (critBonusPct / 100);
-                final = Math.max(1, Math.round(final * multiplier));
-                try { console.debug('[PVE] critical hit', { attacker: attacker.name || attacker.classId, critChance: critChance, critBonusPct }); } catch(e){}
+                final = Math.max(1, Math.round(final * 1.5)); // +50% damage on crit
+                try { console.debug('[PVE] critical hit', { attacker: attacker.name || attacker.classId, critChance: critChance }); } catch(e){}
             }
         } catch (e) { /* ignore RNG errors */ }
     }
