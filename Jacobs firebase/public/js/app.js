@@ -163,6 +163,7 @@ onAuthStateChanged(auth, async (user) => {
         if (queueBtnEl) queueBtnEl.style.display = 'none';
         if (quickEl) quickEl.style.display = 'none';
         if (battleElement) battleElement.style.display = 'block';
+        try { if (window.DamageLog && typeof window.DamageLog.show === 'function') window.DamageLog.show(); } catch(e) {}
         // hide class selector when in a match
         const cs = document.getElementById('class-select'); if (cs) cs.style.display = 'none';
         console.log('Matched! Match ID:', matchId);
@@ -177,6 +178,7 @@ onAuthStateChanged(auth, async (user) => {
         if (queueBtnEl) queueBtnEl.style.display = 'inline';
         if (quickEl) quickEl.style.display = 'inline-block';
         if (battleElement) battleElement.style.display = 'none';
+        try { if (window.DamageLog && typeof window.DamageLog.hide === 'function') window.DamageLog.hide(); } catch(e) {}
         const cs2 = document.getElementById('class-select'); if (cs2) cs2.style.display = '';
       }
     });

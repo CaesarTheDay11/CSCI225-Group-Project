@@ -19,8 +19,20 @@ const CLASS_STATS = {
 };
 
 const ENEMY_STATS = {
+    // Common PVE enemies used by selection/story pages
+    slime:      { name: 'Slime',      hp: 30,  maxHp: 30,  baseAtk: 6,  defense: 0, attackBoost: 0, fainted: false, abilities: ['slime_splatter'], speed: 3, critChance: 0.01, evasion: 0.01 },
+    gladiator:  { name: 'Gladiator',  hp: 120, maxHp: 120, baseAtk: 18, defense: 4, attackBoost: 0, fainted: false, abilities: ['gladiator_charge'], speed: 5, critChance: 0.05, evasion: 0.03 },
+    centaur:    { name: 'Centaur',    hp: 95,  maxHp: 95,  baseAtk: 14, defense: 2, attackBoost: 0, fainted: false, abilities: ['archer_volley'], speed: 8, critChance: 0.06, evasion: 0.07 },
+    boss:       { name: 'Boss',       hp: 300, maxHp: 300, baseAtk: 28, defense: 8, attackBoost: 0, fainted: false, abilities: ['boss_earthquake'], speed: 4, critChance: 0.08, evasion: 0.02 },
+    ogre:       { name: 'Ogre',       hp: 160, maxHp: 160, baseAtk: 22, defense: 6, attackBoost: 0, fainted: false, abilities: ['warrior_rend'], speed: 3, critChance: 0.04, evasion: 0.01 },
+    griffin:    { name: 'Griffin',    hp: 140, maxHp: 140, baseAtk: 20, defense: 5, attackBoost: 0, fainted: false, abilities: ['valkyrie_aerial_sweep'], speed: 9, critChance: 0.07, evasion: 0.06 },
+    werewolf:   { name: 'Werewolf',   hp: 130, maxHp: 130, baseAtk: 23, defense: 3, attackBoost: 0, fainted: false, abilities: ['barbarian_berserk_slam'], speed: 8, critChance: 0.09, evasion: 0.05 },
+    serpent:    { name: 'Serpent',    hp: 100, maxHp: 100, baseAtk: 16, defense: 2, attackBoost: 0, fainted: false, abilities: ['archer_poison'], speed: 10, critChance: 0.06, evasion: 0.08 },
+    tortoise:   { name: 'Tortoise',   hp: 180, maxHp: 180, baseAtk: 12, defense: 10, attackBoost: 0, fainted: false, abilities: ['knight_bastion'], speed: 2, critChance: 0.02, evasion: 0.01 },
+    phoenix:    { name: 'Phoenix',    hp: 110, maxHp: 110, baseAtk: 18, defense: 3, attackBoost: 0, fainted: false, abilities: ['phoenix_rebirth'], speed: 7, critChance: 0.05, evasion: 0.04 },
+    dragon:     { name: 'Dragon',     hp: 260, maxHp: 260, baseAtk: 30, defense: 9, attackBoost: 0, fainted: false, abilities: ['dragon_fire_breath','dragon_claw','dragon_roar'], speed: 6, critChance: 0.12, evasion: 0.03 },
     // Final story antagonist (the Stranger) — base stats; health may be adjusted by campaign choices
-    stranger: { name: 'Stranger', hp: 420, maxHp: 420, baseAtk: 32, defense: 9, attackBoost: 0, fainted: false, abilities: ['dragon_fire_breath','dragon_claw','dragon_roar'], speed: 7, critChance: 0.12, evasion: 0.04 }
+    stranger:   { name: 'Stranger',   hp: 420, maxHp: 420, baseAtk: 32, defense: 9, attackBoost: 0, fainted: false, abilities: ['dragon_fire_breath','dragon_claw','dragon_roar'], speed: 7, critChance: 0.12, evasion: 0.04 }
 };
 
 const ABILITIES = {
@@ -102,6 +114,32 @@ ABILITIES.paladin_holy_strike = ABILITIES.paladin_holy_strike || { id: 'paladin_
 ABILITIES.paladin_bless = ABILITIES.paladin_bless || { id: 'paladin_bless', name: 'Blessing', cost: 8, cooldown: 5, desc: 'A heal and an inspirational attack boost to yourself.' };
 ABILITIES.druid_entangle = ABILITIES.druid_entangle || { id: 'druid_entangle', name: 'Entangle', cost: 0, cooldown: 3, desc: 'Conjure grasping vines that deal damage, may stun, and weaken the target.' };
 ABILITIES.druid_regrowth = ABILITIES.druid_regrowth || { id: 'druid_regrowth', name: 'Regrowth', cost: 8, cooldown: 4, desc: 'Heal immediately and gain regeneration-over-time for several turns.' };
+
+// Added element tags requested by user (mirror PvP tags for PVE handlers)
+ABILITIES.cleric_shield.element = 'fire';
+ABILITIES.barbarian_berserk_slam.element = 'fire';
+ABILITIES.monk_flurry.element = 'fire';
+
+ABILITIES.warrior_rend.element = 'earth';
+ABILITIES.archer_trap.element = 'earth';
+ABILITIES.knight_guard.element = 'earth';
+ABILITIES.knight_bastion.element = 'earth';
+
+ABILITIES.artificer_repair_field.element = 'light';
+ABILITIES.valkyrie_guard.element = 'light';
+
+ABILITIES.artificer_turret.element = 'electric';
+ABILITIES.warrior_shout.element = 'electric';
+ABILITIES.barbarian_war_cry.element = 'electric';
+ABILITIES.knight_charge.element = 'electric';
+ABILITIES.monk_stunning_blow.element = 'electric';
+
+ABILITIES.warrior_whirlwind.element = 'wind';
+ABILITIES.archer_volley.element = 'wind';
+ABILITIES.rogue_evade.element = 'wind';
+ABILITIES.valkyrie_spear.element = 'wind';
+
+ABILITIES.barbarian_reckless_strike.element = 'dark';
 
 // Basic move tooltips
 ABILITIES.attack = ABILITIES.attack || { id: 'attack', name: 'Attack', desc: 'Basic physical attack: deal damage equal to your attack (reduced by target defense).' };
@@ -292,6 +330,43 @@ function _hideAbilityTooltip() {
     if (node) node.classList.remove('visible');
 }
 
+// Runtime error capture: write last uncaught error to localStorage for diagnostics
+try {
+    window.addEventListener('error', function (ev) {
+        try {
+            const info = { message: ev && ev.message, filename: ev && ev.filename, lineno: ev && ev.lineno, colno: ev && ev.colno, stack: (ev && ev.error && ev.error.stack) || null, time: Date.now() };
+            try { localStorage.setItem('pve_last_error', JSON.stringify(info)); } catch (e) { /* ignore */ }
+            console.error('[PVE] uncaught error captured', info);
+        } catch (e) { /* ignore */ }
+    });
+    window.addEventListener('unhandledrejection', function (ev) {
+        try {
+            const info = { reason: (ev && ev.reason) ? (ev.reason.stack || String(ev.reason)) : null, time: Date.now() };
+            try { localStorage.setItem('pve_last_error', JSON.stringify(info)); } catch (e) { /* ignore */ }
+            console.error('[PVE] unhandled rejection captured', info);
+        } catch (e) { /* ignore */ }
+    });
+} catch (e) { /* ignore environments without window */ }
+
+// Effective attack includes baseAtk plus any one-turn strength boosts and attackBoost.
+// Copied from PvP implementation to ensure PVE ability damage also benefits from gear
+// and temporary boosts (including attackBoost provided by abilities/items).
+function getEffectiveBaseAtk(user, fallback = 10) {
+    if (!user) return fallback;
+    let base = null;
+    if (typeof user.baseAtk !== 'undefined') base = Number(user.baseAtk);
+    else if (typeof user.attack !== 'undefined') base = Number(user.attack);
+    else base = Number(fallback || 10);
+    try {
+        if (user._equipMods && typeof user._equipMods.attack !== 'undefined' && typeof user._orig_baseAtk === 'undefined') {
+            base = base + Number(user._equipMods.attack || 0);
+        }
+    } catch (e) { /* ignore */ }
+    const temp = (user.status && user.status.strength_boost) ? Number(user.status.strength_boost.amount || 0) : 0;
+    const atkBoost = Number(user.attackBoost || 0);
+    return base + temp + atkBoost;
+}
+
 function attachActionTooltips() {
     const menu = document.getElementById('menu');
     if (!menu) return;
@@ -325,6 +400,13 @@ window.addEventListener('DOMContentLoaded', () => {
     // attachActionTooltips will be invoked once later when the main DOMContentLoaded handler runs
 });
 
+// Ensure the Damage Log (shared UI) is shown for PVE battles so logs are visible
+window.addEventListener('DOMContentLoaded', () => {
+    try { if (window.DamageLog && typeof window.DamageLog.show === 'function') window.DamageLog.show(); } catch(e) {}
+    // hide on unload so it doesn't persist accidentally when navigating away
+    try { window.addEventListener('pagehide', () => { try { if (window.DamageLog && typeof window.DamageLog.hide === 'function') window.DamageLog.hide(); } catch(e) {} }); } catch(e) {}
+});
+
 // Called by armory UI when equip state changes; re-render PVE UI to reflect modifiers
 window.onEquipChanged = function(e) {
     try {
@@ -336,9 +418,30 @@ window.onEquipChanged = function(e) {
     } catch (e) { console.error('onEquipChanged PVE failed', e); }
 };
 
+// Helper to capture debug snapshot before navigating between PVE pages.
+// Stores a small JSON blob in localStorage under 'pve_last_redirect' to help
+// diagnose incorrect navigation or broken campaign flows.
+function redirectTo(targetPath) {
+    try {
+        const snap = {
+            timestamp: Date.now(),
+            from: window.location.href,
+            to: targetPath,
+            currentEnemyId: typeof currentEnemyId !== 'undefined' ? currentEnemyId : null,
+            selectedEnemy: localStorage.getItem('selectedEnemy'),
+            storyCampaign: (() => { try { return JSON.parse(localStorage.getItem('storyCampaign') || 'null'); } catch(e){ return null; } })(),
+            storyCampaignResult: localStorage.getItem('storyCampaignResult') || null,
+            story_next_player_state: localStorage.getItem('story_next_player_state') || null
+        };
+        try { localStorage.setItem('pve_last_redirect', JSON.stringify(snap)); } catch(e) { console.debug('pve redirect localStorage failed', e); }
+        console.debug('[PVE] redirectTo', snap);
+    } catch (e) { console.debug('[PVE] redirectTo failed to build debug snapshot', e); }
+    try { window.location.href = targetPath; } catch (e) { try { window.location.assign(targetPath); } catch (er) {} }
+}
+
 const abilityHandlers = {
     mage_fireball(user, target) {
-        const base = user.baseAtk || 10;
+        const base = getEffectiveBaseAtk(user, 10);
         const dmg = Math.floor(Math.random() * 8) + base + 8;
     const dealt = applyDamage(target, dmg, { attacker: user });
         target.status = target.status || {};
@@ -347,7 +450,7 @@ const abilityHandlers = {
     },
 
     warrior_rend(user, target) {
-        const base = user.baseAtk || 12;
+        const base = getEffectiveBaseAtk(user, 12);
         const dmg = Math.floor(Math.random() * 10) + base + 6;
         const effectiveDefense = (target.defense || 0) / 2;
         const final = Math.max(0, dmg - effectiveDefense);
@@ -356,7 +459,7 @@ const abilityHandlers = {
     },
 
     archer_volley(user, target) {
-        const base = user.baseAtk || 14;
+        const base = getEffectiveBaseAtk(user, 14);
         let total = 0;
         for (let i = 0; i < 3; i++) total += Math.floor(Math.random() * 6) + Math.floor(base / 2);
     const dealt = applyDamage(target, total, { attacker: user });
@@ -375,7 +478,7 @@ const abilityHandlers = {
     },
 
     slime_splatter(user, target) {
-        const base = user.baseAtk || 6;
+        const base = getEffectiveBaseAtk(user, 6);
         const dmg = Math.floor(Math.random() * 6) + base;
     const dealt = applyDamage(target, dmg, { attacker: user });
         target.status = target.status || {};
@@ -384,7 +487,7 @@ const abilityHandlers = {
     },
 
     gladiator_charge(user, target) {
-        const base = user.baseAtk || 11;
+        const base = getEffectiveBaseAtk(user, 11);
         const dmg = Math.floor(Math.random() * 12) + base + 4;
     const dealt = applyDamage(target, dmg, { attacker: user });
         if (Math.random() < 0.3) {
@@ -396,7 +499,7 @@ const abilityHandlers = {
     },
 
     boss_earthquake(user, target) {
-        const base = user.baseAtk || 18;
+        const base = getEffectiveBaseAtk(user, 18);
         const dmg = Math.floor(Math.random() * 18) + base + 8;
     const dealt = applyDamage(target, dmg, { attacker: user });
         target.status = target.status || {};
@@ -404,7 +507,7 @@ const abilityHandlers = {
         return `${user.name} slams the ground for ${dealt} — ${target.name} is stunned!`;
     },
     mage_iceblast(user, target) {
-        const base = user.baseAtk || 10;
+        const base = getEffectiveBaseAtk(user, 10);
         const dmg = Math.floor(Math.random() * 6) + base + 6;
     const dealt = applyDamage(target, dmg, { attacker: user });
 
@@ -429,7 +532,7 @@ const abilityHandlers = {
     },
 
     archer_poison(user, target) {
-        const base = user.baseAtk || 14;
+        const base = getEffectiveBaseAtk(user, 14);
         const dmg = Math.floor(Math.random() * 6) + base;
     const dealt = applyDamage(target, dmg, { attacker: user });
         target.status = target.status || {};
@@ -439,7 +542,7 @@ const abilityHandlers = {
     ,
     // Additional handlers ported from PvP rules for PvE mode
     warrior_whirlwind(user, target) {
-        const base = user.baseAtk || 12;
+        const base = getEffectiveBaseAtk(user, 12);
         const raw = Math.floor(Math.random() * 12) + base + 6;
     const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -456,7 +559,7 @@ const abilityHandlers = {
     },
 
     mage_arcane_burst(user, target) {
-        const base = user.baseAtk || 14;
+        const base = getEffectiveBaseAtk(user, 14);
         const raw = Math.floor(Math.random() * 14) + base + 8;
     const dealt = applyDamage(target, raw, { attacker: user });
         user.status = user.status || {};
@@ -468,7 +571,7 @@ const abilityHandlers = {
     },
 
     archer_trap(user, target) {
-        const base = user.baseAtk || 12;
+        const base = getEffectiveBaseAtk(user, 12);
         const raw = Math.floor(Math.random() * 8) + base + 4;
     const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -492,7 +595,7 @@ const abilityHandlers = {
     },
 
     cleric_smite(user, target) {
-        const base = user.baseAtk || 8;
+        const base = getEffectiveBaseAtk(user, 8);
         const raw = Math.floor(Math.random() * 8) + base + 6;
     const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -515,7 +618,7 @@ const abilityHandlers = {
     },
 
     knight_guard(user, target) {
-        const base = user.baseAtk || 10;
+        const base = getEffectiveBaseAtk(user, 10);
         const raw = Math.floor(Math.random() * 6) + base + 4;
     const dealt = applyDamage(target, raw, { attacker: user });
         const add = 5;
@@ -534,7 +637,7 @@ const abilityHandlers = {
     },
 
     rogue_backstab(user, target) {
-        const base = user.baseAtk || 16;
+        const base = getEffectiveBaseAtk(user, 16);
         const raw = Math.floor(Math.random() * 12) + base + 8;
         const final = Math.max(0, raw - Math.floor((target.defense || 0) / 3));
     const dealt = applyDamage(target, final, { attacker: user });
@@ -542,7 +645,7 @@ const abilityHandlers = {
     },
 
     rogue_poisoned_dagger(user, target) {
-        const base = user.baseAtk || 12;
+        const base = getEffectiveBaseAtk(user, 12);
         const raw = Math.floor(Math.random() * 8) + base;
     const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -571,7 +674,7 @@ const abilityHandlers = {
     },
 
     paladin_holy_strike(user, target) {
-        const base = user.baseAtk || 11;
+    const base = getEffectiveBaseAtk(user, 11);
         const raw = Math.floor(Math.random() * 10) + base + 6;
     const dealt = applyDamage(target, raw, { attacker: user });
         const heal = Math.floor(dealt * 0.4);
@@ -598,7 +701,7 @@ const abilityHandlers = {
         user.status = user.status || {};
         user.status.summon = { turns: 3 };
         target.status = target.status || {};
-        const incoming = { turns: 3, dmg: Math.max(1, Math.floor((user.baseAtk * 2 || 8) / 3)) };
+        const incoming = { turns: 3, dmg: Math.max(1, Math.floor((getEffectiveBaseAtk(user,8) * 2) / 3)) };
         if (target.status.poison) {
             target.status.poison.dmg = Math.max(target.status.poison.dmg || 0, incoming.dmg);
             target.status.poison.turns = Math.max(target.status.poison.turns || 0, incoming.turns);
@@ -624,7 +727,7 @@ const abilityHandlers = {
     },
 
     necro_siphon(user, target) {
-        const base = user.baseAtk || 10;
+    const base = getEffectiveBaseAtk(user, 10);
         let raw = Math.floor(Math.random() * 10) + base + 6;
         const hasHealingReduction = !!(target.status && target.status.slimed);
         if (hasHealingReduction) raw = raw * 2;
@@ -637,7 +740,7 @@ const abilityHandlers = {
     },
 
     necro_raise(user, target) {
-        const base = user.baseAtk || 9;
+    const base = getEffectiveBaseAtk(user, 9);
         const poisonDmg = Math.max(2, Math.floor(base / 2));
         target.status = target.status || {};
         const incoming = { turns: 5, dmg: poisonDmg };
@@ -652,7 +755,7 @@ const abilityHandlers = {
         target.status = target.status || {};
         if (!target.status.weaken) target.status.weaken = { turns: 2, amount: amount, prevBoost: (target.attackBoost || 0) };
         else { target.status.weaken.amount = (target.status.weaken.amount || 0) + amount; target.status.weaken.turns = Math.max(target.status.weaken.turns || 0, 2); }
-        const base = user.baseAtk || 10;
+        const base = getEffectiveBaseAtk(user, 10);
         const raw = Math.floor(Math.random() * 10) + Math.floor(base / 2);
     const dealt = applyDamage(target, raw, { attacker: user });
         target.attackBoost = Math.max(0, (target.attackBoost || 0) - amount);
@@ -677,7 +780,7 @@ const abilityHandlers = {
         user.status = user.status || {};
         user.status.shield = { turns: 3, amount: shieldAmount };
         user.defense = (user.defense || 0) + shieldAmount;
-        const base = user.baseAtk || 10;
+        const base = getEffectiveBaseAtk(user, 10);
     const raw = Math.floor(Math.random() * 6) + Math.floor(base / 2);
     const dealt = applyDamage(target, raw, { attacker: user });
         user.mana = Math.max(0, (user.mana || 0) - (ABILITIES.druid_barkskin ? ABILITIES.druid_barkskin.cost : 0));
@@ -691,8 +794,8 @@ const abilityHandlers = {
         const prevBoost = user.attackBoost || 0;
         const buffAmount = 8;
         user.attackBoost = prevBoost + buffAmount;
-        const baseAtk = user.baseAtk || 12;
-        user.status.turret = { turns: 3, dmg: Math.max(20, Math.floor(baseAtk * 2.0)), ignoreDefense: true, stunChance: 0.25 };
+    const baseAtk = getEffectiveBaseAtk(user, 12);
+    user.status.turret = { turns: 3, dmg: Math.max(20, Math.floor(baseAtk * 2.0)), ignoreDefense: true, stunChance: 0.25 };
         user.status.turret_buff = { turns: 3, amount: buffAmount, prevBoost: prevBoost };
         user.mana = Math.max(0, (user.mana || 0) - (ABILITIES.artificer_turret.cost || 0));
         return `${user.name} deploys a Turret and gains +${buffAmount} ATK while it's active.`;
@@ -700,7 +803,7 @@ const abilityHandlers = {
 
     artificer_shock(user, target) {
         // Arc Shock: reduced damage to match PvP changes
-        const base = user.baseAtk || 20;
+        const base = getEffectiveBaseAtk(user, 20);
         const raw = Math.floor(Math.random() * 12) + Math.floor(base * 1.2) + 4;
         // Arc Shock pierces defenses (ignores target.defense) and always stuns
         const dealt = applyDamage(target, raw, { ignoreDefense: true, attacker: user });
@@ -732,7 +835,7 @@ const abilityHandlers = {
 
     /* New: Valkyrie abilities */
     valkyrie_spear(user, target) {
-        const base = user.baseAtk || 14;
+        const base = getEffectiveBaseAtk(user, 14);
         const raw = Math.floor(Math.random() * 12) + base + 6;
         // ignore a portion of defense
         const effectiveDefense = Math.floor((target.defense || 0) * 0.4);
@@ -743,7 +846,7 @@ const abilityHandlers = {
     },
 
     valkyrie_aerial_sweep(user, target) {
-        const base = user.baseAtk || 14;
+    const base = getEffectiveBaseAtk(user, 14);
         // reduced damage: narrower random range and smaller flat bonus
         const raw = Math.floor(Math.random() * 10) + base + 2;
         const dealt = applyDamage(target, raw, { attacker: user });
@@ -782,7 +885,7 @@ const abilityHandlers = {
 
     /* New: Barbarian abilities */
     barbarian_berserk_slam(user, target) {
-        const base = user.baseAtk || 12;
+    const base = getEffectiveBaseAtk(user, 12);
         const raw = Math.floor(Math.random() * 10) + base + 4; // greatly reduced damage
         const dealt = applyDamage(target, raw, { attacker: user });
         const buff = 2; // much smaller attack buff
@@ -808,7 +911,7 @@ const abilityHandlers = {
     },
 
     barbarian_reckless_strike(user, target) {
-        const base = user.baseAtk || 12;
+    const base = getEffectiveBaseAtk(user, 12);
         const raw = Math.floor(Math.random() * 12) + base + 4; // reduced range
         // ~25% chance to deal slightly increased damage (1.2x)
         let usedRaw = raw;
@@ -818,11 +921,12 @@ const abilityHandlers = {
         // increased self-damage tradeoff (20%)
         const selfDmg = Math.max(4, Math.floor(dealt * 0.20));
         user.hp = Math.max(0, (user.hp || 0) - selfDmg);
+        try { DamageLog.log({ actor: user.name || 'Enemy', target: user.name || 'Self', final: user.hp, reason: `Recoil from Reckless Strike (${selfDmg})` }, 'warn'); } catch(e){}
         return `${user.name} performs Reckless Strike for ${dealt} damage${boosted ? ' (empowered)' : ''} and takes ${selfDmg} recoil.`;
     },
 
     monk_flurry(user, target) {
-        const base = user.baseAtk || 12;
+    const base = getEffectiveBaseAtk(user, 12);
         let total = 0; for (let i=0;i<3;i++) total += Math.floor(Math.random()*6) + Math.floor(base/2);
     const dealt = applyDamage(target, total, { attacker: user });
         target.status = target.status || {};
@@ -834,7 +938,7 @@ const abilityHandlers = {
     },
 
     monk_stunning_blow(user, target) {
-        const base = user.baseAtk || 14; const raw = Math.floor(Math.random()*12) + base;
+    const base = getEffectiveBaseAtk(user, 14); const raw = Math.floor(Math.random()*12) + base;
     const dealt = applyDamage(target, raw, { attacker: user });
         if (Math.random() < 0.5) {
             target.status = target.status || {};
@@ -862,12 +966,14 @@ const abilityHandlers = {
                     }
                     try { console.debug('[PVE] Revive consumed by Quivering Palm for', target && target.name); } catch(e) {}
                     logMessage(`${target.name} was saved from death by a Revive Scroll!`);
+                    try { DamageLog.log({ actor: user.name || 'Enemy', target: target.name || 'Target', final: target.hp, reason: 'Revive consumed (Quivering Palm)' }, 'info'); } catch(e){}
                     return `${user.name} collapses the enemy instantly with Quivering Palm! But they were saved by a Revive Scroll!`;
                 } catch (e) { console.error('Quivering Palm revive handling failed', e); }
             }
-            target.hp = 0; target.fainted = true; return `${user.name} collapses the enemy instantly with Quivering Palm!`;
+            target.hp = 0; target.fainted = true; try { DamageLog.log({ actor: user.name || 'Enemy', target: target.name || 'Target', final: 0, reason: 'Quivering Palm instant kill' }, 'warn'); } catch(e){}
+            return `${user.name} collapses the enemy instantly with Quivering Palm!`;
         }
-        const base = user.baseAtk || 12; const raw = Math.floor(Math.random()*10) + Math.floor(base/2);
+    const base = getEffectiveBaseAtk(user, 12); const raw = Math.floor(Math.random()*10) + Math.floor(base/2);
     const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
         const incoming = { turns: 4, pct: 0.05 };
@@ -878,12 +984,13 @@ const abilityHandlers = {
 
     wild_attack(user, target) {
         const roll = Math.floor(Math.random()*20)+1;
-        const base = user.baseAtk || 16;
+    const base = getEffectiveBaseAtk(user, 16);
         let damage = Math.floor(Math.random()*16) + base + 4;
     let dealt = applyDamage(target, damage, { attacker: user });
         let message = `${user.name} triggers Wild Attack (d20=${roll})`;
         if (roll <= 3) {
             const backlash = Math.floor(damage * 0.4); user.hp = Math.max(0, (user.hp||0)-backlash); message += ` — chaotic backlash! You suffer ${backlash} damage.`;
+            try { DamageLog.log({ actor: user.name || 'Enemy', target: user.name || 'Self', final: user.hp, reason: `Wild Attack backlash (${backlash})` }, 'warn'); } catch(e){}
         } else if (roll <= 8) { target.status = target.status||{}; target.status.weaken = { turns:2, amount:4, prevBoost:(target.attackBoost||0)}; message += ` — the enemy is weakened.`; }
         else if (roll <= 15) { target.status = target.status||{}; target.status.burn = { turns:3, dmg: Math.max(3, Math.floor(base/3)) }; message += ` — the enemy is scorched.`; }
             else if (roll <= 19) { const extra = Math.floor(Math.random()*14)+10; applyDamage(target, extra, { attacker: user }); target.status = target.status||{}; target.status.stun = { turns:1 }; message += ` — a powerful surge stuns the opponent!`; }
@@ -901,7 +1008,7 @@ const abilityHandlers = {
     },
 
     wild_arcanum(user, target) {
-        const roll = Math.floor(Math.random()*20)+1; const base = user.baseAtk || 18; let raw = Math.floor(Math.random()*24)+base+12; applyDamage(target, raw, { attacker: user });
+    const roll = Math.floor(Math.random()*20)+1; const base = getEffectiveBaseAtk(user, 18); let raw = Math.floor(Math.random()*24)+base+12; applyDamage(target, raw, { attacker: user });
         user.mana = Math.max(0,(user.mana||0)-(ABILITIES.wild_arcanum?ABILITIES.wild_arcanum.cost:0));
         if (roll <=4) { const back = Math.floor(raw*0.5); user.hp = Math.max(0,(user.hp||0)-back); return `${user.name} cast Wild Arcanum (d20=${roll}) — chaotic backlash! You suffer ${back} damage.`; }
     if (roll <=12) { const extra = Math.floor(Math.random()*12)+8; applyDamage(target, extra, { attacker: user }); return `${user.name} cast Wild Arcanum (d20=${roll}) — arcane surge deals extra damage.`; }
@@ -911,7 +1018,7 @@ const abilityHandlers = {
 
     /* Ogre abilities */
     ogre_smash(user, target) {
-        const base = user.baseAtk || 14;
+    const base = getEffectiveBaseAtk(user, 14);
         const raw = Math.floor(Math.random() * 12) + base + 8;
         const dealt = applyDamage(target, raw, { attacker: user });
         if (Math.random() < 0.18) { target.status = target.status || {}; target.status.stun = { turns: 1 }; }
@@ -926,7 +1033,7 @@ const abilityHandlers = {
         return `${user.name} bellows an Ogre Roar, reducing the foe's attack!`;
     },
     ogre_ground_stomp(user, target) {
-        const base = user.baseAtk || 14;
+    const base = getEffectiveBaseAtk(user, 14);
         const raw = Math.floor(Math.random() * 10) + Math.floor(base * 0.8);
         const dealt = applyDamage(target, raw, { attacker: user });
         if (Math.random() < 0.2) {
@@ -938,14 +1045,14 @@ const abilityHandlers = {
 
     /* Griffin abilities */
     griffin_dive(user, target) {
-        const base = user.baseAtk || 15;
+    const base = getEffectiveBaseAtk(user, 15);
         const raw = Math.floor(Math.random() * 14) + base + 6;
         const crit = Math.random() < 0.18;
         const dealt = applyDamage(target, raw + (crit ? Math.floor(raw * 0.5) : 0), { attacker: user });
         return `${user.name} dives from above for ${dealt} damage${crit ? ' (critical strike)!' : '!'} `;
     },
     griffin_talon_rake(user, target) {
-        const base = user.baseAtk || 15;
+    const base = getEffectiveBaseAtk(user, 15);
         const raw = Math.floor(Math.random() * 10) + Math.floor(base / 2);
         const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -954,7 +1061,7 @@ const abilityHandlers = {
         return `${user.name} tears with talons for ${dealt} damage and causes bleeding.`;
     },
     griffin_wing_gust(user, target) {
-        const base = user.baseAtk || 12;
+    const base = getEffectiveBaseAtk(user, 12);
         const raw = Math.floor(Math.random() * 8) + Math.floor(base / 2);
         const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -965,7 +1072,7 @@ const abilityHandlers = {
 
     /* Werewolf abilities */
     werewolf_frenzy(user, target) {
-        const base = user.baseAtk || 16;
+    const base = getEffectiveBaseAtk(user, 16);
         let total = 0; for (let i = 0; i < 3; i++) total += Math.floor(Math.random() * 6) + Math.floor(base / 2);
         const dealt = applyDamage(target, total, { attacker: user });
         // small self-heal for feral momentum
@@ -984,7 +1091,7 @@ const abilityHandlers = {
         return `${user.name} howls, increasing ferocity (+${boost} ATK)!`;
     },
     werewolf_feral_leap(user, target) {
-        const base = user.baseAtk || 16;
+    const base = getEffectiveBaseAtk(user, 16);
         const raw = Math.floor(Math.random() * 12) + base + 4;
         const dealt = applyDamage(target, raw, { attacker: user });
         if (Math.random() < 0.25) {
@@ -996,7 +1103,7 @@ const abilityHandlers = {
 
     /* Serpent abilities */
     serpent_bite(user, target) {
-        const base = user.baseAtk || 12;
+    const base = getEffectiveBaseAtk(user, 12);
         const raw = Math.floor(Math.random() * 8) + base;
         const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -1005,7 +1112,7 @@ const abilityHandlers = {
         return `${user.name} bites for ${dealt} and injects venom.`;
     },
     serpent_coil(user, target) {
-        const base = user.baseAtk || 12;
+    const base = getEffectiveBaseAtk(user, 12);
         const raw = Math.floor(Math.random() * 10) + Math.floor(base / 2);
         const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -1015,7 +1122,7 @@ const abilityHandlers = {
         return `${user.name} coils and squeezes for ${dealt}, weakening the foe.`;
     },
     serpent_venom_spit(user, target) {
-        const base = user.baseAtk || 12;
+    const base = getEffectiveBaseAtk(user, 12);
         const raw = Math.floor(Math.random() * 10) + Math.floor(base / 1.5);
         const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -1026,7 +1133,7 @@ const abilityHandlers = {
 
     /* Centaur abilities */
     centaur_trample(user, target) {
-        const base = user.baseAtk || 15;
+    const base = getEffectiveBaseAtk(user, 15);
         let total = 0; for (let i = 0; i < 2; i++) total += Math.floor(Math.random() * 8) + Math.floor(base / 2);
         const dealt = applyDamage(target, total, { attacker: user });
         if (Math.random() < 0.2) {
@@ -1036,13 +1143,13 @@ const abilityHandlers = {
         return `${user.name} tramples for ${dealt} damage and may stun.`;
     },
     centaur_arch_shot(user, target) {
-        const base = user.baseAtk || 15;
+    const base = getEffectiveBaseAtk(user, 15);
         const raw = Math.floor(Math.random() * 12) + base + 4;
         const dealt = applyDamage(target, raw, { attacker: user });
         return `${user.name} fires a precise Arc Shot for ${dealt} damage.`;
     },
     centaur_charge(user, target) {
-        const base = user.baseAtk || 15;
+    const base = getEffectiveBaseAtk(user, 15);
         const raw = Math.floor(Math.random() * 12) + base + 6;
         const dealt = applyDamage(target, raw, { attacker: user });
         if (Math.random() < 0.25) {
@@ -1054,7 +1161,7 @@ const abilityHandlers = {
 
     /* Turtle abilities */
     turtle_shell_bash(user, target) {
-        const base = user.baseAtk || 10;
+    const base = getEffectiveBaseAtk(user, 10);
         const raw = Math.floor(Math.random() * 8) + base;
         const dealt = applyDamage(target, raw, { attacker: user });
         user.defense = (user.defense || 0) + 6;
@@ -1071,7 +1178,7 @@ const abilityHandlers = {
         return `${user.name} withdraws into its shell, healing ${heal} HP and increasing defense.`;
     },
     turtle_rolling_charge(user, target) {
-        const base = user.baseAtk || 10;
+    const base = getEffectiveBaseAtk(user, 10);
         const raw = Math.floor(Math.random() * 12) + Math.floor(base * 0.6);
         const dealt = applyDamage(target, raw, { attacker: user });
         return `${user.name} rolls and slams for ${dealt} damage.`;
@@ -1086,7 +1193,7 @@ const abilityHandlers = {
         return `${user.name} braces in a Shell Guard, greatly increasing defense.`;
     },
     tortoise_tail_sweep(user, target) {
-        const base = user.baseAtk || 9;
+    const base = getEffectiveBaseAtk(user, 9);
         const raw = Math.floor(Math.random() * 8) + base;
         const dealt = applyDamage(target, raw, { attacker: user });
         if (Math.random() < 0.2) {
@@ -1096,7 +1203,7 @@ const abilityHandlers = {
         return `${user.name} sweeps its tail for ${dealt} damage and may trip the foe.`;
     },
     tortoise_stone_spit(user, target) {
-        const base = user.baseAtk || 9;
+    const base = getEffectiveBaseAtk(user, 9);
         const raw = Math.floor(Math.random() * 10) + Math.floor(base / 1.5);
         const dealt = applyDamage(target, raw, { attacker: user });
         // slow effect represented as reduced speed via a status hint
@@ -1107,7 +1214,7 @@ const abilityHandlers = {
 
     /* Phoenix abilities */
     phoenix_ember(user, target) {
-        const base = user.baseAtk || 18;
+    const base = getEffectiveBaseAtk(user, 18);
         const raw = Math.floor(Math.random() * 12) + base + 6;
         const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -1117,7 +1224,7 @@ const abilityHandlers = {
         return `${user.name} scorches the foe for ${dealt} and is slightly rejuvenated.`;
     },
     phoenix_wingstorm(user, target) {
-        const base = user.baseAtk || 18;
+    const base = getEffectiveBaseAtk(user, 18);
         const raw = Math.floor(Math.random() * 16) + base + 8;
         const dealt = applyDamage(target, raw, { attacker: user });
         user.status = user.status || {};
@@ -1132,7 +1239,7 @@ const abilityHandlers = {
 
     /* Dragon abilities */
     dragon_fire_breath(user, target) {
-        const base = user.baseAtk || 30;
+    const base = getEffectiveBaseAtk(user, 30);
         const raw = Math.floor(Math.random() * 40) + base + 12;
         const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -1140,7 +1247,7 @@ const abilityHandlers = {
         return `${user.name} breathes fire for ${dealt} damage and scorches the target.`;
     },
     dragon_claw(user, target) {
-        const base = user.baseAtk || 30;
+    const base = getEffectiveBaseAtk(user, 30);
         const raw = Math.floor(Math.random() * 30) + base + 8;
         const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -1159,7 +1266,7 @@ const abilityHandlers = {
 
     /* Stranger unique primary: Shadow Lunge */
     ,stranger_shadow_lunge(user, target) {
-        const base = user.baseAtk || 32;
+    const base = getEffectiveBaseAtk(user, 32);
         const raw = Math.floor(Math.random() * 20) + base + 6;
         const dealt = applyDamage(target, raw, { attacker: user });
         // apply an instability stacking debuff that increases damage taken slightly
@@ -1171,7 +1278,7 @@ const abilityHandlers = {
 
     /* Stranger unique buff/psychic: Mind Shatter */
     ,stranger_mind_shatter(user, target) {
-        const base = user.baseAtk || 28;
+    const base = getEffectiveBaseAtk(user, 28);
         const raw = Math.floor(Math.random() * 18) + base + 4;
         const dealt = applyDamage(target, raw, { attacker: user });
         target.status = target.status || {};
@@ -1232,8 +1339,25 @@ const abilityHandlers = {
 };
 
 
-const selectedClass = localStorage.getItem('selectedClass') || 'warrior';
-const selectedEnemy = localStorage.getItem('selectedEnemy') || 'gladiator';
+let selectedClass = localStorage.getItem('selectedClass') || 'warrior';
+let selectedEnemy = localStorage.getItem('selectedEnemy') || 'gladiator';
+
+// Validate selected class/enemy and fall back to safe defaults if needed
+try {
+    if (!CLASS_STATS[selectedClass]) {
+        console.warn('[PVE] invalid selectedClass in localStorage, falling back to warrior');
+        selectedClass = 'warrior';
+    }
+} catch (e) { selectedClass = 'warrior'; }
+try {
+    if (!ENEMY_STATS[selectedEnemy] && !selectedEnemy) {
+        selectedEnemy = 'gladiator';
+    }
+    if (!ENEMY_STATS[selectedEnemy]) {
+        // if it's still missing, pick a known enemy or default to gladiator
+        selectedEnemy = (ENEMY_STATS && Object.keys(ENEMY_STATS).length) ? Object.keys(ENEMY_STATS)[0] : 'gladiator';
+    }
+} catch (e) { selectedEnemy = 'gladiator'; }
 
 let rawQueue = null;
 try { rawQueue = JSON.parse(localStorage.getItem('enemyQueue') || 'null'); } catch (e) { rawQueue = null; }
@@ -1242,8 +1366,23 @@ if (initialQueue.length > 5) {
     initialQueue = initialQueue.slice(0, 5);
     localStorage.setItem('enemyQueue', JSON.stringify(initialQueue));
 }
+// Sanitize the initial queue: only keep enemy ids that exist in ENEMY_STATS.
+try {
+    initialQueue = initialQueue.filter(id => !!(id && ENEMY_STATS && ENEMY_STATS[id]));
+} catch (e) {
+    // if something went wrong, fall back to selectedEnemy
+    initialQueue = [selectedEnemy];
+}
+if (initialQueue.length === 0) {
+    // ensure we always have a valid enemy in the queue
+    const fallbackEnemy = (ENEMY_STATS && Object.keys(ENEMY_STATS).length) ? Object.keys(ENEMY_STATS)[0] : 'stranger';
+    initialQueue = [fallbackEnemy];
+}
+// Persist any sanitization back to localStorage so subsequent pages see the valid queue
+try { localStorage.setItem('enemyQueue', JSON.stringify(initialQueue)); } catch (e) { /* ignore storage errors */ }
+
 let enemyQueue = initialQueue.slice();
-let currentEnemyId = enemyQueue.shift() || selectedEnemy;
+let currentEnemyId = enemyQueue.shift() || (ENEMY_STATS[selectedEnemy] ? selectedEnemy : (Object.keys(ENEMY_STATS)[0] || 'stranger'));
 
 let rawAllies = null;
 try { rawAllies = JSON.parse(localStorage.getItem('allyQueue') || 'null'); } catch (e) { rawAllies = null; }
@@ -1263,6 +1402,8 @@ mainPlayerObj.abilityCooldowns = {};
 // initialize mana from CLASS_STATS so every class that defines mana gets it
 mainPlayerObj.mana = (CLASS_STATS[selectedClass] && typeof CLASS_STATS[selectedClass].mana === 'number') ? CLASS_STATS[selectedClass].mana : 0;
 mainPlayerObj.maxMana = (CLASS_STATS[selectedClass] && typeof CLASS_STATS[selectedClass].mana === 'number') ? CLASS_STATS[selectedClass].mana : 0;
+// ensure equip enchant container exists for damage/gear hooks
+mainPlayerObj._equipEnchants = mainPlayerObj._equipEnchants || {};
 party.push(mainPlayerObj);
 
 for (const aid of initialAllies) {
@@ -1275,6 +1416,7 @@ for (const aid of initialAllies) {
     allyObj.abilityCooldowns = {};
     allyObj.mana = (CLASS_STATS[aid] && typeof CLASS_STATS[aid].mana === 'number') ? CLASS_STATS[aid].mana : 0;
     allyObj.maxMana = (CLASS_STATS[aid] && typeof CLASS_STATS[aid].mana === 'number') ? CLASS_STATS[aid].mana : 0;
+    allyObj._equipEnchants = allyObj._equipEnchants || {};
     party.push(allyObj);
 }
 
@@ -1313,6 +1455,21 @@ try {
 let partyIndex = 0;
 let player = party[partyIndex];
 
+// Defensive fallback: if party is unexpectedly empty, synthesize a minimal player
+if (!player) {
+    try {
+        console.warn('[PVE] party empty at init — creating fallback player');
+    } catch (e) {}
+    const fallback = Object.assign({}, CLASS_STATS[selectedClass] || {});
+    fallback.classId = selectedClass;
+    fallback.hp = fallback.hp ?? fallback.maxHp ?? 100;
+    fallback.maxHp = fallback.maxHp ?? fallback.hp ?? 100;
+    fallback.baseAtk = fallback.baseAtk ?? 10;
+    fallback.abilityCooldowns = fallback.abilityCooldowns || {};
+    fallback.mana = fallback.mana || 0;
+    player = fallback;
+}
+
 let enemy = Object.assign({}, ENEMY_STATS[currentEnemyId]);
 enemy.hp = enemy.hp ?? ENEMY_STATS[currentEnemyId].hp;
 enemy.maxHp = enemy.maxHp ?? ENEMY_STATS[currentEnemyId].maxHp;
@@ -1320,12 +1477,48 @@ enemy.baseAtk = ENEMY_STATS[currentEnemyId].baseAtk;
 enemy.abilityCooldowns = {};
 
 
-let playerTurn = true;
-let turnCounter = 0;
+var playerTurn = true;
+var turnCounter = 0;
 // running drop chance accumulated during the current wave (percent, additive)
 let pveRunDropChance = 0;
 
 function updateUI() {
+    // Defensive: ensure player and enemy exist so UI calls (which may run early)
+    // don't repeatedly warn or break rendering. If one is missing, synthesize a
+    // minimal object from CLASS_STATS/ENEMY_STATS so the UI can render safely.
+    try {
+        if (typeof player === 'undefined' || !player) {
+            if (Array.isArray(party) && party.length > 0) {
+                player = party[partyIndex] || party[0];
+            }
+            if (!player) {
+                const fb = Object.assign({}, CLASS_STATS[selectedClass] || {});
+                fb.classId = selectedClass;
+                fb.hp = fb.hp ?? fb.maxHp ?? 100;
+                fb.maxHp = fb.maxHp ?? fb.hp ?? 100;
+                fb.baseAtk = fb.baseAtk ?? 10;
+                fb.abilityCooldowns = fb.abilityCooldowns || {};
+                fb.mana = fb.mana || 0;
+                fb.maxMana = fb.maxMana || fb.mana || 0;
+                fb._equipEnchants = fb._equipEnchants || {};
+                player = fb;
+            }
+        }
+    } catch (e) { /* ignore defensive init errors */ }
+
+    try {
+        if (typeof enemy === 'undefined' || !enemy) {
+            const ce = (typeof currentEnemyId !== 'undefined' && ENEMY_STATS && ENEMY_STATS[currentEnemyId]) ? currentEnemyId : (Object.keys(ENEMY_STATS || {})[0] || 'stranger');
+            enemy = Object.assign({}, ENEMY_STATS[ce] || {});
+            enemy.hp = enemy.hp ?? (ENEMY_STATS[ce] && ENEMY_STATS[ce].hp) ?? 100;
+            enemy.maxHp = enemy.maxHp ?? (ENEMY_STATS[ce] && ENEMY_STATS[ce].maxHp) ?? enemy.hp;
+            enemy.baseAtk = (ENEMY_STATS[ce] && ENEMY_STATS[ce].baseAtk) || enemy.baseAtk || 10;
+            enemy.abilityCooldowns = enemy.abilityCooldowns || {};
+            enemy.status = enemy.status || {};
+            enemy.fainted = !!enemy.fainted;
+            enemy._equipEnchants = enemy._equipEnchants || {};
+        }
+    } catch (e) { /* ignore defensive init errors */ }
     // Render using equipped gear modifiers if available. Shadow the global `player`
     // with a copy that has gear applied so we don't mutate actual battle state.
     try {
@@ -1525,14 +1718,28 @@ function renderStatusIcons(actor, containerId) {
 }
 
 function spawnEnemy(enemyId) {
-    currentEnemyId = enemyId;
-    enemy = Object.assign({}, ENEMY_STATS[enemyId]);
-    enemy.hp = enemy.hp ?? ENEMY_STATS[enemyId].hp;
-    enemy.maxHp = enemy.maxHp ?? ENEMY_STATS[enemyId].maxHp;
-    enemy.baseAtk = ENEMY_STATS[enemyId].baseAtk;
+    // Defensive: if caller passed an unknown enemy id (legacy or corrupted localStorage),
+    // pick a safe fallback so subsequent code can rely on ENEMY_STATS[currentEnemyId].*
+    if (!ENEMY_STATS || !ENEMY_STATS[enemyId]) {
+        console.warn('[PVE] spawnEnemy received unknown id:', enemyId, 'falling back');
+        const fallback = (ENEMY_STATS && Object.keys(ENEMY_STATS).length) ? Object.keys(ENEMY_STATS)[0] : 'stranger';
+        try {
+            // prefer selectedEnemy if valid
+            if (selectedEnemy && ENEMY_STATS[selectedEnemy]) currentEnemyId = selectedEnemy;
+            else currentEnemyId = fallback;
+        } catch (e) { currentEnemyId = fallback; }
+    } else {
+        currentEnemyId = enemyId;
+    }
+    enemy = Object.assign({}, ENEMY_STATS[currentEnemyId] || {});
+    enemy.hp = enemy.hp ?? (ENEMY_STATS[currentEnemyId] && ENEMY_STATS[currentEnemyId].hp);
+    enemy.maxHp = enemy.maxHp ?? (ENEMY_STATS[currentEnemyId] && ENEMY_STATS[currentEnemyId].maxHp);
+    enemy.baseAtk = (ENEMY_STATS[currentEnemyId] && ENEMY_STATS[currentEnemyId].baseAtk) || enemy.baseAtk;
     enemy.abilityCooldowns = {};
     enemy.status = {};
     enemy.fainted = false;
+    // ensure the enemy has an equip enchant container so damage hook code can read safely
+    enemy._equipEnchants = enemy._equipEnchants || {};
     // If this spawn is the story final boss, allow storyCampaignResult to adjust its HP
     // Additionally, if this is the Stranger, give it a deterministic role: primary attack
     // + buffing attack + a third ability chosen at random from the boss 'third' abilities.
@@ -1664,15 +1871,33 @@ function handleEnemyDefeat() {
                         // inform next battle to start player at 75% (spared behavior)
                         try { localStorage.setItem('story_next_player_state', 'spare'); } catch (e) {}
                         overlay.remove();
-                        // return to story page so player sees map and can continue
-                        location.href = 'story.html';
+                        // guard: only return to story if campaign state is valid
+                        try {
+                            const rawC = localStorage.getItem('storyCampaign');
+                            const campaign = rawC ? JSON.parse(rawC) : null;
+                            if (campaign && campaign.active) {
+                                try { redirectTo('story.html'); } catch (e) { try { location.href = 'story.html'; } catch(_){} }
+                            } else {
+                                console.warn('[PVE] storyCampaign missing or inactive when choosing Spare — sending to selection');
+                                try { redirectTo('selection.html'); } catch (e) { try { location.href = 'selection.html'; } catch(_){} }
+                            }
+                        } catch (e) { try { redirectTo('story.html'); } catch (er) { try { location.href = 'story.html'; } catch(_){} } }
                     });
                     killBtn.addEventListener('click', () => {
                         recordChoice('kill');
                         // inform next battle to start player at full (killed behavior)
                         try { localStorage.setItem('story_next_player_state', 'full'); } catch (e) {}
                         overlay.remove();
-                        location.href = 'story.html';
+                        try {
+                            const rawC = localStorage.getItem('storyCampaign');
+                            const campaign = rawC ? JSON.parse(rawC) : null;
+                            if (campaign && campaign.active) {
+                                try { redirectTo('story.html'); } catch (e) { try { location.href = 'story.html'; } catch(_){} }
+                            } else {
+                                console.warn('[PVE] storyCampaign missing or inactive when choosing Kill — sending to selection');
+                                try { redirectTo('selection.html'); } catch (e) { try { location.href = 'selection.html'; } catch(_){} }
+                            }
+                        } catch (e) { try { redirectTo('story.html'); } catch (er) { try { location.href = 'story.html'; } catch(_){} } }
                     });
 
                     row.appendChild(spareBtn); row.appendChild(killBtn);
@@ -1843,10 +2068,10 @@ function handleEnemyDefeat() {
                                         }
                                         logMessage(`You received: ${opt.meta.name}`);
                                     } catch (e) { console.error('reward select failed', e); }
-                                    // cleanup and redirect to selection
+                                    // cleanup and redirect to selection (with debug snapshot)
                                     try { overlay.remove(); } catch (e) { /* ignore */ }
                                     pveRunDropChance = 0;
-                                    setTimeout(() => { location.href = 'selection.html'; }, 500);
+                                    setTimeout(() => { try { redirectTo('selection.html'); } catch(e) { try { location.href = 'selection.html'; } catch(_){} } }, 500);
                                 });
 
                                 card.appendChild(btn);
@@ -1873,9 +2098,9 @@ function handleEnemyDefeat() {
                 logMessage('No drop this run. Returning to selection...');
                 pveRunDropChance = 0;
                 try {
-                    setTimeout(() => { location.href = 'selection.html'; }, 1000);
+                    setTimeout(() => { try { redirectTo('selection.html'); } catch(e) { try { location.href = 'selection.html'; } catch(_){} } }, 1000);
                 } catch (e) { /* ignore redirect errors */ }
-            } catch (e) { console.error('drop roll failed', e); pveRunDropChance = 0; try { setTimeout(() => { location.href = 'selection.html'; }, 1000); } catch (er) {} }
+            } catch (e) { console.error('drop roll failed', e); pveRunDropChance = 0; try { setTimeout(() => { try { redirectTo('selection.html'); } catch(err) { try { location.href = 'selection.html'; } catch(_){} } }, 1000); } catch (er) {} }
         }, 800);
     }
 }
@@ -1952,7 +2177,7 @@ function handlePlayerDefeat() {
                 const campaignActive = rawC ? (JSON.parse(rawC).active === true) : false;
                 if (campaignActive) {
                     // give a short delay for the player to read the defeat message
-                    setTimeout(() => { try { location.href = 'story.html'; } catch(e){} }, 900);
+                    setTimeout(() => { try { redirectTo('story.html'); } catch(e) { try { location.href = 'story.html'; } catch(_){} } }, 900);
                 } else {
                     if (container && !document.getElementById('return-to-selection-btn')) {
                         const btn = document.createElement('button');
@@ -1960,7 +2185,7 @@ function handlePlayerDefeat() {
                         btn.textContent = 'Return to Selection';
                         btn.style.marginTop = '12px';
                         btn.className = 'primary-btn';
-                        btn.addEventListener('click', () => { location.href = 'selection.html'; });
+                        btn.addEventListener('click', () => { try { redirectTo('selection.html'); } catch(e) { try { location.href = 'selection.html'; } catch(_){} } });
                         container.appendChild(btn);
                     }
                 }
@@ -1975,6 +2200,9 @@ function logMessage(msg) {
 }
 
 function processStatusEffects(actor, opponent) {
+    // Defensive: if actor is missing (can occur if earlier logic cleared or race),
+    // return no messages so callers don't attempt to process null objects.
+    if (!actor) return [];
     if (!actor.status) return [];
     const messages = [];
 
@@ -2206,7 +2434,7 @@ function chooseMove(move) {
     } catch (e) { console.error('applyEquipToStats failed in PVE chooseMove', e); }
 
     const pmsgs = processStatusEffects(player, enemy);
-    if (pmsgs.length) pmsgs.forEach(m => logMessage(m));
+    if (pmsgs.length) pmsgs.forEach(m => { logMessage(m); try { DamageLog.log(m, 'info'); } catch(e){} });
     if (player.hp <= 0) {
         if (player.has_revive) {
             try {
@@ -2321,7 +2549,7 @@ function chooseMove(move) {
 
 function enemyTurn() {
     const msgs = processStatusEffects(enemy, player);
-    if (msgs.length) msgs.forEach(m => logMessage(m));
+    if (msgs.length) msgs.forEach(m => { logMessage(m); try { DamageLog.log(m, 'info'); } catch(e){} });
     if (enemy.hp <= 0) {
         if (enemy.has_revive) {
             try {
@@ -2418,6 +2646,13 @@ function enemyTurn() {
 window.addEventListener('DOMContentLoaded', () => {
     const pName = document.getElementById('player-name');
     const eName = document.getElementById('enemy-name');
+    // Remove any leftover story-choice overlay that may block interaction
+    try {
+        const stale = document.getElementById('story-choice-overlay');
+        if (stale) {
+            try { stale.remove(); console.debug('[PVE] removed stale story-choice-overlay on load'); } catch (e) { /* ignore */ }
+        }
+    } catch (e) { /* ignore */ }
     if (pName) pName.textContent = player.name;
     if (eName) eName.textContent = enemy.name;
     updateUI();
@@ -2435,18 +2670,25 @@ window.addEventListener('DOMContentLoaded', () => {
 // (old duplicate attachActionTooltips removed - multiplayer-style tooltip helpers above are used)
 
 function applyDamage(target, rawDamage, opts = {}) {
+    // Defensive: if target is missing, avoid throwing and return 0 damage.
+    if (!target) {
+        try { console.warn('[PVE] applyDamage called with null/undefined target', { rawDamage, opts }); } catch(e){}
+        return 0;
+    }
     // opts: { ignoreDefense: bool, attacker: { critChance, ... }, considerHit: bool }
     const ignoreDefense = !!opts.ignoreDefense;
     const attacker = opts.attacker || null;
     const considerHit = (typeof opts.considerHit === 'boolean') ? opts.considerHit : !!attacker;
 
-    // Evasion check
+    // Evasion check — respect attacker's accuracy which reduces effective evasion
     const targetEvasion = Number(target.evasion || 0) || 0;
-    if (considerHit && targetEvasion > 0) {
+    const attackerAccuracy = attacker ? Number(attacker.accuracy || (attacker._equipEnchants && attacker._equipEnchants.accuracy) || (attacker._equipMods && attacker._equipMods.accuracy) || 0) : 0;
+    const effectiveEvasion = Math.max(0, targetEvasion - attackerAccuracy);
+    if (considerHit && effectiveEvasion > 0) {
         try {
-            if (Math.random() < targetEvasion) {
+            if (Math.random() < effectiveEvasion) {
                 // Dodge: no damage applied
-                try { console.debug('[PVE] attack dodged by target', { target: target.name || target.classId, evasion: targetEvasion }); } catch(e){}
+                try { console.debug('[PVE] attack dodged by target', { target: target.name || target.classId, evasion: targetEvasion, attackerAccuracy, effectiveEvasion }); } catch(e){}
                 return 0;
             }
         } catch (e) { /* ignore RNG errors */ }
@@ -2455,13 +2697,19 @@ function applyDamage(target, rawDamage, opts = {}) {
     const defense = ignoreDefense ? 0 : (target.defense || 0);
     let final = Math.max(0, Math.round(rawDamage - defense));
 
-    // Crit check
+    // Crit check — account for target crit resist and attacker crit-damage bonuses
     const critChance = attacker ? Number(attacker.critChance || 0) : 0;
     if (considerHit && critChance > 0) {
         try {
-            if (Math.random() < critChance) {
-                final = Math.max(1, Math.round(final * 1.5)); // +50% damage on crit
-                try { console.debug('[PVE] critical hit', { attacker: attacker.name || attacker.classId, critChance: critChance }); } catch(e){}
+            const targetCritResist = Number((target && ((target._equipEnchants && target._equipEnchants.critResist) || target.critResist)) || 0) || 0;
+            const effectiveCritChance = Math.max(0, critChance - targetCritResist);
+            if (Math.random() < effectiveCritChance) {
+                // Allow gear to increase crit damage via _critDamageBonus (stored as percent points)
+                const critBonusPct = Number((attacker && (attacker._critDamageBonus || (attacker._equipEnchants && attacker._equipEnchants.critDamageBonus))) || 0) || 0;
+                const baseMultiplier = 1.5; // default crit = +50%
+                const multiplier = baseMultiplier + (critBonusPct / 100);
+                final = Math.max(1, Math.round(final * multiplier));
+                try { console.debug('[PVE] critical hit', { attacker: attacker.name || attacker.classId, critChance: critChance, targetCritResist, critBonusPct }); } catch(e){}
             }
         } catch (e) { /* ignore RNG errors */ }
     }
@@ -2494,6 +2742,32 @@ function applyDamage(target, rawDamage, opts = {}) {
             if (res && res.attackerUpdates && Object.keys(res.attackerUpdates).length) {
                 try { Object.assign(attacker, res.attackerUpdates); } catch(e){}
             }
+            // Log elemental proc details for PVE
+            try {
+                const atkName = (attacker && (attacker.name || attacker.id)) ? (attacker.name || attacker.id) : 'Attacker';
+                const tgtName = (target && (target.name || target.id)) ? (target.name || target.id) : 'Target';
+                if (res && Array.isArray(res.procs) && res.procs.length) {
+                    res.procs.forEach(p => {
+                        try {
+                            let msg = `${atkName} element ${p.element} proc:`;
+                            if (p.effect) msg += ` ${p.effect}`;
+                            if (typeof p.amount !== 'undefined') msg += ` amount=${p.amount}`;
+                            if (typeof p.turns !== 'undefined') msg += ` turns=${p.turns}`;
+                            if (typeof p.siphon !== 'undefined') msg += ` siphon=${p.siphon}`;
+                            if (typeof p.rot !== 'undefined') msg += ` rot=${p.rot}`;
+                            if (typeof p.heal !== 'undefined') msg += ` heal=${p.heal}`;
+                            if (typeof p.resist !== 'undefined') msg += ` resist=${(p.resist*100).toFixed(1)}%`;
+                            if (typeof p.chance !== 'undefined') msg += ` chance=${(p.chance*100).toFixed(1)}%`;
+                            DamageLog.log(`${msg} on ${tgtName}`, 'info');
+                        } catch (e2) {}
+                    });
+                }
+                if (res && typeof res.neutralReduce === 'number' && res.neutralReduce > 0) {
+                    const before = final;
+                    const after = Math.floor(final * (1 - res.neutralReduce));
+                    DamageLog.log(`${atkName} neutralization reduced PVE damage from ${before} to ${after} (${(res.neutralReduce*100).toFixed(1)}% reduction)`, 'info');
+                }
+            } catch (e) { /* ignore logging errors */ }
         }
     } catch (e) { console.error('PVE applyOnHit failed', e); }
 
@@ -2511,28 +2785,44 @@ function applyDamage(target, rawDamage, opts = {}) {
 
     // attacker enchants: execute / vampirism
     const aEnchants = (attacker._equipEnchants) ? attacker._equipEnchants : {};
+    // apply defender mitigation to extra flat enchants as well
+    const mitigationPct = Number((target._equipEnchants && target._equipEnchants.mitigationPercent) || 0) || 0;
+    const mitigationFactor = Math.max(0, 1 - (mitigationPct / 100));
     if (aEnchants.executeChance && Math.random() < Number(aEnchants.executeChance)) {
-        damageToApply += Number(aEnchants.executeDamage || 0);
+        const execAdd = Math.round(Number(aEnchants.executeDamage || 0) * mitigationFactor);
+        damageToApply += execAdd;
+        try { DamageLog.log(`${(attacker && (attacker.name || attacker.id))||'Attacker'} execute triggered: +${execAdd} damage (mitigation ${mitigationPct}%)`, 'info'); } catch(e) {}
     }
     let vampTriggered = false;
     if (aEnchants.vampirismChance && Math.random() < Number(aEnchants.vampirismChance)) {
         const vampD = Number(aEnchants.vampirismDamage || 0);
-        if (vampD > 0) { damageToApply += vampD; vampTriggered = true; }
+        if (vampD > 0) { damageToApply += Math.round(vampD * mitigationFactor); vampTriggered = true; }
+        try { if (vampTriggered) DamageLog.log(`${(attacker && (attacker.name || attacker.id))||'Attacker'} vampirism triggered: +${Math.round(vampD * mitigationFactor)} damage (mitigation ${mitigationPct}%)`, 'info'); } catch(e) {}
     }
 
     target.hp = Math.max(0, (target.hp || 0) - damageToApply);
+    try { DamageLog.log(`${(attacker && (attacker.name || attacker.id))||'Attacker'} -> ${(target && (target.name || target.id))||'Target'}: applied ${damageToApply} damage (PVE)`, 'info'); } catch(e) {}
 
     // reflect: defender reflects a percentage of damage back to attacker
     if (oEnchants.reflectPercent && Number(oEnchants.reflectPercent) > 0) {
         const refPct = Number(oEnchants.reflectPercent || 0);
         const reflectD = Math.max(0, Math.round(damageToApply * refPct));
         attacker.hp = Math.max(0, (attacker.hp || 0) - reflectD);
+        try { DamageLog.log(`${(target && (target.name || target.id))||'Target'} reflected ${reflectD} damage to ${(attacker && (attacker.name || attacker.id))||'Attacker'} (new HP ${attacker.hp})`, 'warn'); } catch(e) {}
+    }
+
+    // thorns: defender deals flat damage back to attacker when hit
+    if (oEnchants.thorns && Number(oEnchants.thorns) > 0) {
+        const thornD = Math.max(0, Math.round(Number(oEnchants.thorns || 0)));
+        if (thornD > 0) attacker.hp = Math.max(0, (attacker.hp || 0) - thornD);
+        try { DamageLog.log(`${(target && (target.name || target.id))||'Target'} thorns dealt ${thornD} to ${(attacker && (attacker.name || attacker.id))||'Attacker'} (new HP ${attacker.hp})`, 'warn'); } catch(e) {}
     }
 
     // counter: defender may deal flat counter damage back
     if (oEnchants.counterChance && Math.random() < Number(oEnchants.counterChance)) {
         const counterD = Number(oEnchants.counterDamage || 0) || 0;
         if (counterD > 0) attacker.hp = Math.max(0, (attacker.hp || 0) - counterD);
+        try { DamageLog.log(`${(target && (target.name || target.id))||'Target'} countered for ${counterD} damage to ${(attacker && (attacker.name || attacker.id))||'Attacker'} (new HP ${attacker.hp})`, 'warn'); } catch(e) {}
     }
 
     // lifesteal/vamp heal for attacker
@@ -2542,12 +2832,14 @@ function applyDamage(target, rawDamage, opts = {}) {
             if (percent > 0 && damageToApply > 0) {
                 const heal = Math.max(0, Math.round(damageToApply * percent));
                 attacker.hp = Math.min(Number(attacker.maxHp || attacker.maxHP || 100), (attacker.hp || 0) + heal);
+                    try { DamageLog.log(`${(attacker && (attacker.name || attacker.id))||'Attacker'} lifesteals ${heal} HP (now ${attacker.hp})`, 'info'); } catch(e) {}
             }
         } catch (e) { }
     }
     if (vampTriggered) {
         const vampHeal = Number(aEnchants.vampirismDamage || 0) || 0;
         if (vampHeal > 0) attacker.hp = Math.min(Number(attacker.maxHp || attacker.maxHP || 100), (attacker.hp || 0) + vampHeal);
+        try { if (vampHeal > 0) DamageLog.log(`${(attacker && (attacker.name || attacker.id))||'Attacker'} vampirism healed ${vampHeal} HP (now ${attacker.hp})`, 'info'); } catch(e) {}
     }
 
     return damageToApply;
@@ -2823,6 +3115,10 @@ function applyItemEffectToBattle(item) {
         // Apply dark inversion if present on either actor before committing updates
         const adjusted = applyDarkInversionToUpdates(player, enemy, playerUpdates, opponentUpdates, true);
 
+        // Capture previous HP values (so we can log deltas after applying adjusted updates)
+        const __prevPlayerHp = (player && typeof player.hp !== 'undefined') ? Number(player.hp) : null;
+        const __prevEnemyHp = (enemy && typeof enemy.hp !== 'undefined') ? Number(enemy.hp) : null;
+
         // Merge adjusted updates into live objects
         if (adjusted.playerUpdates) {
             if (typeof adjusted.playerUpdates.hp !== 'undefined') player.hp = adjusted.playerUpdates.hp;
@@ -2845,6 +3141,28 @@ function applyItemEffectToBattle(item) {
                 enemy.status = Object.assign({}, enemy.status || {}, adjusted.opponentUpdates.status || {});
             }
         }
+
+        // Log any HP changes so the in-game Damage Log records direct assignments
+        try {
+            if (adjusted.playerUpdates && typeof adjusted.playerUpdates.hp !== 'undefined') {
+                const prev = __prevPlayerHp;
+                const next = Number(adjusted.playerUpdates.hp);
+                const delta = (prev === null) ? 0 : (next - prev);
+                const lvl = delta < 0 ? 'warn' : 'info';
+                DamageLog.log(`${player.name || 'Player'} HP ${delta < 0 ? 'lost' : 'gained'} ${Math.abs(delta)} -> ${next} (was ${prev})`, lvl);
+            }
+            if (adjusted.opponentUpdates && typeof adjusted.opponentUpdates.hp !== 'undefined') {
+                const prevE = __prevEnemyHp;
+                const nextE = Number(adjusted.opponentUpdates.hp);
+                const deltaE = (prevE === null) ? 0 : (nextE - prevE);
+                const lvlE = deltaE < 0 ? 'warn' : 'info';
+                DamageLog.log(`${enemy.name || 'Enemy'} HP ${deltaE < 0 ? 'lost' : 'gained'} ${Math.abs(deltaE)} -> ${nextE} (was ${prevE})`, lvlE);
+                // Diagnostic: warn in console if opponent unexpectedly gained HP (possible inversion/miscompute)
+                try {
+                    if (deltaE > 0) console.warn('[PVE] opponent HP increased unexpectedly', { enemy: enemy && enemy.name, prev: prevE, next: nextE, delta: deltaE, playerUpdates: adjusted.playerUpdates, opponentUpdates: adjusted.opponentUpdates });
+                } catch (e) { void e; }
+            }
+        } catch (e) { /* ignore logging errors */ }
 
         // Check for enemy faint — if enemy has a rebirth/revive, prefer consuming it
         if (enemy && enemy.hp <= 0) {

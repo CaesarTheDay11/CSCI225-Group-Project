@@ -30,25 +30,157 @@ let countdownInterval = null;
 //this debounces death checks triggered by realtime listeners to avoid races with concurrent writes
 const _deathCheckTimers = {};
 
+// Damage log UI: a scrollable box in the bottom-right that records events.
+// By default the log is disabled; call DamageLog.show() when a match/battle starts
+// and DamageLog.hide() when it ends. This prevents the log from appearing on non-battle pages.
+const DamageLog = (function(){
+  let container = null;
+  let enabled = false; // only write logs when enabled
+  function ensure() {
+    try {
+      if (container) return container;
+      // create styles
+      const styleId = '__damage_log_style_v1';
+      if (!document.getElementById(styleId)) {
+        const s = document.createElement('style');
+        s.id = styleId;
+        s.textContent = `#__damage_log { position: fixed; right: 12px; bottom: 12px; width: 360px; height: 220px; background: rgba(0,0,0,0.8); color: #eee; font-family: inherit; font-size: 13px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,0.6); z-index: 99999; display:flex; flex-direction:column; }
+          #__damage_log .hdr { background: rgba(255,255,255,0.03); padding:6px 8px; border-top-left-radius:6px; border-top-right-radius:6px; display:flex; align-items:center; justify-content:space-between; }
+          #__damage_log .body { padding:8px; overflow:auto; flex:1; font-family: monospace; font-size:12px }
+          #__damage_log .entry { margin-bottom:6px; line-height:1.2; display:flex; gap:8px; align-items:flex-start; }
+          #__damage_log .ts { color:#88f; min-width:64px; }
+          #__damage_log .actor { color:#f6c; font-weight:600; }
+          #__damage_log .target { color:#8ff; font-weight:600; }
+          #__damage_log .amount { color:#ffb86b; font-weight:700; }
+          #__damage_log .info { color:#ddd; font-size:12px; }
+          #__damage_log .controls { display:flex; gap:6px; }
+          #__damage_log .controls button { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06); color: #fff; padding:4px 8px; border-radius:4px; cursor:pointer; font-size:12px }
+          #__damage_log .controls button:hover { background: rgba(255,255,255,0.06); }
+          `;
+        document.head.appendChild(s);
+      }
+      container = document.createElement('div');
+      container.id = '__damage_log';
+      container.innerHTML = `<div class="hdr"><div>Damage Log</div><div class="controls"><button id="__damage_log_toggle">Hide</button><button id="__damage_log_clear">Clear</button></div></div><div class="body" id="__damage_log_body"></div>`;
+      document.body.appendChild(container);
+      const btn = document.getElementById('__damage_log_clear');
+      btn.addEventListener('click', () => { const b = document.getElementById('__damage_log_body'); if (b) b.innerHTML = ''; });
+      const toggle = document.getElementById('__damage_log_toggle');
+      try {
+        const body = document.getElementById('__damage_log_body');
+        let hidden = false;
+        toggle.addEventListener('click', () => {
+          try {
+            hidden = !hidden;
+            if (body) body.style.display = hidden ? 'none' : 'block';
+            toggle.textContent = hidden ? 'Show' : 'Hide';
+            try { localStorage.setItem('__damage_log_hidden_v1', hidden ? '1' : '0'); } catch(e) {}
+          } catch(e){}
+        });
+        // restore previous state
+        try {
+          const prev = localStorage.getItem('__damage_log_hidden_v1');
+          if (prev === '1') { body.style.display = 'none'; toggle.textContent = 'Show'; }
+        } catch(e) {}
+      } catch(e) {}
+      return container;
+    } catch (e) {
+      // DOM may not be ready - try later
+      try { setTimeout(ensure, 200); } catch(e2){}
+      return null;
+    }
+  }
+
+  // Accept either a string message or a structured object to render clearer entries.
+  function log(payload, level='info') {
+    try {
+      if (!enabled) return; // don't create or write the log unless enabled
+      const c = ensure();
+      if (!c) return;
+      const body = c.querySelector('.body');
+      if (!body) return;
+      const el = document.createElement('div');
+      el.className = 'entry';
+      const ts = new Date().toLocaleTimeString();
+      if (typeof payload === 'string') {
+        el.innerHTML = `<span class="ts">[${ts}]</span><div class="info">${escapeHtml(payload)}</div>`;
+      } else if (typeof payload === 'object' && payload !== null) {
+        // structured rendering
+        const actor = escapeHtml(String(payload.actor || payload.attacker || ''));
+        const target = escapeHtml(String(payload.target || payload.defender || ''));
+        const amt = (typeof payload.final !== 'undefined') ? payload.final : (payload.amount || '');
+        const raw = (typeof payload.raw !== 'undefined') ? payload.raw : '';
+        const def = (typeof payload.def !== 'undefined') ? payload.def : '';
+        const crit = payload.crit ? '<span style="color:#ff5;">✶</span>' : '';
+        const dodged = payload.dodged ? '<span style="color:#faa;">(dodged)</span>' : '';
+        const reason = escapeHtml(String(payload.reason || payload.note || ''));
+        const elem = payload.element ? `<span style="color:#9cf">[${escapeHtml(payload.element)}]</span>` : '';
+        let procsHtml = '';
+        if (Array.isArray(payload.procs) && payload.procs.length) {
+          procsHtml = '<div class="info">';
+          payload.procs.forEach(p => {
+            try {
+              const elName = escapeHtml(String(p.element || p.elem || ''));
+              const effect = escapeHtml(String(p.effect || p.type || '')); 
+              const amount = (typeof p.amount !== 'undefined') ? escapeHtml(String(p.amount)) : '';
+              const turns = (typeof p.turns !== 'undefined') ? ` turns=${escapeHtml(String(p.turns))}` : '';
+              const resist = (typeof p.resist !== 'undefined') ? ` resist=${escapeHtml(String((p.resist*100).toFixed ? (p.resist*100).toFixed(1) : String(p.resist)))}%` : '';
+              const chance = (typeof p.chance !== 'undefined') ? ` chance=${escapeHtml(String((p.chance*100).toFixed ? (p.chance*100).toFixed(1) : String(p.chance)))}%` : '';
+              let bits = [];
+              if (elName) bits.push('['+elName+']');
+              if (effect) bits.push(effect);
+              if (amount) bits.push('amt='+amount);
+              bits.push(turns.trim());
+              if (resist) bits.push(resist.trim());
+              if (chance) bits.push(chance.trim());
+              procsHtml += '• ' + bits.filter(Boolean).join(' ') + '<br/>';
+            } catch (e) { procsHtml += escapeHtml(JSON.stringify(p)) + '<br/>'; }
+          });
+          procsHtml += '</div>';
+        }
+        el.innerHTML = `<span class="ts">[${ts}]</span><div><span class="actor">${actor}</span> → <span class="target">${target}</span> ${elem} <div class="info">${reason}</div><div class="amount">${crit} ${escapeHtml(String(amt))} HP</div><div class="info">(raw:${escapeHtml(String(raw))} def:${escapeHtml(String(def))}) ${dodged}</div>${procsHtml}</div>`;
+      } else {
+        el.innerHTML = `<span class="ts">[${ts}]</span><div class="info">${escapeHtml(String(payload))}</div>`;
+      }
+      body.appendChild(el);
+      // keep scrolled to bottom
+      body.scrollTop = body.scrollHeight;
+    } catch (e) { /* ignore logging errors */ }
+  }
+  function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function show() { enabled = true; try { ensure(); const c = document.getElementById('__damage_log'); if (c) c.style.display = 'flex'; } catch(e) {} }
+  function hide() { enabled = false; try { const c = document.getElementById('__damage_log'); if (c) c.style.display = 'none'; } catch(e) {} }
+  // attach to window so other modules (app.js) can toggle visibility
+  try { if (typeof window !== 'undefined') window.DamageLog = undefined; } catch(e) {}
+  // ensure we return control methods
+  return { log, show, hide };
+})();
+
 //this defines ABILITIES metadata
 const ABILITIES = {
-  mage_fireball: { id: 'mage_fireball', name: 'Fireball', cost: 10, cooldown: 3, desc: 'Deal strong magic damage and apply burn (DOT for 3 turns).' },
+  mage_fireball: { id: 'mage_fireball', name: 'Fireball', element: 'fire', cost: 10, cooldown: 3, desc: 'Deal strong magic damage and apply burn (DOT for 3 turns).' },
   warrior_rend:  { id: 'warrior_rend',  name: 'Rend',     cost: 0,  cooldown: 3, desc: 'Powerful physical strike that ignores some defense. (Buffed)' },
   archer_volley: { id: 'archer_volley', name: 'Volley',   cost: 0,  cooldown: 3, desc: 'Hits multiple shots; chance to reduce enemy attack.' },
   slime_splatter:{ id: 'slime_splatter',name: 'Splatter', cost: 0,  cooldown: 4, desc: 'Deals damage and applies slime (reduces healing/attack).' },
   gladiator_charge:{id:'gladiator_charge',name:'Charge',  cost: 0,  cooldown: 4, desc: 'Heavy single-target hit with chance to stun.' },
   boss_earthquake:{id:'boss_earthquake', name:'Earthquake', cost:0, cooldown:5, desc:'Massive damage and stuns the player for 1 turn.'},
-  mage_iceblast:  { id: 'mage_iceblast', name: 'Ice Blast', cost: 8, cooldown: 4, desc: 'Deal magic damage and reduce enemy ATK for 2 turns.' },
+  // tag as earth elemental (element assigned after object literal)
+  mage_iceblast:  { id: 'mage_iceblast', name: 'Ice Blast', element: 'ice', cost: 8, cooldown: 4, desc: 'Deal magic damage and reduce enemy ATK for 2 turns.' },
   warrior_shout:  { id: 'warrior_shout', name: 'Battle Shout', cost: 0, cooldown: 5, desc: 'Increase your attack boost for several turns (now +10).' },
   archer_poison:  { id: 'archer_poison', name: 'Poison Arrow', cost: 0, cooldown: 4, desc: 'Deal damage and apply poison (DOT).' }
 };
 
+// mark boss earthquake as earth-elemental
+ABILITIES.boss_earthquake.element = 'earth';
+
 ABILITIES.cleric_heal = { id: 'cleric_heal', name: 'Divine Heal', cost: 8, cooldown: 3, desc: 'Restore a moderate amount of HP to yourself and dispel poison/burn from yourself.' };
 ABILITIES.cleric_smite = { id: 'cleric_smite', name: 'Smite', cost: 6, cooldown: 4, desc: 'Holy damage that also dispels poison/burn from yourself.' };
+ABILITIES.cleric_smite.element = 'light';
 
 //this adds third ability for each class
 ABILITIES.warrior_whirlwind = { id: 'warrior_whirlwind', name: 'Whirlwind', cost: 0, cooldown: 4, desc: 'Spin and strike hard, dealing physical damage and reducing the enemy attack for a short time.' };
-ABILITIES.mage_arcane_burst = { id: 'mage_arcane_burst', name: 'Arcane Burst', cost: 12, cooldown: 5, desc: 'A focused magical blast that deals strong magic damage and empowers the caster with a temporary +9 attack instead of burning the foe.' };
+  ABILITIES.mage_arcane_burst = { id: 'mage_arcane_burst', name: 'Arcane Burst', element: 'light', cost: 12, cooldown: 5, desc: 'A focused magical blast that deals strong magic damage and empowers the caster with a temporary +9 attack instead of burning the foe.' };
 ABILITIES.archer_trap = { id: 'archer_trap', name: 'Trap', cost: 0, cooldown: 5, desc: 'Set a wound-trap on the enemy (applies bleeding over time).' };
 ABILITIES.cleric_shield = { id: 'cleric_shield', name: 'Sanctuary Shield', cost: 6, cooldown: 5, desc: 'Create a holy shield around yourself that raises defense for a few turns.' };
 ABILITIES.knight_bastion = { id: 'knight_bastion', name: 'Bastion', cost: 0, cooldown: 6, desc: 'Assume Bastion: gain +12 DEF for 3 turns (shield persists until it expires). Incoming damage is reduced by your increased defense while active.' };
@@ -59,11 +191,12 @@ ABILITIES.druid_barkskin = { id: 'druid_barkskin', name: 'Barkskin', cost: 8, co
 
 // New classes: Artificer, Valkyrie, Barbarian
 ABILITIES.artificer_turret = { id: 'artificer_turret', name: 'Deploy Turret', cost: 6, cooldown: 5, desc: 'Deploy a mechanical turret that deals damage for 3 turns.' };
-ABILITIES.artificer_shock = { id: 'artificer_shock', name: 'Arc Shock', cost: 4, cooldown: 3, desc: 'Zap the target for moderate piercing damage and a small chance to stun (ignores defense).' };
+  ABILITIES.artificer_shock = { id: 'artificer_shock', name: 'Arc Shock', element: 'electric', cost: 4, cooldown: 3, desc: 'Zap the target for moderate piercing damage and a small chance to stun (ignores defense).' };
 ABILITIES.artificer_repair_field = { id: 'artificer_repair_field', name: 'Repair Field', cost: 8, cooldown: 6, desc: 'Repair your systems: heals you and grants small regen for several turns.' };
 
 ABILITIES.valkyrie_spear = { id: 'valkyrie_spear', name: 'Spear Strike', cost: 4, cooldown: 3, desc: 'A piercing spear strike that ignores some defense.' };
 ABILITIES.valkyrie_aerial_sweep = { id: 'valkyrie_aerial_sweep', name: 'Aerial Sweep', cost: 6, cooldown: 4, desc: 'A sweeping aerial strike that deals solid damage and inflicts burn and poison.' };
+  ABILITIES.valkyrie_aerial_sweep.element = 'wind';
 ABILITIES.valkyrie_guard = { id: 'valkyrie_guard', name: 'Valkyrie Guard', cost: 6, cooldown: 5, desc: 'Raise a protective guard: gain a +10 DEF shield for several turns.' };
 
 ABILITIES.barbarian_berserk_slam = { id: 'barbarian_berserk_slam', name: 'Berserk Slam', cost: 0, cooldown: 4, desc: 'A heavy slam that deals big damage and increases your attack for a short time.' };
@@ -79,6 +212,7 @@ ABILITIES.barbarian_reckless_strike = { id: 'barbarian_reckless_strike', name: '
 ABILITIES.necro_summon_skeleton = { id: 'necro_summon_skeleton', name: 'Summon Skeleton', cost: 8, cooldown: 5, desc: 'Summon a skeleton: gain +5 ATK and +5 DEF for a few turns and poison the enemy.' };
 ABILITIES.necro_spirit_shackles = { id: 'necro_spirit_shackles', name: 'Spirit Shackles', cost: 10, cooldown: 6, desc: 'Shackle the enemy: -5 ATK for 4 turns, reduce their defense by 75% and prevent item use.' };
 ABILITIES.necro_dark_inversion = { id: 'necro_dark_inversion', name: 'Dark Inversion', cost: 12, cooldown: 8, desc: 'For 3 turns, damage heals you and healing damages you (reverse HP effects).' };
+ABILITIES.necro_dark_inversion.element = 'dark';
 
 // Wild Magic Sorcerer abilities
 ABILITIES.wild_attack = { id: 'wild_attack', name: 'Wild Magic: Attack', cost: 10, cooldown: 4, desc: 'Unleash chaotic magic (d20): effects range from caster backlash to debuffs, burn, stuns, or extra damage.' };
@@ -93,8 +227,10 @@ ABILITIES.rogue_poisoned_dagger = { id: 'rogue_poisoned_dagger', name: 'Poisoned
 
 ABILITIES.paladin_aura = { id: 'paladin_aura', name: 'Aura of Valor', cost: 0, cooldown: 5, desc: 'Boost your attack for a few turns.' };
 ABILITIES.paladin_holy_strike = { id: 'paladin_holy_strike', name: 'Holy Strike', cost: 10, cooldown: 4, desc: 'Deal holy damage and heal yourself a bit.' };
+ABILITIES.paladin_holy_strike.element = 'light';
 
 ABILITIES.necro_siphon = { id: 'necro_siphon', name: 'Siphon Life', cost: 8, cooldown: 3, desc: 'Deal damage and heal the caster for part of it. Deals double damage against targets suffering reduced healing (slimed).' };
+ABILITIES.necro_siphon.element = 'dark';
 ABILITIES.necro_raise = { id: 'necro_raise', name: 'Raise Rot', cost: 12, cooldown: 5, desc: 'Inflict a necrotic poison that deals stronger damage over several turns.' };
 
 ABILITIES.druid_entangle = { id: 'druid_entangle', name: 'Entangle', cost: 0, cooldown: 3, desc: "Conjure grasping vines that deal immediate damage, 10% chance to stun, and weaken the target's attack for 2 turns." };
@@ -106,6 +242,61 @@ ABILITIES.attack = { id: 'attack', name: 'Attack', desc: 'Basic physical attack 
 ABILITIES.heal = { id: 'heal', name: 'Heal', desc: 'Basic heal — recover a small amount of HP for yourself.' };
 ABILITIES.defend = { id: 'defend', name: 'Defend', desc: 'Defend — brace to gain a small temporary defense bonus that reduces damage from the next enemy attack.' };
 ABILITIES.prepare = { id: 'prepare', name: 'Prepare', desc: 'Prepare — gain a temporary attack boost that lasts 1-2 turns.' };
+
+// Additional elemental tags for abilities (comprehensive mapping)
+ABILITIES.archer_poison.element = 'earth';
+ABILITIES.druid_barkskin.element = 'earth';
+ABILITIES.monk_quivering_palm.element = 'earth';
+ABILITIES.rogue_poisoned_dagger.element = 'earth';
+ABILITIES.necro_raise.element = 'earth';
+ABILITIES.druid_entangle.element = 'earth';
+ABILITIES.druid_regrowth.element = 'earth';
+
+ABILITIES.cleric_heal.element = 'light';
+// cleric_smite already tagged as light earlier
+ABILITIES.paladin_bless.element = 'light';
+ABILITIES.wild_buff.element = 'light';
+
+ABILITIES.necro_curse.element = 'dark';
+// necro_dark_inversion, necro_siphon already tagged dark
+ABILITIES.necro_spirit_shackles.element = 'dark';
+ABILITIES.necro_summon_skeleton.element = 'dark';
+ABILITIES.wild_arcanum.element = 'dark';
+
+// lightning/electric mapping
+ABILITIES.wild_attack.element = 'electric';
+// artificer_shock already uses 'electric'
+
+// wind mapping
+ABILITIES.rogue_backstab.element = 'wind';
+// valkyrie_aerial_sweep already set to 'wind'
+
+// Added element tags requested by user
+ABILITIES.cleric_shield.element = 'fire';
+ABILITIES.barbarian_berserk_slam.element = 'fire';
+ABILITIES.monk_flurry.element = 'fire';
+
+ABILITIES.warrior_rend.element = 'earth';
+ABILITIES.archer_trap.element = 'earth';
+ABILITIES.knight_guard.element = 'earth';
+ABILITIES.knight_bastion.element = 'earth';
+
+ABILITIES.artificer_repair_field.element = 'light';
+ABILITIES.valkyrie_guard.element = 'light';
+
+// map 'lightning' requested -> use internal 'electric'
+ABILITIES.artificer_turret.element = 'electric';
+ABILITIES.warrior_shout.element = 'electric';
+ABILITIES.barbarian_war_cry.element = 'electric';
+ABILITIES.knight_charge.element = 'electric';
+ABILITIES.monk_stunning_blow.element = 'electric';
+
+ABILITIES.warrior_whirlwind.element = 'wind';
+ABILITIES.archer_volley.element = 'wind';
+ABILITIES.rogue_evade.element = 'wind';
+ABILITIES.valkyrie_spear.element = 'wind';
+
+ABILITIES.barbarian_reckless_strike.element = 'dark';
 
 const CLASS_STATS = {
   warrior: { name: 'Warrior', hp: 210, maxHp: 210, baseAtk: 20, defense: 9, speed: 5, critChance: 0.04, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['warrior_rend', 'warrior_shout', 'warrior_whirlwind'] },
@@ -120,7 +311,7 @@ const CLASS_STATS = {
   monk:    { name: 'Monk',    hp: 188, maxHp: 188, baseAtk: 20, defense: 6, speed: 8, critChance: 0.08, evasion: 0.05, attackBoost: 0, fainted: false, abilities: ['monk_flurry', 'monk_stunning_blow', 'monk_quivering_palm'], mana: 20 },
   wild_magic_sorcerer: { name: 'Wild Magic Sorcerer', hp: 128, maxHp: 128, baseAtk: 21, defense: 2, speed: 6, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['wild_attack', 'wild_buff', 'wild_arcanum'], mana: 40 },
   druid:   { name: 'Druid',   hp: 165, maxHp: 165, baseAtk: 21, defense: 5, speed: 6, critChance: 0.05, evasion: 0.04, attackBoost: 0, fainted: false, abilities: ['druid_entangle', 'druid_regrowth', 'druid_barkskin'], mana: 30 },
-  artificer: { name: 'Artificer', hp: 140, maxHp: 140, baseAtk: 23, defense: 9, speed: 5, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['artificer_turret','artificer_shock','artificer_repair_field'], mana: 40 },
+  artificer: { name: 'Artificer', hp: 140, maxHp: 140, baseAtk: 24, defense: 9, speed: 5, critChance: 0.06, evasion: 0.03, attackBoost: 0, fainted: false, abilities: ['artificer_turret','artificer_shock','artificer_repair_field'], mana: 40 },
   valkyrie: { name: 'Valkyrie', hp: 195, maxHp: 195, baseAtk: 21, defense: 5, speed: 8, critChance: 0.06, evasion: 0.05, attackBoost: 0, fainted: false, abilities: ['valkyrie_spear','valkyrie_aerial_sweep','valkyrie_guard'], mana: 30 },
   barbarian: { name: 'Barbarian', hp: 210, maxHp: 210, baseAtk: 22, defense: 4, speed: 6, critChance: 0.05, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['barbarian_berserk_slam','barbarian_war_cry','barbarian_reckless_strike'], mana: 0 }
 };
@@ -316,6 +507,7 @@ function applyDamageToObject(targetObj, rawDamage, opts = {}) {
         try {
           window._lastPvpDamageInfo = { rawDamage: Number(rawDamage||0), final: 0, newHp: targetObj.hp||0, isCrit: false, dodged: true, defenseAbsorbed: false };
         } catch(e){}
+        try { DamageLog.log((opts.attacker && (opts.attacker.name || opts.attacker.id) ? (opts.attacker.name || opts.attacker.id) : 'Attacker') + " attack was dodged by " + (targetObj.name || 'Target'), 'info'); } catch(e){}
         return { damage: 0, newHp: targetObj.hp || 0, dodged: true, isCrit: false };
       }
     } catch (e) { /* ignore RNG errors */ }
@@ -324,12 +516,44 @@ function applyDamageToObject(targetObj, rawDamage, opts = {}) {
   const defense = ignoreDefense ? 0 : (targetObj.defense || 0);
   let final = Math.max(0, Math.round(rawDamage - defense));
 
+  // Apply attacker-sourced true damage (bypasses defense) and low-HP bonuses
+  try {
+    const attacker = opts.attacker || null;
+    const attackerEnchants = attacker ? (attacker._equipEnchants || attacker._equipMods || {}) : {};
+    const defenderEnchants = targetObj ? (targetObj._equipEnchants || targetObj._equipMods || {}) : {};
+    // trueDamage: flat damage added after defense
+    const trueD = Number(attackerEnchants.trueDamage || 0) || 0;
+    if (trueD > 0) final = final + Math.max(0, Math.round(trueD));
+
+    // lowHpDamage: percent bonus when target is at or below 35% HP
+    const lowHpPct = Number(attackerEnchants.lowHpDamage || 0) || 0;
+    try {
+      const cur = Number(targetObj.hp || 0);
+      const maxHpLocal = Number(targetObj.maxHp || targetObj.maxHP || 100) || 100;
+      const frac = maxHpLocal > 0 ? (cur / maxHpLocal) : 1;
+      if (lowHpPct > 0 && frac <= 0.35) {
+        final = Math.max(0, Math.round(final * (1 + (lowHpPct / 100))));
+      }
+    } catch (e) { /* ignore low-hp calc errors */ }
+
+    // Defender mitigation: percent damage reduction applied at the end of this helper
+    // (stored as whole percents like 1,3,6 -> convert to fraction)
+    const mitPct = Number(defenderEnchants.mitigationPercent || 0) || 0;
+    if (mitPct > 0) {
+      const mit = Math.max(0, Math.min(0.95, (mitPct / 100)));
+      final = Math.max(0, Math.round(final * (1 - mit)));
+    }
+  } catch (e) { /* best-effort only */ }
+
   // Crit check (attacker may deal increased damage)
   let isCrit = false;
   const critChance = attacker ? Number(attacker.critChance || 0) : 0;
   if (considerHit && critChance > 0) {
     try {
-      if (Math.random() < critChance) {
+      // Account for target crit resistance when present (may be exposed via _equipEnchants or a direct field)
+      const targetCritResist = Number((targetObj && ((targetObj._equipEnchants && targetObj._equipEnchants.critResist) || targetObj.critResist)) || 0) || 0;
+      const effectiveCritChance = Math.max(0, critChance - targetCritResist);
+      if (Math.random() < effectiveCritChance) {
         isCrit = true;
         // Allow gear to increase crit damage via _critDamageBonus (stored as percent points)
         const critBonusPct = Number((attacker && (attacker._critDamageBonus || (attacker._equipEnchants && attacker._equipEnchants.critDamageBonus))) || 0) || 0;
@@ -355,11 +579,111 @@ function applyDamageToObject(targetObj, rawDamage, opts = {}) {
       dodged: !!dodged,
       defenseAbsorbed: !!defenseAbsorbed
     };
+    try {
+      const atkName = (attacker && (attacker.name || attacker.id)) ? (attacker.name || attacker.id) : 'Attacker';
+      const tgtName = (targetObj && (targetObj.name || targetObj.id)) ? (targetObj.name || targetObj.id) : 'Target';
+      DamageLog.log(`${atkName} -> ${tgtName}: raw=${Number(rawDamage||0)}, def=${defense||0}, final=${final}, crit=${!!isCrit}, dodged=${!!dodged}`, 'info');
+    } catch(e) {}
   } catch (e) { /* ignore global set errors */ }
 
-  return { damage: final, newHp, isCrit, dodged: false, defenseAbsorbed };
+  // Final instrumentation log (helps the in-game Damage Log show unified entries)
+  try {
+    const atkName = (attacker && (attacker.name || attacker.id)) ? (attacker.name || attacker.id) : 'Attacker';
+    const tgtName = (targetObj && (targetObj.name || targetObj.id)) ? (targetObj.name || targetObj.id) : 'Target';
+    const level = dodged ? 'warn' : 'info';
+    DamageLog.log(`${atkName} -> ${tgtName}: dealt ${final} dmg (raw=${Number(rawDamage||0)}, def=${defense||0}, crit=${!!isCrit}, dodged=${!!dodged})`, level);
+  } catch (e) { /* ignore logging errors */ }
+
+  return { damage: final, newHp, isCrit, dodged: !!dodged, defenseAbsorbed };
 }
 
+// Debug helper: compute and print class base stats and gear-applied stats for a given user or stats object.
+// Usage examples (in browser console):
+//   window.dumpComputedStats('uid_abc123'); // fetches user and gear from server (best-effort)
+//   window.dumpComputedStats(playerStatsObject); // computes based on provided object and local gear (if equipped list present)
+window.dumpComputedStats = async function(arg) {
+  try {
+    // helper to shallow-clone an object
+    const clone = (o) => JSON.parse(JSON.stringify(o || {}));
+    let template = null;
+    let gearItems = [];
+
+    if (!arg) {
+      console.warn('dumpComputedStats: provide a uid string or a stats-like object');
+      return null;
+    }
+
+    if (typeof arg === 'object') {
+      // stats-like object passed in
+      template = clone(arg);
+      // try to pull equipped IDs from the object if present (for remote match seeds)
+      const eq = template.equipped || template._equipList || template.equippedMap || null;
+      if (eq && Array.isArray(eq)) {
+        // assume it's an array of gear objects
+        gearItems = eq.slice();
+      } else if (eq && typeof eq === 'object') {
+        const ids = Object.values(eq).filter(Boolean);
+        // attempt to fetch items for currentUserId only
+        if (ids.length && typeof db !== 'undefined' && typeof ref === 'function' && typeof get === 'function' && currentUserId) {
+          gearItems = await Promise.all(ids.map(id => get(ref(db, `users/${currentUserId}/gear/${id}`)).then(s=>s.exists()?s.val():null).catch(()=>null)));
+          gearItems = gearItems.filter(Boolean);
+        }
+      }
+    } else if (typeof arg === 'string') {
+      const uid = arg;
+      // fetch user's selectedClass and build base template
+      if (typeof db !== 'undefined' && typeof ref === 'function' && typeof get === 'function') {
+        try {
+          const userSnap = await get(ref(db, `users/${uid}`));
+          const userVal = userSnap.exists() ? (userSnap.val() || {}) : {};
+          const selected = userVal.selectedClass || (typeof localStorage !== 'undefined' ? localStorage.getItem('selectedClass') : null) || 'warrior';
+          template = clone(CLASS_STATS[selected] || CLASS_STATS.warrior || {});
+          // attempt to fetch equipped map from match node if available
+          if (matchId) {
+            try {
+              const pSnap = await get(ref(db, `matches/${matchId}/players/${uid}`));
+              const pVal = pSnap.exists() ? (pSnap.val() || {}) : {};
+              const equipped = pVal.equipped || {};
+              const ids = Object.values(equipped).filter(Boolean);
+              if (ids.length) {
+                const items = await Promise.all(ids.map(id => get(ref(db, `users/${uid}/gear/${id}`)).then(s=>s.exists()?s.val():null).catch(()=>null)));
+                gearItems = items.filter(Boolean);
+              }
+            } catch (e) { /* ignore */ }
+          }
+          // fallback: if no match node items, try local storage for current user only
+          if (!gearItems.length && uid === currentUserId && typeof Gear !== 'undefined' && typeof Gear.getArmory === 'function') {
+            try {
+              const localEq = JSON.parse(localStorage.getItem('armory_equip_v1') || '{}') || {};
+              const ids = Object.values(localEq).filter(Boolean);
+              if (ids.length) {
+                const arm = Gear.getArmory() || [];
+                gearItems = ids.map(id => arm.find(x=>x.id===id)).filter(Boolean);
+              }
+            } catch(e){}
+          }
+        } catch (e) { console.warn('dumpComputedStats: failed to fetch user', e); }
+      } else {
+        console.warn('dumpComputedStats: no db available to fetch user');
+      }
+    }
+
+    if (!template) { console.warn('dumpComputedStats: could not build base template'); return null; }
+
+    const before = clone(template);
+    // apply gear items if available; prefer Gear.applyGearListToStats when present
+    if (Array.isArray(gearItems) && gearItems.length && typeof Gear !== 'undefined' && typeof Gear.applyGearListToStats === 'function') {
+      try { Gear.applyGearListToStats(template, gearItems); } catch (e) { console.warn('applyGearListToStats failed', e); }
+    }
+
+    console.group('dumpComputedStats');
+    console.log('base:', before);
+    console.log('with gear applied:', template);
+    if (template._equipMods) console.log('computed mods:', template._equipMods);
+    console.groupEnd();
+    return { base: before, computed: template, mods: template._equipMods || {} };
+  } catch (e) { console.error('dumpComputedStats failure', e); return null; }
+};
 // Effective attack includes baseAtk plus any one-turn strength boosts
 function getEffectiveBaseAtk(user, fallback = 10) {
   if (!user) return fallback;
@@ -379,7 +703,10 @@ function getEffectiveBaseAtk(user, fallback = 10) {
     }
   } catch (e) { /* ignore */ }
   const temp = (user.status && user.status.strength_boost) ? Number(user.status.strength_boost.amount || 0) : 0;
-  return base + temp;
+  // Include attackBoost in effective attack for abilities so attack boosts
+  // also amplify magical/elemental specials that use this helper.
+  const atkBoost = Number(user.attackBoost || 0);
+  return base + temp + atkBoost;
 }
 
 function tickCooldownsObject(abilityCooldowns) {
@@ -593,7 +920,12 @@ function processStatusEffectsLocal(actorStats, opponentStats) {
   if (status.burn) {
     const effectiveAtk = getEffectiveBaseAtk(actorStats, actorStats.baseAtk || 10);
     // support both legacy .dmg and gear-produced .amount fields
-    const dmg = (typeof status.burn.dmg !== 'undefined' ? status.burn.dmg : (typeof status.burn.amount !== 'undefined' ? status.burn.amount : Math.max(1, Math.floor(effectiveAtk / 3))));
+    let dmg = (typeof status.burn.dmg !== 'undefined' ? status.burn.dmg : (typeof status.burn.amount !== 'undefined' ? status.burn.amount : Math.max(1, Math.floor(effectiveAtk / 3))));
+    // reduce burn damage by burn resist (stored as fractional percent like 0.02 = 2%) on the actor
+    try {
+      const res = Number((actorStats._equipEnchants && actorStats._equipEnchants.burnResistPercent) || 0) || 0;
+      if (res > 0) dmg = Math.max(0, Math.round(dmg * (1 - res)));
+    } catch (e) {}
     const { damage, newHp } = applyDamageToObject({ hp: actorStats.hp, defense: 0 }, dmg, { ignoreDefense: true });
   updates.hp = newHp;
     messages.push(`${actorStats.name || 'Player'} suffers ${damage} burn damage.`);
@@ -615,7 +947,11 @@ function processStatusEffectsLocal(actorStats, opponentStats) {
   // Poison: DOT
   if (status.poison) {
     // support both legacy .dmg and gear-produced .amount fields
-    const pDmg = (typeof status.poison.dmg !== 'undefined' ? status.poison.dmg : (typeof status.poison.amount !== 'undefined' ? status.poison.amount : 1));
+    let pDmg = (typeof status.poison.dmg !== 'undefined' ? status.poison.dmg : (typeof status.poison.amount !== 'undefined' ? status.poison.amount : 1));
+    try {
+      const pres = Number((actorStats._equipEnchants && actorStats._equipEnchants.poisonResistPercent) || 0) || 0;
+      if (pres > 0) pDmg = Math.max(0, Math.round(pDmg * (1 - pres)));
+    } catch (e) {}
     const { damage, newHp } = applyDamageToObject({ hp: (updates.hp ?? actorStats.hp) }, pDmg, { ignoreDefense: true });
     updates.hp = newHp;
     messages.push(`${actorStats.name || 'Player'} suffers ${damage} poison damage.`);
@@ -1484,7 +1820,7 @@ const modernAbilityHandlers = {
     playerUpdates.status = newStatus;
     // poison the enemy lightly
     const oppStatus = Object.assign({}, target.status || {});
-    const incoming = { turns: 3, dmg: Math.max(1, Math.floor((user.baseAtk * 2 || 8) / 3)) };
+  const incoming = { turns: 3, dmg: Math.max(1, Math.floor((getEffectiveBaseAtk(user,8) * 2 || 8) / 3)) };
     if (oppStatus.poison) {
       oppStatus.poison.dmg = Math.max(oppStatus.poison.dmg || 0, incoming.dmg);
       oppStatus.poison.turns = Math.max(oppStatus.poison.turns || 0, incoming.turns);
@@ -3343,9 +3679,12 @@ async function renderSpecialButtons() {
     const cd = (playerStats.abilityCooldowns && (playerStats.abilityCooldowns[abilityId] || 0)) || 0;
     const cost = abil.cost || 0;
 
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = `${abil.name}${cd > 0 ? ` (CD:${cd})` : (cost ? ` (${cost}M)` : '')}`;
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  // If ability has an element tag, show it on the button: e.g. [Fire] Fireball
+  const elemMap = { electric: 'Lightning', fire: 'Fire', ice: 'Ice', wind: 'Wind', earth: 'Earth', dark: 'Dark', light: 'Light', neutral: 'Neutral' };
+  const tag = abil.element ? (`[${elemMap[abil.element] || (abil.element.charAt(0).toUpperCase() + abil.element.slice(1))}] `) : '';
+  btn.textContent = `${tag}${abil.name}${cd > 0 ? ` (CD:${cd})` : (cost ? ` (${cost}M)` : '')}`;
     btn.disabled = !isMyTurn || cd > 0 || (cost && ((playerStats.mana || 0) < cost));
     // use custom styled tooltip instead of native title
     if (abil.desc) {
@@ -3505,7 +3844,7 @@ async function chooseMove(move) {
   // local control: if gear grants an immediate extra-action this turn we'll set this flag
     const statusRes = processStatusEffectsLocal(calcPlayer, calcOpponent);
   console.log('[chooseMove] statusRes', statusRes);
-    if (statusRes.messages && statusRes.messages.length) statusRes.messages.forEach(m => logMessage(m));
+  if (statusRes.messages && statusRes.messages.length) statusRes.messages.forEach(m => { logMessage(m); try { DamageLog.log(m, 'info'); } catch(e){} });
     if ((statusRes.updates && Object.keys(statusRes.updates).length) || (statusRes.opponentUpdates && Object.keys(statusRes.opponentUpdates).length)) {
       // Respect dark_inversion when applying status tick updates (e.g., regen, burn, poison)
       const adjustedStatus = applyDarkInversionToUpdates(playerStats, opponentStats, statusRes.updates || {}, statusRes.opponentUpdates || {}, true);
@@ -3685,11 +4024,37 @@ async function chooseMove(move) {
             if (res && res.attackerUpdates && Object.keys(res.attackerUpdates).length) {
               playerUpdates = Object.assign(playerUpdates || {}, res.attackerUpdates);
             }
-            // neutralReduce applies after damage calculation
-            if (res && typeof res.neutralReduce === 'number' && res.neutralReduce > 0) {
-              const reduced = Math.floor(baseDamage * (1 - res.neutralReduce));
-              moveDamage = reduced;
-            }
+                // neutralReduce applies after damage calculation
+                if (res && typeof res.neutralReduce === 'number' && res.neutralReduce > 0) {
+                  const reduced = Math.floor(baseDamage * (1 - res.neutralReduce));
+                  moveDamage = reduced;
+                }
+                // Log elemental procs and detailed reasons
+                try {
+                  const atkName = (calcPlayer && (calcPlayer.name || calcPlayer.id)) ? (calcPlayer.name || calcPlayer.id) : 'Attacker';
+                  const tgtName = (calcOpponent && (calcOpponent.name || calcOpponent.id)) ? (calcOpponent.name || calcOpponent.id) : 'Target';
+                  if (res && Array.isArray(res.procs) && res.procs.length) {
+                    res.procs.forEach(p => {
+                      try {
+                        let msg = `${atkName} element ${p.element} proc:`;
+                        if (p.effect) msg += ` ${p.effect}`;
+                        if (typeof p.amount !== 'undefined') msg += ` amount=${p.amount}`;
+                        if (typeof p.turns !== 'undefined') msg += ` turns=${p.turns}`;
+                        if (typeof p.siphon !== 'undefined') msg += ` siphon=${p.siphon}`;
+                        if (typeof p.rot !== 'undefined') msg += ` rot=${p.rot}`;
+                        if (typeof p.heal !== 'undefined') msg += ` heal=${p.heal}`;
+                        if (typeof p.resist !== 'undefined') msg += ` resist=${(p.resist*100).toFixed(1)}%`;
+                        if (typeof p.chance !== 'undefined') msg += ` chance=${(p.chance*100).toFixed(1)}%`;
+                        DamageLog.log(`${msg} on ${tgtName}`, 'info');
+                      } catch (e2) {}
+                    });
+                  }
+                  if (res && typeof res.neutralReduce === 'number' && res.neutralReduce > 0) {
+                    const before = baseDamage;
+                    const after = moveDamage;
+                    DamageLog.log(`${atkName} neutralization reduced damage from ${before} to ${after} (${(res.neutralReduce*100).toFixed(1)}% reduction)`, 'info');
+                  }
+                } catch (e) { /* best-effort logging */ }
           } else if (preHitStatus) {
             opponentUpdates.status = Object.assign({}, preHitStatus);
           }
@@ -3710,16 +4075,26 @@ async function chooseMove(move) {
 
         // attacker execute / vampirism / extra damage checks (from enchants)
         const attackerEnchants = (calcPlayer._equipEnchants) ? calcPlayer._equipEnchants : {};
+        // defensive mitigation on defender (applies to extras as well) - stored as whole percent
+        const mitigationPct = Number(oEnchants.mitigationPercent || 0) || 0;
+        const mitigationFactor = Math.max(0, 1 - (mitigationPct / 100));
         if (attackerEnchants.executeChance && Math.random() < Number(attackerEnchants.executeChance)) {
-          damageToApply += Number(attackerEnchants.executeDamage || 0);
+          const addExec = Math.round(Number(attackerEnchants.executeDamage || 0) * mitigationFactor);
+          damageToApply += addExec;
           matchUpdates._executeTriggered = true;
+          try {
+            const atkName = (calcPlayer && (calcPlayer.name || calcPlayer.id)) ? (calcPlayer.name || calcPlayer.id) : 'Attacker';
+            DamageLog.log(`${atkName} execute triggered: +${addExec} damage (mitigation ${mitigationPct}%)`, 'info');
+          } catch(e) {}
         }
         let vampTriggered = false;
         if (attackerEnchants.vampirismChance && Math.random() < Number(attackerEnchants.vampirismChance)) {
           const vampD = Number(attackerEnchants.vampirismDamage || 0);
           if (vampD > 0) {
-            damageToApply += vampD;
+            const addVamp = Math.round(Number(vampD) * mitigationFactor);
+            damageToApply += addVamp;
             vampTriggered = true;
+            try { DamageLog.log(`${(calcPlayer && (calcPlayer.name || calcPlayer.id)) || 'Attacker'} vampirism triggered: +${addVamp} damage (mitigation ${mitigationPct}%)`, 'info'); } catch(e) {}
           }
         }
 
@@ -3746,9 +4121,25 @@ async function chooseMove(move) {
               if (refRes && typeof refRes.newHp !== 'undefined') {
                 playerUpdates.hp = refRes.newHp;
                 playerUpdates._reflected = refRes.damage || reflectD;
+                try { DamageLog.log(`${(playerStats && (playerStats.name || playerStats.id)) || 'Player'} took ${playerUpdates._reflected} reflected damage (new HP ${playerUpdates.hp})`, 'warn'); } catch(e) {}
               }
             }
           } catch (e) { console.error('Reflect processing failed', e); }
+        }
+
+        // thorns: defender deals flat damage back to attacker when hit
+        if (oEnchants.thorns && Number(oEnchants.thorns) > 0) {
+          try {
+            const thornD = Math.max(0, Math.round(Number(oEnchants.thorns || 0)));
+            if (thornD > 0) {
+              const thRes = applyDamageToObject({ hp: playerStats.hp, defense: playerStats.defense || 0, evasion: playerStats.evasion || 0 }, thornD, { attacker: calcOpponent });
+              if (thRes && typeof thRes.newHp !== 'undefined') {
+                playerUpdates.hp = thRes.newHp;
+                playerUpdates._thorns = thRes.damage || thornD;
+                try { DamageLog.log(`${(playerStats && (playerStats.name || playerStats.id)) || 'Player'} took ${playerUpdates._thorns} thorns damage (new HP ${playerUpdates.hp})`, 'warn'); } catch(e) {}
+              }
+            }
+          } catch (e) { console.error('Thorns processing failed', e); }
         }
 
         // counter: defender may deal flat counter damage back
@@ -3760,6 +4151,7 @@ async function chooseMove(move) {
               if (ctrRes && typeof ctrRes.newHp !== 'undefined') {
                 playerUpdates.hp = ctrRes.newHp;
                 playerUpdates._countered = ctrRes.damage || counterD;
+                try { DamageLog.log(`${(playerStats && (playerStats.name || playerStats.id)) || 'Player'} was countered for ${playerUpdates._countered} damage (new HP ${playerUpdates.hp})`, 'warn'); } catch(e) {}
               }
             }
           } catch (e) { console.error('Counter processing failed', e); }
@@ -3775,6 +4167,7 @@ async function chooseMove(move) {
               const maxHpLocal = Number(playerStats.maxHp || playerStats.maxHP || 100);
               playerUpdates.hp = Math.min(maxHpLocal, (curHp || 0) + heal);
               playerUpdates._lifesteal = heal;
+                try { DamageLog.log(`${(calcPlayer && (calcPlayer.name || calcPlayer.id)) || 'Attacker'} lifesteals ${heal} HP (now ${playerUpdates.hp})`, 'info'); } catch(e) {}
             }
           } catch (e) { /* ignore lifesteal errors */ }
         }
@@ -3787,6 +4180,7 @@ async function chooseMove(move) {
             const maxHpLocal = Number(playerStats.maxHp || playerStats.maxHP || 100);
             playerUpdates.hp = Math.min(maxHpLocal, (curHp || 0) + vampHeal);
             playerUpdates._vampirism = vampHeal;
+            try { DamageLog.log(`${(calcPlayer && (calcPlayer.name || calcPlayer.id)) || 'Attacker'} vampirism heal ${vampHeal} HP (now ${playerUpdates.hp})`, 'info'); } catch(e) {}
           }
         }
       }
@@ -3906,6 +4300,24 @@ async function chooseMove(move) {
   // Re-evaluate fainting / game over based on adjusted HP values (post-inversion)
   const postPlayerHp = (typeof adjusted.playerUpdates.hp !== 'undefined') ? adjusted.playerUpdates.hp : playerStats.hp;
   const postOpponentHp = (typeof adjusted.opponentUpdates.hp !== 'undefined') ? adjusted.opponentUpdates.hp : opponentStats.hp;
+  // Log any HP changes produced by handlers so the Damage Log shows them even when
+  // the handler updated HP directly (not via applyDamageToObject).
+  try {
+    if (typeof adjusted.playerUpdates !== 'undefined' && typeof adjusted.playerUpdates.hp !== 'undefined') {
+      const prev = Number(playerStats.hp || 0);
+      const next = Number(postPlayerHp || 0);
+      const delta = next - prev;
+      const lvl = delta < 0 ? 'warn' : 'info';
+      DamageLog.log(`${playerStats.name || 'Player'} HP ${delta < 0 ? 'lost' : 'gained'} ${Math.abs(delta)} -> ${next} (was ${prev})`, lvl);
+    }
+    if (typeof adjusted.opponentUpdates !== 'undefined' && typeof adjusted.opponentUpdates.hp !== 'undefined') {
+      const prevO = Number(opponentStats.hp || 0);
+      const nextO = Number(postOpponentHp || 0);
+      const deltaO = nextO - prevO;
+      const lvlO = deltaO < 0 ? 'warn' : 'info';
+      DamageLog.log(`${opponentStats.name || 'Opponent'} HP ${deltaO < 0 ? 'lost' : 'gained'} ${Math.abs(deltaO)} -> ${nextO} (was ${prevO})`, lvlO);
+    }
+  } catch (e) { /* best-effort logging only */ }
   // Clear any pre-set match finish info from handlers so we decide based on post-inversion HP
   if (matchUpdates) {
     // clear any pre-set finish/winner/message set by handlers so we decide outcome from post-inversion HP
@@ -4057,8 +4469,8 @@ async function chooseSpecial(abilityId) {
         } catch (ee) { console.warn('applyEquipToStats for special tick opponent failed', ee); }
       }
     } catch (e) { console.warn('applyEquipToStats failed for tick in chooseSpecial', e); }
-    const statusRes = processStatusEffectsLocal(calcPlayerForTick, calcOpponentForTick);
-    if (statusRes.messages && statusRes.messages.length) statusRes.messages.forEach(m => logMessage(m));
+  const statusRes = processStatusEffectsLocal(calcPlayerForTick, calcOpponentForTick);
+  if (statusRes.messages && statusRes.messages.length) statusRes.messages.forEach(m => { logMessage(m); try { DamageLog.log(m, 'info'); } catch(e){} });
     if ((statusRes.updates && Object.keys(statusRes.updates).length) || (statusRes.opponentUpdates && Object.keys(statusRes.opponentUpdates).length)) {
       const adjustedStatus = applyDarkInversionToUpdates(playerStats, opponentStats, statusRes.updates || {}, statusRes.opponentUpdates || {}, true);
       if (adjustedStatus.playerUpdates && Object.keys(adjustedStatus.playerUpdates).length) {

@@ -8,20 +8,34 @@
   const SLOTS = ['helmet','chestplate','bracers','pants','boots','ring1','ring2','necklace','left_weapon','right_weapon','ranged','shield'];
   const RARITIES = [ 'common', 'uncommon', 'rare', 'epic', 'legendary' ];
   const ELEMENTS = ['fire','electric','ice','wind','earth','neutral'];
-  // Generation-time scaling: bake multipliers into generated items so displayed
-  // item numbers reflect effective stats (HP x3, defense x1.4). Modifier-time
-  // scaling is disabled to avoid double-application.
-  const GEN_HP_FACTOR = 4.0; // multiply HP baseStatValue by 4 at generation (increase HP power)
-  const GEN_DEFENSE_FACTOR = 1.4; // multiply defense baseStatValue by 1.4 at generation
+  // Generation-time scaling: previously we baked aggressive multipliers into
+  // generated items (HP x4, defense x1.4). That produced surprising large
+  // effective HP/defense values (displayed class HP didn't match actual values).
+  // Reduce generation-time scaling to 1.0 so generated items' baseStatValue is
+  // the raw value and downstream modifiers remain predictable.
+  const GEN_HP_FACTOR = 1.0; // no HP inflation at generation
+  const GEN_DEFENSE_FACTOR = 1.0; // no defense inflation at generation
 
   // Runtime modifier scaling (disabled; handled at generation)
   const ATTACK_FACTOR = 1.0; // no attack scaling at modifier time
   const DEFENSE_FACTOR = 1.0; // no defense scaling at modifier time
   const HP_FACTOR = 1.0; // no HP scaling at modifier time
-  // Secondary types and a compact choice space: 10 unique secondary types X 3 variants = 30 choices
+  // Secondary types and a compact choice space. Add a few more useful secondaries
+  // so gear variety is wider. Each type has SECONDARY_VARIANT_COUNT variants.
   // Order secondary types so index ranges map as: 0-2=lifesteal, 3-5=regen, 6-8=attack, etc.
-  const SECONDARY_TYPES = ['lifesteal','regen','attack','defense','hp','speed','critChance','evasion','accuracy','pierce','maxHpPercent'];
+  const SECONDARY_TYPES = ['lifesteal','regen','attack','defense','hp','speed','critChance','evasion','accuracy','pierce','maxHpPercent','critDamage','manaRegen','blockChance','reflectPercent','thorns','critResist','fireDamage','iceDamage','lightningDamage','windDamage','earthDamage','darkDamage',
+    // new suggested secondaries
+    'trueDamage','lowHpDamage','luck','executeDamage','stunResist','burnResist','poisonResist','mitigationPercent'];
   const SECONDARY_VARIANT_COUNT = 3; // low/mid/high
+
+  // How many named secondaries (randStats) each rarity should include.
+  // User requested: uncommon=3, rare=4, epic=5, legendary=6. Keep common at 2.
+  const RARITY_SECONDARY_COUNT = { common: 2, uncommon: 3, rare: 4, epic: 5, legendary: 6 };
+
+  // Desired per-rarity chance for an item to be "supercharged" (have an enchant
+  // that targets one of its secondaries). We'll enforce this probabilistically
+  // during generation so rates match the requested targets.
+  const DESIRED_SUPERCHARGE = { common: 0.01, uncommon: 0.03, rare: 0.06, epic: 0.12, legendary: 0.18 };
 
   // Interpret a compact secondary choice index into a { type, value } pair using the item's base stat value.
   function interpretSecondaryChoice(choiceIdx, baseVal) {
@@ -67,6 +81,46 @@
         const scales = [0.02, 0.04, 0.06];
         value = +(Math.round(scales[variant] * 10000) / 10000) || scales[variant];
       } break;
+      case 'thorns': {
+        // Flat damage returned to attacker when hit
+        const vals = [1, 3, 6];
+        value = Math.round(vals[variant]);
+      } break;
+      case 'critResist': {
+        // Reduce incoming crit chance (fractional)
+        const scales = [0.02, 0.05, 0.10];
+        value = +(Math.round(scales[variant] * 10000) / 10000) || scales[variant];
+      } break;
+      // Element damage types add element power directly
+      case 'fireDamage':
+      case 'iceDamage':
+      case 'lightningDamage':
+      case 'windDamage':
+      case 'earthDamage':
+      case 'darkDamage': {
+        const scales = [0.2, 0.5, 1.0];
+        value = Math.max(1, Math.round(baseVal * scales[variant]));
+      } break;
+      case 'critDamage': {
+        // Percent points added to crit damage (e.g., +10 => +10%)
+        const vals = [10, 20, 35];
+        value = Math.round(vals[variant]);
+      } break;
+      case 'manaRegen': {
+        // Small mana-per-turn bonuses
+        const vals = [1, 2, 4];
+        value = Math.max(1, Math.round(baseVal * (vals[variant] / 10)));
+      } break;
+      case 'blockChance': {
+        // Chance to block a hit (fractional)
+        const scales = [0.02, 0.05, 0.10];
+        value = +(Math.round(scales[variant] * 10000) / 10000) || scales[variant];
+      } break;
+      case 'reflectPercent': {
+        // Reflect a percentage of damage back to attacker
+        const scales = [0.02, 0.05, 0.10];
+        value = +(Math.round(scales[variant] * 10000) / 10000) || scales[variant];
+      } break;
       case 'regen': {
         const scales = [0.12, 0.3, 0.6];
         value = Math.max(1, Math.round(baseVal * scales[variant]));
@@ -77,6 +131,29 @@
       case 'maxHpPercent': {
         // Increase percentage bonus for max HP to make HP-focused gear more impactful
         const vals = [5,10,20]; value = vals[variant];
+      } break;
+      case 'trueDamage': {
+        const vals = [1,3,6]; value = Math.max(0, Math.round(vals[variant]));
+      } break;
+      case 'lowHpDamage': {
+        // percentage damage bonus when low HP
+        const vals = [5,10,18]; value = Math.round(vals[variant]);
+      } break;
+      case 'luck': {
+        // small percent chance to improve loot rarity
+        const vals = [1,2,3]; value = vals[variant];
+      } break;
+      case 'executeDamage': {
+        // extra flat/percent damage on low targets
+        const vals = [6,10,18]; value = Math.round(vals[variant]);
+      } break;
+      case 'stunResist':
+      case 'burnResist':
+      case 'poisonResist': {
+        const scales = [0.02, 0.05, 0.10]; value = +(Math.round(scales[variant] * 10000) / 10000) || scales[variant];
+      } break;
+      case 'mitigationPercent': {
+        const vals = [1,3,6]; value = Math.round(vals[variant]);
       } break;
       default: value = 0; break;
     }
@@ -130,7 +207,6 @@
     if (roll < 0.99) return 'epic';
     return 'legendary';
   }
-
   function rarityMultiplier(r) {
     switch(r) {
       case 'common': return 1.0;
@@ -138,6 +214,19 @@
       case 'rare': return 1.35;
       case 'epic': return 1.6;
       case 'legendary': return 2.0;
+    }
+    return 1;
+  }
+
+  // Primary stat multiplier: increase primary power with rarity per user request
+  // (common 1.0, uncommon 1.2, rare 1.4, epic 1.6, legendary 1.8).
+  function rarityPrimaryMultiplier(r) {
+    switch(r) {
+      case 'common': return 1.0;
+      case 'uncommon': return 1.2;
+      case 'rare': return 1.4;
+      case 'epic': return 1.6;
+      case 'legendary': return 1.8;
     }
     return 1;
   }
@@ -227,64 +316,44 @@
   function generateGear(slot, forcedRarity) {
     if (!SLOTS.includes(slot)) slot = SLOTS[Math.floor(Math.random()*SLOTS.length)];
     const rarity = forcedRarity || pickRarity();
-    const rmul = rarityMultiplier(rarity);
-  const base = slotBaseRange(slot);
-  const baseVal = Math.max(1, Math.round(randomBetween(base.min, base.max) * rmul));
+    // Use separate multipliers: primary multiplier (rarer items weaker in primary)
+    // and enchant multiplier (rarityMultiplier) to scale enchant values.
+    const rmulEnchants = rarityMultiplier(rarity);
+    const rmulPrimary = rarityPrimaryMultiplier(rarity);
+    const base = slotBaseRange(slot);
+    const baseVal = Math.max(1, Math.round(randomBetween(base.min, base.max) * rmulPrimary));
   // Apply generation-time scaling so HP/defense show their effective values on the item
   let scaledBaseVal = baseVal;
   if (base.stat === 'hp') scaledBaseVal = Math.max(1, Math.round(baseVal * GEN_HP_FACTOR));
   else if (base.stat === 'defense') scaledBaseVal = Math.max(1, Math.round(baseVal * GEN_DEFENSE_FACTOR));
-  // two randomized secondary choice indexes (compact choice space 0..totalChoices-1)
-  const totalChoices = SECONDARY_TYPES.length * SECONDARY_VARIANT_COUNT;
-  const rand1 = Math.floor(Math.random() * totalChoices);
-  const rand2 = Math.floor(Math.random() * totalChoices);
-    // named secondary choices (compact): pick up to two choices from a 30-entry space
-    // each choice is an integer index (0..(SECONDARY_TYPES.length*SECONDARY_VARIANT_COUNT-1)).
-    // We store the index so display/interpretation can be deterministic and centralized.
-  // totalChoices already computed above for rand1/rand2 generation
+    // named secondary choices (compact): pick N choices based on rarity
+    const totalChoices = SECONDARY_TYPES.length * SECONDARY_VARIANT_COUNT;
     const availableChoices = [];
     for (let i = 0; i < totalChoices; i++) availableChoices.push(i);
-    // try to avoid picking a secondary whose type equals the base stat when possible
-    // build a shimmed available list that deprioritizes variants of the base stat
-    const baseStatType = base.stat;
+    // choose uniformly across types/variants while ensuring uniqueness when possible
     const chooseIndex = () => {
       if (!availableChoices.length) return null;
-      // If the item's primary is attack, bias secondaries toward hp/defense occasionally
-      if (baseStatType === 'attack') {
-        try {
-          const biased = availableChoices.filter(c => {
-            const t = SECONDARY_TYPES[Math.floor(c / SECONDARY_VARIANT_COUNT)];
-            return t === 'hp' || t === 'defense';
-          });
-          // 60% chance to pick a HP/DEF biased secondary when available
-          if (biased.length && Math.random() < 0.6) {
-            const pick = biased[Math.floor(Math.random() * biased.length)];
-            const idx = availableChoices.indexOf(pick);
-            if (idx !== -1) availableChoices.splice(idx, 1);
-            return pick;
-          }
-        } catch (e) {}
+      const typeIdx = Math.floor(Math.random() * SECONDARY_TYPES.length);
+      const variant = Math.floor(Math.random() * SECONDARY_VARIANT_COUNT);
+      const pick = typeIdx * SECONDARY_VARIANT_COUNT + variant;
+      const idx = availableChoices.indexOf(pick);
+      if (idx !== -1) {
+        availableChoices.splice(idx, 1);
+        return pick;
       }
-      // attempt up to 4 tries to pick a non-base-type choice
-      for (let attempt = 0; attempt < 4; attempt++) {
-        const idx = Math.floor(Math.random() * availableChoices.length);
-        const c = availableChoices[idx];
-        const type = SECONDARY_TYPES[Math.floor(c / SECONDARY_VARIANT_COUNT)];
-        if (type !== baseStatType) {
-          availableChoices.splice(idx, 1);
-          return c;
-        }
-      }
-      // fallback: just pop a random remaining
-      const idx = Math.floor(Math.random() * availableChoices.length);
-      return availableChoices.splice(idx, 1)[0];
+      const ridx = Math.floor(Math.random() * availableChoices.length);
+      return availableChoices.splice(ridx, 1)[0];
     };
+    const desiredSecondaries = RARITY_SECONDARY_COUNT[rarity] || 2;
     const randStats = [];
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < desiredSecondaries; i++) {
       const choice = chooseIndex();
       if (choice === null || typeof choice === 'undefined') break;
       randStats.push({ choice });
     }
+    // maintain backward-compatible rand1/rand2 values using the first two choices
+    const rand1 = randStats.length > 0 ? randStats[0].choice : Math.floor(Math.random() * totalChoices);
+    const rand2 = randStats.length > 1 ? randStats[1].choice : Math.floor(Math.random() * totalChoices);
     // element affinity
     const element = ELEMENTS[Math.floor(Math.random()*ELEMENTS.length)];
     const item = {
@@ -306,7 +375,8 @@
     // attach random enchants based on rarity and scaled with rarity multiplier
     try {
   // allow enchants that can target secondaries as well
-  const enchantPool = ['regen','lifesteal','critChance','critDamage','evasion','maxHpPercent','speed','pierce','manaRegen'];
+  const enchantPool = ['regen','lifesteal','critChance','critDamage','evasion','maxHpPercent','speed','pierce','manaRegen','thorns','critResist','fireDamage','iceDamage','lightningDamage','windDamage','earthDamage','darkDamage',
+    'trueDamage','lowHpDamage','luck','executeDamage','stunResist','burnResist','poisonResist','mitigationPercent'];
       // determine enchant count range per rarity (min,max)
       const rarityEnchantRange = {
         common: [0,0],
@@ -317,50 +387,76 @@
       };
       const range = rarityEnchantRange[rarity] || [0,0];
       const add = randomBetween(range[0], range[1]);
-      // sample unique enchants where possible
+      // determine which secondary types are present on the item (by base type, ignoring variant)
+      const presentTypes = {};
+      if (Array.isArray(randStats)) for (const rs of randStats) {
+        if (!rs) continue;
+        if (typeof rs.choice !== 'undefined') {
+          const ip = interpretSecondaryChoice(Number(rs.choice), baseVal);
+          if (ip && ip.type) presentTypes[ip.type] = true;
+        } else if (typeof rs.type !== 'undefined') {
+          presentTypes[rs.type] = true;
+        }
+      }
+      const presentList = Object.keys(presentTypes).filter(t => enchantPool.indexOf(t) !== -1);
+      const desired = DESIRED_SUPERCHARGE[rarity] || 0;
+      const forceSuper = (presentList.length > 0) && (Math.random() < desired);
+
+      // Build sampling pools
       const pool = enchantPool.slice();
-      for (let i=0;i<add && pool.length>0;i++) {
-        const idx = Math.floor(Math.random()*pool.length);
-        const type = pool.splice(idx,1)[0];
+      if (!forceSuper && presentList.length) {
+        for (const t of presentList) {
+          const idx = pool.indexOf(t);
+          if (idx !== -1) pool.splice(idx, 1);
+        }
+      }
+      const poolForRest = pool.slice();
+      if (forceSuper && presentList.length) {
+        // ensure one forced matching enchant and avoid additional matches
+        const forcedTarget = presentList[Math.floor(Math.random() * presentList.length)];
+        // remove forcedTarget from poolForRest so only one match appears
+        const rem = poolForRest.indexOf(forcedTarget);
+        if (rem !== -1) poolForRest.splice(rem, 1);
+        // create forced enchant
+        let fval = 0;
+        switch(forcedTarget) {
+          case 'regen': fval = randomBetween(1, Math.max(1, Math.round(Math.max(1, scaledBaseVal * 0.12) * rmulEnchants))); break;
+          case 'lifesteal': { const minF = 0.02 * rmulEnchants; const maxF = Math.min(0.35, 0.10 * rmulEnchants); fval = +(Math.round((Math.random() * (maxF - minF) + minF) * 10000) / 10000); } break;
+          case 'critChance': { const minF = 0.01 * rmulEnchants; const maxF = Math.min(0.5, 0.06 * rmulEnchants); fval = +(Math.round((Math.random() * (maxF - minF) + minF) * 10000) / 10000); } break;
+          case 'critDamage': fval = Math.round((Math.random() * 30 + 10) * rmulEnchants); break;
+          case 'evasion': { const minF = 0.01 * rmulEnchants; const maxF = Math.min(0.5, 0.06 * rmulEnchants); fval = +(Math.round((Math.random() * (maxF - minF) + minF) * 10000) / 10000); } break;
+          case 'maxHpPercent': fval = Math.round((Math.random() * 6 + 2) * rmulEnchants); break;
+          case 'trueDamage': fval = Math.max(1, Math.round((Math.random() * 3 + 1) * rmulEnchants)); break;
+          case 'lowHpDamage': fval = Math.round((Math.random() * 6 + 5) * rmulEnchants); break;
+          case 'luck': fval = Math.max(1, Math.min(3, Math.round((Math.random() * 2 + 1) * rmulEnchants))); break;
+          case 'executeDamage': fval = Math.round((Math.random() * 6 + 6) * rmulEnchants); break;
+          case 'stunResist': case 'burnResist': case 'poisonResist': { const minF = 0.02 * rmulEnchants; const maxF = Math.min(0.5, 0.12 * rmulEnchants); fval = +(Math.round((Math.random() * (maxF - minF) + minF) * 10000) / 10000); } break;
+          case 'mitigationPercent': fval = Math.round((Math.random() * 4 + 1) * rmulEnchants); break;
+          default: fval = 0; break;
+        }
+        item.enchants.push({ type: forcedTarget, value: fval });
+      }
+
+      // sample the remainder of enchants from poolForRest (or pool if no forced target)
+      const restPool = (item.enchants.length > 0 && forceSuper) ? poolForRest : pool;
+      for (let i = item.enchants.length; i < add && restPool.length > 0; i++) {
+        const idx = Math.floor(Math.random() * restPool.length);
+        const type = restPool.splice(idx, 1)[0];
         let val = 0;
-        // scale values with rarity multiplier (rmul)
         switch(type) {
-          case 'regen':
-            // small HP per turn, scales with scaledBaseVal
-            val = randomBetween(1, Math.max(1, Math.round(Math.max(1, scaledBaseVal * 0.12) * rmul)));
-            break;
-          case 'lifesteal':
-            // fractional lifesteal (0.02 - 0.10) scaled by rarity, keep as fraction
-            {
-              const minF = 0.02 * rmul;
-              const maxF = Math.min(0.35, 0.10 * rmul);
-              val = +(Math.round((Math.random() * (maxF - minF) + minF) * 10000) / 10000);
-            }
-            break;
-          case 'critChance':
-            // small fractional chance
-            {
-              const minF = 0.01 * rmul;
-              const maxF = Math.min(0.5, 0.06 * rmul);
-              val = +(Math.round((Math.random() * (maxF - minF) + minF) * 10000) / 10000);
-            }
-            break;
-          case 'critDamage':
-            // percent points added to crit damage (e.g., +10 => +10%)
-            val = Math.round((Math.random() * 30 + 10) * rmul);
-            break;
-          case 'evasion':
-            {
-              const minF = 0.01 * rmul;
-              const maxF = Math.min(0.5, 0.06 * rmul);
-              val = +(Math.round((Math.random() * (maxF - minF) + minF) * 10000) / 10000);
-            }
-            break;
-          case 'maxHpPercent':
-            val = Math.round((Math.random() * 6 + 2) * rmul);
-            break;
-          default:
-            val = 0;
+          case 'regen': val = randomBetween(1, Math.max(1, Math.round(Math.max(1, scaledBaseVal * 0.12) * rmulEnchants))); break;
+          case 'lifesteal': { const minF = 0.02 * rmulEnchants; const maxF = Math.min(0.35, 0.10 * rmulEnchants); val = +(Math.round((Math.random() * (maxF - minF) + minF) * 10000) / 10000); } break;
+          case 'critChance': { const minF = 0.01 * rmulEnchants; const maxF = Math.min(0.5, 0.06 * rmulEnchants); val = +(Math.round((Math.random() * (maxF - minF) + minF) * 10000) / 10000); } break;
+          case 'critDamage': val = Math.round((Math.random() * 30 + 10) * rmulEnchants); break;
+          case 'evasion': { const minF = 0.01 * rmulEnchants; const maxF = Math.min(0.5, 0.06 * rmulEnchants); val = +(Math.round((Math.random() * (maxF - minF) + minF) * 10000) / 10000); } break;
+          case 'maxHpPercent': val = Math.round((Math.random() * 6 + 2) * rmulEnchants); break;
+          case 'trueDamage': val = Math.max(1, Math.round((Math.random() * 3 + 1) * rmulEnchants)); break;
+          case 'lowHpDamage': val = Math.round((Math.random() * 6 + 5) * rmulEnchants); break;
+          case 'luck': val = Math.max(1, Math.min(3, Math.round((Math.random() * 2 + 1) * rmulEnchants))); break;
+          case 'executeDamage': val = Math.round((Math.random() * 6 + 6) * rmulEnchants); break;
+          case 'stunResist': case 'burnResist': case 'poisonResist': { const minF = 0.02 * rmulEnchants; const maxF = Math.min(0.5, 0.12 * rmulEnchants); val = +(Math.round((Math.random() * (maxF - minF) + minF) * 10000) / 10000); } break;
+          case 'mitigationPercent': val = Math.round((Math.random() * 4 + 1) * rmulEnchants); break;
+          default: val = 0; break;
         }
         item.enchants.push({ type, value: val });
       }
@@ -455,7 +551,11 @@
           else if (interp.type === 'defense') mods.defense += Math.round(Number(val || 0) * DEFENSE_FACTOR);
           else if (interp.type === 'hp') mods.hp += Math.round(Number(val || 0) * HP_FACTOR);
           else if (interp.type === 'accuracy') mods.accuracy = (mods.accuracy || 0) + val;
-          else {
+          else if (typeof interp.type === 'string' && interp.type.match(/(fire|ice|lightning|wind|earth|dark)Damage/)) {
+            let el = interp.type.replace(/Damage$/,'').toLowerCase();
+            if (el === 'lightning') el = 'electric';
+            mods.elements[el] = (mods.elements[el] || 0) + Number(val || 0);
+          } else {
             mods[interp.type] = (mods[interp.type] || 0) + val;
           }
         }
@@ -513,6 +613,14 @@
               case 'speed': mods.speed = (mods.speed || 0) + (base * 2); mods.extraActionChance = (mods.extraActionChance || 0) + 0.15; break;
               case 'pierce': mods.pierce = (mods.pierce || 0) + (base * 2); mods.ignoreDefenseChance = (mods.ignoreDefenseChance || 0) + 0.20; break;
               case 'manaRegen': mods.manaRegen = (mods.manaRegen || 0) + (base * 2); mods.manaShieldChance = (mods.manaShieldChance || 0) + 0.2; break;
+              case 'trueDamage': mods.trueDamage = (mods.trueDamage || 0) + (base * 2); break;
+              case 'lowHpDamage': mods.lowHpDamage = (mods.lowHpDamage || 0) + (base * 2); break;
+              case 'luck': mods.luckPercent = (mods.luckPercent || 0) + (base * 2); break;
+              case 'executeDamage': mods.executeDamage = (mods.executeDamage || 0) + (base * 2); break;
+              case 'stunResist': mods.stunResistPercent = (mods.stunResistPercent || 0) + (base * 2); break;
+              case 'burnResist': mods.burnResistPercent = (mods.burnResistPercent || 0) + (base * 2); break;
+              case 'poisonResist': mods.poisonResistPercent = (mods.poisonResistPercent || 0) + (base * 2); break;
+              case 'mitigationPercent': mods.mitigationPercent = (mods.mitigationPercent || 0) + (base * 2); break;
               default: break;
             }
             continue;
@@ -529,6 +637,30 @@
             case 'speed': mods.speed = (mods.speed || 0) + Number(e.value || 0); break;
             case 'pierce': mods.pierce = (mods.pierce || 0) + Number(e.value || 0); break;
             case 'manaRegen': mods.manaRegen = (mods.manaRegen || 0) + Number(e.value || 0); break;
+              case 'thorns': mods.thorns = (mods.thorns || 0) + Number(e.value || 0); break;
+              case 'critResist': mods.critResist = (mods.critResist || 0) + Number(e.value || 0); break;
+              case 'fireDamage': mods.elements.fire = (mods.elements.fire || 0) + Number(e.value || 0); break;
+              case 'iceDamage': mods.elements.ice = (mods.elements.ice || 0) + Number(e.value || 0); break;
+              case 'lightningDamage': mods.elements.electric = (mods.elements.electric || 0) + Number(e.value || 0); break;
+              case 'windDamage': mods.elements.wind = (mods.elements.wind || 0) + Number(e.value || 0); break;
+              case 'earthDamage': mods.elements.earth = (mods.elements.earth || 0) + Number(e.value || 0); break;
+              case 'darkDamage': mods.elements.dark = (mods.elements.dark || 0) + Number(e.value || 0); break;
+              case 'trueDamage': mods.trueDamage = (mods.trueDamage || 0) + Number(e.value || 0); break;
+              case 'lowHpDamage': mods.lowHpDamage = (mods.lowHpDamage || 0) + Number(e.value || 0); break;
+              case 'luck': mods.luckPercent = (mods.luckPercent || 0) + Number(e.value || 0); break;
+              case 'executeDamage': mods.executeDamage = (mods.executeDamage || 0) + Number(e.value || 0); break;
+              case 'stunResist': mods.stunResistPercent = (mods.stunResistPercent || 0) + Number(e.value || 0); break;
+              case 'burnResist': mods.burnResistPercent = (mods.burnResistPercent || 0) + Number(e.value || 0); break;
+              case 'poisonResist': mods.poisonResistPercent = (mods.poisonResistPercent || 0) + Number(e.value || 0); break;
+              case 'mitigationPercent': mods.mitigationPercent = (mods.mitigationPercent || 0) + Number(e.value || 0); break;
+              case 'thorns': mods.thorns = (mods.thorns || 0) + Number(e.value || 0); break;
+              case 'critResist': mods.critResist = (mods.critResist || 0) + Number(e.value || 0); break;
+              case 'fireDamage': mods.elements.fire = (mods.elements.fire || 0) + Number(e.value || 0); break;
+              case 'iceDamage': mods.elements.ice = (mods.elements.ice || 0) + Number(e.value || 0); break;
+              case 'lightningDamage': mods.elements.electric = (mods.elements.electric || 0) + Number(e.value || 0); break;
+              case 'windDamage': mods.elements.wind = (mods.elements.wind || 0) + Number(e.value || 0); break;
+              case 'earthDamage': mods.elements.earth = (mods.elements.earth || 0) + Number(e.value || 0); break;
+              case 'darkDamage': mods.elements.dark = (mods.elements.dark || 0) + Number(e.value || 0); break;
             default: break;
           }
         }
@@ -595,7 +727,11 @@
           else if (interp.type === 'defense') mods.defense += val;
           else if (interp.type === 'hp') mods.hp += val;
           else if (interp.type === 'accuracy') mods.accuracy = (mods.accuracy || 0) + val;
-          else mods[interp.type] = (mods[interp.type] || 0) + val;
+          else if (typeof interp.type === 'string' && interp.type.match(/(fire|ice|lightning|wind|earth|dark)Damage/)) {
+            let el = interp.type.replace(/Damage$/,'').toLowerCase();
+            if (el === 'lightning') el = 'electric';
+            mods.elements[el] = (mods.elements[el] || 0) + Number(val || 0);
+          } else mods[interp.type] = (mods[interp.type] || 0) + val;
         }
         usedRandStats = it.randStats;
 
@@ -900,60 +1036,115 @@
       if (!attacker || !target) return {};
       const attackerElMap = (attacker._equipElements) ? attacker._equipElements : {};
       const targetElMap = (target._equipElements) ? target._equipElements : {};
-      const outTargetStatus = {};
-      const outAttackerUpd = {};
+  const outTargetStatus = {};
+  const outAttackerUpd = {};
+  const procs = [];
       // neutral on target reduces incoming damage and debuff chance
       const neutralPower = Number(targetElMap.neutral || 0);
       const neutralReduce = Math.min(0.5, neutralPower / 200); // up to 50% dmg reduction
 
-      // Iterate each element on attacker and attempt to apply effects
+      // Iterate each element on attacker and attempt to apply effects. Honor target resistances
+      const targetEnchants = (target._equipEnchants) ? target._equipEnchants : {};
       Object.keys(attackerElMap || {}).forEach(el => {
         const power = attackerElMap[el] || 0;
         if (power <= 0) return;
         const chance = Math.min(0.6, power / 200); // scale chance with power
-        const effectiveChance = Math.max(0, chance - (neutralPower ? (neutralPower/500) : 0));
-        if (el === 'fire') {
-          if (Math.random() < effectiveChance) {
-            // burn: DOT for 3 turns, amount scaled
-            outTargetStatus.burn = { amount: Math.max(1, Math.ceil(power/10)), turns: 3 };
+        const effectiveChanceBase = Math.max(0, chance - (neutralPower ? (neutralPower/500) : 0));
+        try {
+          if (el === 'fire') {
+            const resist = Number(targetEnchants.burnResistPercent || 0) || 0;
+            const eff = Math.max(0, effectiveChanceBase - resist);
+            if (Math.random() < eff) {
+              const amt = Math.max(1, Math.ceil((power/10) * (1 - resist)));
+              outTargetStatus.burn = { amount: amt, turns: 3 };
+              procs.push({ element: 'fire', effect: 'burn', amount: amt, turns: 3, chance: eff, resist: resist });
+            }
+          } else if (el === 'electric') {
+            const resist = Number(targetEnchants.stunResistPercent || 0) || 0;
+            const eff = Math.max(0, effectiveChanceBase - resist);
+            if (Math.random() < eff) outTargetStatus.stun = { turns: 1 };
+            if (Math.random() < eff) procs.push({ element: 'electric', effect: 'stun', turns: 1, chance: eff, resist: resist });
+          } else if (el === 'ice') {
+            if (Math.random() < effectiveChanceBase) {
+              const amt = Math.max(1, Math.ceil(power/15));
+              outTargetStatus.weaken = { amount: amt, turns: 2 };
+              procs.push({ element: 'ice', effect: 'weaken', amount: amt, turns: 2, chance: effectiveChanceBase });
+            }
+          } else if (el === 'wind') {
+            if (Math.random() < effectiveChanceBase) {
+              const amt = Math.max(1, Math.ceil(power/10));
+              outTargetStatus.pierce = { turns: 1, amount: amt };
+              procs.push({ element: 'wind', effect: 'pierce', amount: amt, turns: 1, chance: effectiveChanceBase });
+            }
+          } else if (el === 'earth') {
+            const pres = Number(targetEnchants.poisonResistPercent || 0) || 0;
+            const effp = Math.max(0, effectiveChanceBase - pres);
+            if (Math.random() < effp) {
+              const amt = Math.max(1, Math.ceil((power/12) * (1 - pres)));
+              outTargetStatus.poison = { amount: amt, turns: 3 };
+              procs.push({ element: 'earth', effect: 'poison', amount: amt, turns: 3, chance: effp, resist: pres });
+            }
+            if (Math.random() < Math.min(0.4, power/300)) {
+              const addDef = Math.max(1, Math.ceil(power/12));
+              outAttackerUpd.defense = (attacker.defense || 0) + addDef;
+              procs.push({ element: 'earth', effect: 'self_defense_gain', amount: addDef, chance: Math.min(0.4, power/300) });
+            }
+          } else if (el === 'neutral') {
+            // neutral on attacker slightly reduces debuff chance on hit
+          } else if (el === 'dark') {
+            if (Math.random() < effectiveChanceBase) {
+              const siphon = Math.max(1, Math.ceil(power/12));
+              outAttackerUpd.hp = Math.min((attacker.maxHp || 99999), (attacker.hp || 0) + siphon);
+              const rotAmt = Math.max(1, Math.ceil(power/18));
+              outTargetStatus.rot = { amount: rotAmt, turns: 3 };
+              procs.push({ element: 'dark', effect: 'siphon_and_rot', siphon: siphon, rot: rotAmt, chance: effectiveChanceBase });
+            }
+          } else if (el === 'light') {
+            if (Math.random() < effectiveChanceBase) {
+              const heal = Math.max(1, Math.ceil(power/15));
+              outAttackerUpd.hp = Math.min((attacker.maxHp || 99999), (attacker.hp || 0) + heal);
+              outAttackerUpd._dispelRequested = true;
+              procs.push({ element: 'light', effect: 'heal_and_dispel', heal: heal, chance: effectiveChanceBase });
+            }
           }
-        } else if (el === 'electric') {
-          if (Math.random() < effectiveChance) {
-            outTargetStatus.stun = { turns: 1 };
+        } catch (e) {
+          // fallback to base behavior if resist check throws
+          if (Math.random() < effectiveChanceBase) {
+            if (el === 'fire') outTargetStatus.burn = { amount: Math.max(1, Math.ceil(power/10)), turns: 3 };
+            else if (el === 'electric') outTargetStatus.stun = { turns: 1 };
+            else if (el === 'ice') outTargetStatus.weaken = { amount: Math.max(1, Math.ceil(power/15)), turns: 2 };
+            else if (el === 'wind') outTargetStatus.pierce = { turns: 1, amount: Math.max(1, Math.ceil(power/10)) };
+            else if (el === 'earth') outTargetStatus.poison = { amount: Math.max(1, Math.ceil(power/12)), turns: 3 };
+            else if (el === 'dark') { outAttackerUpd.hp = Math.min((attacker.maxHp || 99999), (attacker.hp || 0) + Math.max(1, Math.ceil(power/12))); outTargetStatus.rot = { amount: Math.max(1, Math.ceil(power/18)), turns: 3 }; }
+            else if (el === 'light') { outAttackerUpd.hp = Math.min((attacker.maxHp || 99999), (attacker.hp || 0) + Math.max(1, Math.ceil(power/15))); outAttackerUpd._dispelRequested = true; }
           }
-        } else if (el === 'ice') {
-          if (Math.random() < effectiveChance) {
-            // slow/weak: reduce attackBoost or apply weaken
-            outTargetStatus.weaken = { amount: Math.max(1, Math.ceil(power/15)), turns: 2 };
-          }
-        } else if (el === 'wind') {
-          if (Math.random() < effectiveChance) {
-            // chance to ignore defense for this hit
-            outTargetStatus.pierce = { turns: 1, amount: Math.max(1, Math.ceil(power/10)) };
-          }
-        } else if (el === 'earth') {
-          if (Math.random() < effectiveChance) {
-            // chance to apply poison
-            outTargetStatus.poison = { amount: Math.max(1, Math.ceil(power/12)), turns: 3 };
-          }
-          if (Math.random() < Math.min(0.4, power/300)) {
-            // small chance to grant attacker temporary defense
-            outAttackerUpd.defense = (attacker.defense || 0) + Math.max(1, Math.ceil(power/12));
-          }
-        } else if (el === 'neutral') {
-          // neutral on attacker slightly reduces debuff chance on hit
         }
       });
 
-      return { targetStatus: outTargetStatus, attackerUpdates: outAttackerUpd, neutralReduce };
+  return { targetStatus: outTargetStatus, attackerUpdates: outAttackerUpd, neutralReduce, procs };
     } catch (e) { console.error('applyOnHit failed', e); return {}; }
   }
 
   function awardGearToPlayer({ slot=null, guaranteed=false } = {}) {
     // if guaranteed, force at least uncommon
     const rarity = guaranteed ? 'uncommon' : null;
-    const gear = generateGear(slot, rarity);
-    addGearToArmory(gear);
+    // support optional player context for luck-based upgrades: caller may pass a global player via window.currentPlayerStats
+    const callerPlayer = (typeof window !== 'undefined' && window.currentPlayerStats) ? window.currentPlayerStats : null;
+    const gearBase = generateGear(slot, rarity);
+    let gear = gearBase;
+    try {
+      const player = callerPlayer;
+      const luck = player ? (Number((player._equipEnchants && player._equipEnchants.luckPercent) || (player._equipMods && player._equipMods.luckPercent) || player.luckPercent || 0) || 0) : 0;
+      if (luck > 0 && Math.random() < (luck / 100)) {
+        // upgrade rarity by one tier if possible and re-generate the item at the higher rarity
+        const idx = RARITIES.indexOf(gearBase.rarity || 'common');
+        if (idx >= 0 && idx < RARITIES.length - 1) {
+          const newR = RARITIES[idx + 1];
+          gear = generateGear(slot, newR);
+        }
+      }
+    } catch (e) { /* best-effort luck application */ }
+  addGearToArmory(gear);
     try { console.debug('gear awarded', gear); } catch (e) {}
     // notify game UIs
     try { if (window && typeof window.onGearAwarded === 'function') window.onGearAwarded(gear); } catch(e){}
@@ -1019,6 +1210,8 @@
     ,
     prettyName
     ,
-    removeGearByIdAndSync
+    removeGearByIdAndSync,
+    // export applyOnHit so external battle code and tests can invoke elemental on-hit logic
+    applyOnHit
   };
 })(window);

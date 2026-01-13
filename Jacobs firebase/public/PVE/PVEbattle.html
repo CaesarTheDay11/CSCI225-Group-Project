@@ -118,6 +118,8 @@
                     }).catch(e => console.warn('[pve/battle] could not import firebase module', e));
                 } catch (e) { console.warn('[pve/battle] bootstrap error', e); }
             </script>
+            <!-- Ensure Gear helpers are available before the PVE engine runs to avoid timing issues -->
+            <script src="../js/gear.js"></script>
             <script src="PVEbattle.js"></script>
 </body>
 

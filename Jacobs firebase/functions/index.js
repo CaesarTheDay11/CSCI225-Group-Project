@@ -90,8 +90,8 @@ function abilityCostById(id) {
 const GEAR_SLOTS = ['helmet','chestplate','bracers','pants','boots','ring1','ring2','necklace','left_weapon','right_weapon','ranged','shield'];
 // Generation-time scaling constants: these are applied to the item at creation
 // so displayed baseStatValue already reflects HP x4 / defense x1.4 as requested.
-const GEN_HP_FACTOR = 4.0;
-const GEN_DEFENSE_FACTOR = 1.4;
+const GEN_HP_FACTOR = 1.0;
+const GEN_DEFENSE_FACTOR = 1.0;
 
 // Word pool used to generate nicer AI names. We'll produce names like
 // "word_wordDDDD" (two words separated by '_' followed by 4 random digits).
@@ -148,7 +148,7 @@ function generateSimpleGear(slot) {
     }
     // small chance to add an enchant
     if (Math.random() < 0.18) {
-      const enchantPool = ['regen','lifesteal','critChance','evasion','maxHpPercent','speed','pierce','manaRegen'];
+  const enchantPool = ['regen','lifesteal','critChance','evasion','maxHpPercent','speed','pierce','manaRegen','thorns','critResist','fireDamage','iceDamage','lightningDamage','windDamage','earthDamage','darkDamage'];
       const e = enchantPool[Math.floor(Math.random() * enchantPool.length)];
   item.enchants.push({ type: e, value: Math.max(1, Math.floor(scaledBaseVal * (0.2 + Math.random() * 0.8))) });
     }
@@ -204,10 +204,18 @@ async function applyEquipModsToMatchPlayer(db, matchId, uid) {
       const playerSnap = await db.ref(`matches/${matchId}/players/${uid}`).get();
       if (playerSnap.exists()) {
         const p = playerSnap.val() || {};
-        const curMax = Number(p.maxHp || 0);
-        const curHp = Number(p.hp || 0);
-        const newMax = Math.max(1, curMax + (mods.maxHp || 0));
-        const newHp = Math.min(newMax, curHp + (mods.maxHp || 0));
+        const curMax = Number(p.maxHp || 0) || 0;
+        const curHp = Number(p.hp || 0) || 0;
+        // Defensive clamp: when normalizing legacy/generated gear, some stored
+        // items may have inflated baseStatValue. Prevent absurd jumps by
+        // capping the gear-derived maxHp bonus to at most 2x the current max.
+        // This is conservative and non-destructive; if you prefer a DB
+        // migration to permanently normalize items, we can do that instead.
+        const rawBonus = Number(mods.maxHp || 0) || 0;
+        const maxAllowedBonus = Math.max(0, curMax) * 2; // allow up to +200% of current max as bonus
+        const appliedBonus = rawBonus > maxAllowedBonus ? Math.round(maxAllowedBonus) : rawBonus;
+        const newMax = Math.max(1, curMax + appliedBonus);
+        const newHp = Math.min(newMax, curHp + appliedBonus);
         updates[`matches/${matchId}/players/${uid}/maxHp`] = newMax;
         updates[`matches/${matchId}/players/${uid}/hp`] = newHp;
       }
@@ -377,13 +385,46 @@ exports.onQueueJoin = onValueCreated("/queue/{uid}", async (event) => {
               retry++;
             }
 
-            const playerCount = playerEq ? Object.keys(playerEq || {}).filter(Boolean).length : 0;
-            const gearCount = playerCount > 0 ? playerCount : 3;
+            // Prefer the player's equipped map count (slots with equipped gear).
+            // If the match-level equipped map is missing, fall back to the user's
+            // persistent equipped map (users/{uid}/equipped) if present. Do NOT
+            // base this on the user's total armory size — we want AI to mirror
+            // how many pieces the player actually has equipped.
+            let playerCount = 0;
+            try {
+              if (playerEq && Object.keys(playerEq || {}).length) playerCount = Object.keys(playerEq || {}).filter(k => playerEq[k]).length;
+              else {
+                // try persistent user equip map as a best-effort fallback
+                try {
+                  const userEquipSnap = await db.ref(`users/${joiningUid}/equipped`).get();
+                  if (userEquipSnap.exists()) {
+                    const ue = userEquipSnap.val() || {};
+                    playerCount = Object.keys(ue || {}).filter(k => ue[k]).length;
+                  }
+                } catch (e) { /* ignore fallback read errors */ }
+              }
+            } catch (e) { playerCount = 0; }
+            // Mirror the player's equipped piece count exactly. If the player has
+            // no equipped items, do not give the AI any gear.
+            const gearCount = playerCount;
             const equippedMap = {};
-            const slotPool = GEAR_SLOTS.slice();
+            // Prefer mirroring the player's equipped slots (not just count) when available.
+            // This ensures AI equips items in the same slot keys as the player where possible.
+            let preferredSlots = [];
+            try {
+              if (playerEq && Object.keys(playerEq || {}).length) {
+                preferredSlots = Object.keys(playerEq || {}).filter(k => playerEq[k]);
+              }
+            } catch (e) { preferredSlots = []; }
+            const slotPool = (preferredSlots.length ? preferredSlots.slice() : GEAR_SLOTS.slice());
             for (let i = 0; i < gearCount; i++) {
-              const slotIdx = Math.floor(Math.random() * slotPool.length);
-              const slot = slotPool.splice(slotIdx, 1)[0] || GEAR_SLOTS[Math.floor(Math.random() * GEAR_SLOTS.length)];
+              // pick from preferred pool first, then fall back to global slots
+              let slot = null;
+              if (slotPool.length) {
+                const slotIdx = Math.floor(Math.random() * slotPool.length);
+                slot = slotPool.splice(slotIdx, 1)[0];
+              }
+              if (!slot) slot = GEAR_SLOTS[Math.floor(Math.random() * GEAR_SLOTS.length)];
               const g = generateSimpleGear(slot);
               try {
                 await db.ref(`users/${aiUid}/gear/${g.id}`).set(g);
@@ -681,17 +722,31 @@ async function applyAiAttack(db, matchId, aiUid, humanUid, aiState, humanState, 
   } catch (e) { void e; /* best-effort */ }
     }
   } else {
-    updates[`matches/${matchId}/players/${humanUid}/hp`] = newHumanHp;
+    // Use the shared damage resolution helper so AI attacks mirror player attacks
     try {
+      const rawDamage = aiAtk; // base attack value passed to helper which applies defense/crit/evasion
+      const dmgRes = applyDamageToObject(Object.assign({}, humanState), rawDamage, { attacker: aiState });
+      const dealt = Number(dmgRes.damage || 0);
+      const nextHp = Number(dmgRes.newHp || 0);
+      updates[`matches/${matchId}/players/${humanUid}/hp`] = nextHp;
       const actorName = (aiState && aiState.name) ? aiState.name : aiUid;
       const targetName = (humanState && humanState.name) ? humanState.name : humanUid;
-      const actual = Math.max(1, Math.floor(aiAtk - humanDef));
-      // account for random variance already applied to damage
-      const dealt = Math.max(1, Math.floor(newHumanHp < (humanState.hp || 0) ? (humanState.hp || 0) - newHumanHp : actual));
       updates[`matches/${matchId}/lastMoveDamage`] = dealt;
       updates[`matches/${matchId}/lastMoveActor`] = aiUid;
       updates[`matches/${matchId}/message`] = `${actorName} attacked ${targetName} for ${dealt} damage`;
-  } catch (e) { void e; /* best-effort */ }
+    } catch (e) {
+      // fallback to simple calculation if the shared helper fails
+      updates[`matches/${matchId}/players/${humanUid}/hp`] = newHumanHp;
+      try {
+        const actorName = (aiState && aiState.name) ? aiState.name : aiUid;
+        const targetName = (humanState && humanState.name) ? humanState.name : humanUid;
+        const actual = Math.max(1, Math.floor(aiAtk - humanDef));
+        const dealt = Math.max(1, Math.floor(newHumanHp < (humanState.hp || 0) ? (humanState.hp || 0) - newHumanHp : actual));
+        updates[`matches/${matchId}/lastMoveDamage`] = dealt;
+        updates[`matches/${matchId}/lastMoveActor`] = aiUid;
+        updates[`matches/${matchId}/message`] = `${actorName} attacked ${targetName} for ${dealt} damage`;
+      } catch (ee) { void ee; }
+    }
   }
 
   if ((updates[`matches/${matchId}/players/${humanUid}/hp`] || 0) <= 0) {
@@ -763,7 +818,9 @@ function getEffectiveBaseAtk(user, fallback = 10) {
     }
   } catch (e) { void e; }
   const temp = (user.status && user.status.strength_boost) ? Number(user.status.strength_boost.amount || 0) : 0;
-  return base + temp;
+  // Include any persistent attackBoost so server-side ability damage matches client-side.
+  const atkBoost = Number(user.attackBoost || 0) || 0;
+  return base + temp + atkBoost;
 }
 
 function startAbilityCooldownLocal(abilityCooldowns = {}, abilityId) {
@@ -1532,7 +1589,7 @@ const LEGACY_ABILITY_HANDLERS = {
     playerUpdates.defense = (user.defense || 0) + defAdd;
     playerUpdates.status = newStatus;
     const oppStatus = Object.assign({}, target.status || {});
-    const incoming = { turns: 3, dmg: Math.max(1, Math.floor((user.baseAtk * 2 || 8) / 3)) };
+  const incoming = { turns: 3, dmg: Math.max(1, Math.floor((getEffectiveBaseAtk(user,8) * 2) / 3)) };
     if (oppStatus.poison) { oppStatus.poison.dmg = Math.max(oppStatus.poison.dmg || 0, incoming.dmg); oppStatus.poison.turns = Math.max(oppStatus.poison.turns || 0, incoming.turns); } else { oppStatus.poison = incoming; }
     const opponentUpdates = { status: oppStatus };
     playerUpdates.abilityCooldowns = startAbilityCooldownLocal(user.abilityCooldowns, 'necro_summon_skeleton');
@@ -1763,6 +1820,16 @@ function computeAbilityUpdates(matchId, actorUid, targetUid, actorState, targetS
       if (pu.defense !== undefined) out[`matches/${matchId}/players/${actorUid}/defense`] = pu.defense;
 
       if (ou.hp !== undefined) out[`matches/${matchId}/players/${targetUid}/hp`] = Math.max(0, ou.hp);
+      // Diagnostic: warn if an ability handler would increase the target's HP
+      try {
+        const origTargetHp = Number((targetState && targetState.hp) || 0);
+        if (ou && typeof ou.hp !== 'undefined' && Number(ou.hp) > origTargetHp) {
+          console.warn('[computeAbilityUpdates] ability would INCREASE target HP', {
+            abilityId, matchId, actorUid, targetUid,
+            origTargetHp, newHp: ou.hp, actorHp: Number((actorState && actorState.hp) || 0), playerUpdates: pu, opponentUpdates: ou
+          });
+        }
+      } catch (e) { void e; }
       if (ou.status !== undefined) out[`matches/${matchId}/players/${targetUid}/status`] = ou.status;
       if (ou.attackBoost !== undefined) out[`matches/${matchId}/players/${targetUid}/attackBoost`] = ou.attackBoost;
       if (ou.fainted !== undefined) out[`matches/${matchId}/players/${targetUid}/fainted`] = !!ou.fainted;
@@ -2040,15 +2107,39 @@ async function scheduledQueueWatcherImpl(event) {
             retry++;
           }
 
-          const playerCount = playerEq ? Object.keys(playerEq || {}).filter(Boolean).length : 0;
-          const gearCount = playerCount > 0 ? playerCount : 3; // fallback to 3 if player didn't write equip map
+          // Prefer the match-level equipped map. If not present, attempt to read
+          // the user's persistent equipped map under users/{uid}/equipped.
+          // This ensures the AI mirrors the number of pieces the player has
+          // actually equipped, not the total items in their armory.
+          let playerCount = 0;
+          try {
+            if (playerEq && Object.keys(playerEq || {}).length) playerCount = Object.keys(playerEq || {}).filter(k => playerEq[k]).length;
+            else {
+              try {
+                const userEquipSnap = await db.ref(`users/${uid}/equipped`).get();
+                if (userEquipSnap.exists()) {
+                  const ue = userEquipSnap.val() || {};
+                  playerCount = Object.keys(ue || {}).filter(k => ue[k]).length;
+                }
+              } catch (e) { /* ignore fallback read errors */ }
+            }
+          } catch (e) { playerCount = 0; }
+          // Mirror player's equipped count exactly; don't default to 3.
+          const gearCount = playerCount;
 
           // generate gear for AI and write under users/{aiUid}/gear and set AI equipped map in match node
           const equippedMap = {};
-          const slotPool = GEAR_SLOTS.slice();
+          // prefer mirroring player's equipped slots where possible
+          let preferredSlots = [];
+          try { if (playerEq && Object.keys(playerEq || {}).length) preferredSlots = Object.keys(playerEq || {}).filter(k => playerEq[k]); } catch (e) { preferredSlots = []; }
+          const slotPool = (preferredSlots.length ? preferredSlots.slice() : GEAR_SLOTS.slice());
           for (let i = 0; i < gearCount; i++) {
-            const slotIdx = Math.floor(Math.random() * slotPool.length);
-            const slot = slotPool.splice(slotIdx, 1)[0] || GEAR_SLOTS[Math.floor(Math.random() * GEAR_SLOTS.length)];
+            let slot = null;
+            if (slotPool.length) {
+              const slotIdx = Math.floor(Math.random() * slotPool.length);
+              slot = slotPool.splice(slotIdx, 1)[0];
+            }
+            if (!slot) slot = GEAR_SLOTS[Math.floor(Math.random() * GEAR_SLOTS.length)];
             const g = generateSimpleGear(slot);
             try {
               await db.ref(`users/${aiUid}/gear/${g.id}`).set(g);
@@ -2057,7 +2148,9 @@ async function scheduledQueueWatcherImpl(event) {
           }
 
           // write AI equipped map to the match node so client seeder can fetch gear
-          try { await db.ref(`matches/${matchId}/players/${aiUid}/equipped`).set(equippedMap); } catch (e) { void e; /* ignore */ }
+          try {
+            if (Object.keys(equippedMap || {}).length) await db.ref(`matches/${matchId}/players/${aiUid}/equipped`).set(equippedMap);
+          } catch (e) { void e; /* ignore */ }
           // Apply equip mods for both the human player (if any) and the AI so
           // server-side combat calculations include gear effects.
           try { await applyEquipModsToMatchPlayer(db, matchId, aiUid); } catch (e) { void e; }
