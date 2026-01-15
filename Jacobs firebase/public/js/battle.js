@@ -5102,6 +5102,16 @@ async function useItem(itemId) {
       matchUpdates.lastMoveActor = currentUserId;
       // keep currentTurn with the player so they can act again immediately
       matchUpdates.currentTurn = currentUserId;
+    } else if (itemId === 'scroll_luck') {
+      // temporarily increase player's luckPercent which affects loot/upgrades
+      const boost = 15; // percent points
+      const turns = 10;
+      const newStatus = Object.assign({}, playerStats.status || {});
+      newStatus.luck_boost = { turns, amount: boost };
+      playerUpdates.status = newStatus;
+      playerUpdates.luckPercent = (Number(playerStats.luckPercent || 0) + boost);
+      matchUpdates.lastMove = 'use_item_scroll_luck';
+      matchUpdates.lastMoveActor = currentUserId;
     } else if (itemId === 'strength_tonic') {
       // temporary improvement only: +10 strength for 1 turn (no permanent baseAtk increase)
       const newStatus = Object.assign({}, playerStats.status || {});

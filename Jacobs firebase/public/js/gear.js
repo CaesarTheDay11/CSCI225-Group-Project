@@ -183,15 +183,38 @@
   async function creditGoldOnServer(uid, amount) {
     try {
       if (!uid) return null;
-      if (typeof db !== 'undefined' && typeof ref === 'function' && typeof get === 'function' && typeof update === 'function') {
-        const goldRef = ref(db, `users/${uid}/gold`);
-        const snap = await get(goldRef);
-        const cur = Number((snap && typeof snap.val === 'function') ? (snap.val() || 0) : (snap ? snap.val : 0)) || 0;
-        const newVal = Math.max(0, Math.floor(cur + (Number(amount) || 0)));
-        // write back to parent user object to avoid clobbering sibling keys
-        const parentRef = ref(db, `users/${uid}`);
-        await update(parentRef, { gold: newVal });
-        return newVal;
+      if (typeof db !== 'undefined' && typeof ref === 'function') {
+        // prefer an atomic transaction to avoid race conditions
+        try {
+          const mod = await import('https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js');
+          const { runTransaction } = mod;
+          const userRef = ref(db, `users/${uid}`);
+          const result = await runTransaction(userRef, (current) => {
+            if (!current) return; // abort
+            const cur = Number(current.gold || 0);
+            const newVal = Math.max(0, Math.floor(cur + (Number(amount) || 0)));
+            current.gold = newVal;
+            return current;
+          });
+          if (result.committed) {
+            // return the new gold value
+            const snap = result.snapshot;
+            const val = (snap && snap.val && snap.val().gold) ? Number(snap.val().gold) : null;
+            return val;
+          }
+        } catch (e) {
+          // fall back to non-transactional update if runTransaction is not available
+          try {
+            const goldRef = ref(db, `users/${uid}/gold`);
+            const snap = await get(goldRef);
+            const cur = Number((snap && typeof snap.val === 'function') ? (snap.val() || 0) : (snap ? snap.val : 0)) || 0;
+            const newVal = Math.max(0, Math.floor(cur + (Number(amount) || 0)));
+            // write back to parent user object to avoid clobbering sibling keys
+            const parentRef = ref(db, `users/${uid}`);
+            await update(parentRef, { gold: newVal });
+            return newVal;
+          } catch(e){}
+        }
       }
       if (window && typeof window.creditUserGold === 'function') {
         try { return await window.creditUserGold(uid, amount); } catch(e){}
@@ -206,9 +229,19 @@
       if (!item) return 0;
       const baseByRarity = { common:5, uncommon:12, rare:35, epic:85, legendary:220 };
       const rarity = item.rarity || 'common';
-      let base = baseByRarity[rarity] || 5;
-      // small scale by rarity multiplier to keep progression meaningful
-      base = Math.round(base * rarityMultiplier(rarity));
+      // Prefer the shop's authoritative price mapping if available on window.
+      // Salvage should be approximately 1/3 of the shop price by rarity.
+      try {
+        if (typeof window !== 'undefined' && window.BASE_GEAR_PRICE_BY_RARITY && window.BASE_GEAR_PRICE_BY_RARITY[rarity]) {
+          // compute base salvage as ~1/3 of shop base price for that rarity
+          const shopBase = Number(window.BASE_GEAR_PRICE_BY_RARITY[rarity]) || 0;
+          var base = Math.max(1, Math.round(shopBase / 3));
+        } else {
+          var base = baseByRarity[rarity] || 5;
+        }
+      } catch (e) {
+        var base = baseByRarity[rarity] || 5;
+      }
 
       // derive stat power from baseStat and any interpreted randStats
       let statPower = Number(item.baseStatValue || 0);
@@ -489,6 +522,24 @@
       enchants: [],
       createdAt: Date.now()
     };
+    // attach a deterministic image suggestion based on slot and item id
+    try {
+      const SLOT_MAP = {
+        left_weapon: ['sword','spear','axe','mace','hammer','dagger','staff'],
+        right_weapon: ['sword','spear','axe','mace','hammer','dagger','staff'],
+        ranged: ['bow','crossbow','gun'],
+        shield: ['shield'], bracers: ['bracers'], boots: ['boots'], necklace: ['necklace'], ring1: ['ring'], ring2: ['ring'], chestplate: ['chestplate'], helmet: ['helmet'], pants: ['leggings']
+      };
+      const choices = SLOT_MAP[slot] || [slot || 'item'];
+      // deterministic pick by id
+      let pick = choices[0];
+      if (item.id) {
+        let h = 0; for (let i=0;i<item.id.length;i++) h = (h * 31 + item.id.charCodeAt(i)) >>> 0;
+        pick = choices[h % choices.length] || choices[0];
+      }
+      // prefer svg then jpg when rendering; UI will fallback on error
+      item.image = `img/items/${pick}.svg`;
+    } catch (e) { /* ignore image attach errors */ }
     // attach random enchants based on rarity and scaled with rarity multiplier
     try {
   // allow enchants that can target secondaries as well

@@ -1239,9 +1239,12 @@ const abilityHandlers = {
     const base = getEffectiveBaseAtk(user, 10);
         const raw = Math.floor(Math.random() * 12) + Math.floor(base * 0.6);
         const dealt = applyDamage(target, raw, { attacker: user });
-        return `${user.name} rolls and slams for ${dealt} damage.`;
-    },
-
+        if (dealt === 0 && target && target._lastReceivedDodged) { try { delete target._lastReceivedDodged; } catch(e){} return `${user.name}'s bite was evaded by ${target.name}!`; }
+        if (dealt > 0) {
+            target.status = target.status || {};
+            target.status.poison = { turns: 3, dmg: Math.max(1, Math.floor(base / 4)) };
+        }
+        return `${user.name} bites for ${dealt} damage and injects venom.`;
     /* Tortoise abilities */
     tortoise_shell_guard(user, target) {
         const add = 12;
@@ -1252,10 +1255,11 @@ const abilityHandlers = {
     },
     tortoise_tail_sweep(user, target) {
     const base = getEffectiveBaseAtk(user, 9);
-        const raw = Math.floor(Math.random() * 8) + base;
+        const raw = Math.floor(Math.random() * 12) + base + 6;
         const dealt = applyDamage(target, raw, { attacker: user });
-        if (Math.random() < 0.2) {
-            target.status = target.status || {};
+        if (dealt === 0 && target && target._lastReceivedDodged) { try { delete target._lastReceivedDodged; } catch(e){} return `${user.name}'s trample was evaded by ${target.name}!`; }
+        if (dealt > 0 && Math.random() < 0.2) { target.status = target.status || {}; target.status.stun = { turns: 1 }; }
+        return `${user.name} tramples the foe for ${dealt} damage!`;
             target.status.stun = { turns: 1 };
         }
         return `${user.name} sweeps its tail for ${dealt} damage and may trip the foe.`;
@@ -2549,7 +2553,16 @@ function chooseMove(move) {
     if (move === 'attack' && !player.fainted) {
         const damage = Math.floor(Math.random() * 8) + (player.baseAtk || player.attack || 0) + (player.attackBoost || 0);
         const dealt = applyDamage(enemy, damage, { attacker: player });
-        logMessage(`You hit ${enemy.name} for ${dealt} damage!`);
+        // Friendly EVADE/CRIT messaging
+        if (dealt === 0 && enemy && enemy._lastReceivedDodged) {
+            try { delete enemy._lastReceivedDodged; } catch(e){}
+            logMessage(`Your attack was evaded by ${enemy.name}!`);
+        } else {
+            const wasCrit = !!(player && player._lastHitWasCrit);
+            try { if (player && player._lastHitWasCrit) delete player._lastHitWasCrit; } catch(e) {}
+            try { if (enemy && enemy._lastReceivedCrit) delete enemy._lastReceivedCrit; } catch(e) {}
+            logMessage(`You hit ${enemy.name} for ${dealt} damage!${wasCrit ? ' CRIT!' : ''}`);
+        }
     } else if (move === 'heal' && !player.fainted) {
         let heal = Math.floor(Math.random() * 15) + 5;
         // Reduce base 'heal' effectiveness for Paladin class to keep class balance
@@ -2723,7 +2736,16 @@ function enemyTurn() {
     try { if (window.Gear && typeof Gear.applyEquipToStats === 'function') Gear.applyEquipToStats(player); } catch(e){}
     const damage = Math.floor(Math.random() * 8) + enemy.baseAtk + enemy.attackBoost;
     const dealt = applyDamage(player, damage, { attacker: enemy });
-    logMessage(`${enemy.name} attacks for ${dealt} damage!`);
+    // Friendly EVADE/CRIT messaging for enemy basic attack
+    if (dealt === 0 && player && player._lastReceivedDodged) {
+        try { delete player._lastReceivedDodged; } catch(e){}
+        logMessage(`${enemy.name}'s attack was evaded by ${player.name}!`);
+    } else {
+        const wasCrit = !!(enemy && enemy._lastHitWasCrit);
+        try { if (enemy && enemy._lastHitWasCrit) delete enemy._lastHitWasCrit; } catch(e) {}
+        try { if (player && player._lastReceivedCrit) delete player._lastReceivedCrit; } catch(e) {}
+        logMessage(`${enemy.name} attacks for ${dealt} damage!${wasCrit ? ' CRIT!' : ''}`);
+    }
     } else if (choice === 2) {
         const heal = Math.floor(Math.random() * 10) + 5;
             if (enemy.status && enemy.status.dark_inversion) {
