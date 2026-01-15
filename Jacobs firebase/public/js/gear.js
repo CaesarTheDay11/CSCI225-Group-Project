@@ -159,6 +159,123 @@
     }
     return { type, value };
   }
+  
+  // --- Server-backed gold helpers ---
+  // These prefer the Firebase DB helpers (db, ref, get, update) when available.
+  async function getGold(uidOverride) {
+    try {
+      const uid = uidOverride || ((typeof window !== 'undefined') ? window.currentUserUid : null);
+      if (!uid) return 0;
+      if (typeof db !== 'undefined' && typeof ref === 'function' && typeof get === 'function') {
+        try {
+          const snap = await get(ref(db, `users/${uid}/gold`));
+          return Number((snap && typeof snap.val === 'function') ? (snap.val() || 0) : (snap ? snap.val : 0)) || 0;
+        } catch (e) { /* fall through */ }
+      }
+      if (window && typeof window.getUserGold === 'function') {
+        try { return Number(await window.getUserGold(uid)) || 0; } catch(e){}
+      }
+      return 0;
+    } catch (e) { return 0; }
+  }
+
+  // credit gold on server for a user. Returns new gold amount when successful, null when failed.
+  async function creditGoldOnServer(uid, amount) {
+    try {
+      if (!uid) return null;
+      if (typeof db !== 'undefined' && typeof ref === 'function' && typeof get === 'function' && typeof update === 'function') {
+        const goldRef = ref(db, `users/${uid}/gold`);
+        const snap = await get(goldRef);
+        const cur = Number((snap && typeof snap.val === 'function') ? (snap.val() || 0) : (snap ? snap.val : 0)) || 0;
+        const newVal = Math.max(0, Math.floor(cur + (Number(amount) || 0)));
+        // write back to parent user object to avoid clobbering sibling keys
+        const parentRef = ref(db, `users/${uid}`);
+        await update(parentRef, { gold: newVal });
+        return newVal;
+      }
+      if (window && typeof window.creditUserGold === 'function') {
+        try { return await window.creditUserGold(uid, amount); } catch(e){}
+      }
+      return null;
+    } catch (e) { console.error('creditGoldOnServer failed', e); return null; }
+  }
+
+  // Compute a salvage (money) value for a gear item. Takes into account rarity, base stat, secondaries and enchants/supercharges.
+  function computeSalvageValue(item) {
+    try {
+      if (!item) return 0;
+      const baseByRarity = { common:5, uncommon:12, rare:35, epic:85, legendary:220 };
+      const rarity = item.rarity || 'common';
+      let base = baseByRarity[rarity] || 5;
+      // small scale by rarity multiplier to keep progression meaningful
+      base = Math.round(base * rarityMultiplier(rarity));
+
+      // derive stat power from baseStat and any interpreted randStats
+      let statPower = Number(item.baseStatValue || 0);
+      if (Array.isArray(item.randStats) && item.randStats.length) {
+        for (const rs of item.randStats) { if (!rs) continue; if (typeof rs.value !== 'undefined') statPower += Number(rs.value || 0); }
+      } else {
+        statPower += Number(item.rand1 || 0) + Number(item.rand2 || 0);
+      }
+      // convert statPower into an added value component
+      const extra = Math.round(statPower * 0.5);
+
+      let value = Math.max(1, base + extra);
+
+      // enchantments increase value modestly: each enchant +8%
+      let enchantCount = 0;
+      try { if (Array.isArray(item.enchants)) enchantCount = item.enchants.length; } catch(e){}
+      const enchantBonus = 1 + (0.08 * enchantCount);
+
+      // detect supercharge: if any enchant targets a present secondary, give a larger bonus
+      let isSuper = false;
+      try {
+        const present = {};
+        if (Array.isArray(item.randStats)) for (const it of item.randStats) if (it && it.type) present[it.type] = Number(it.value || 0);
+        if (Array.isArray(item.enchants)) {
+          for (const e of item.enchants) {
+            if (!e || !e.type) continue;
+            if (present[e.type]) { isSuper = true; break; }
+            if (e.type === 'supercharge' && e.target && present[e.target]) { isSuper = true; break; }
+          }
+        }
+      } catch (e) {}
+      const superBonus = isSuper ? 1.25 : 1.0;
+
+      const final = Math.max(1, Math.round(value * enchantBonus * superBonus));
+      return final;
+    } catch (e) { return 0; }
+  }
+
+  // Salvage a gear item by id: attempt to credit server first, and only remove the item locally if credit succeeded.
+  // Returns the awarded amount if successful, 0 if no award (and item not removed), or -1 on error.
+  async function salvageGearByIdAndSync(id) {
+    try {
+      const list = loadArmory();
+      const item = list.find(x=>x.id===id);
+      if (!item) return 0;
+      const val = computeSalvageValue(item) || 0;
+      const uid = (typeof window !== 'undefined') ? window.currentUserUid : null;
+      // attempt server credit first
+      let credited = null;
+      if (uid) credited = await creditGoldOnServer(uid, val);
+      else if (window && typeof window.creditUserGold === 'function') credited = await window.creditUserGold(null, val);
+
+      if (credited === null) {
+        // server not available or credit failed: do not remove the item to avoid data loss
+        return 0;
+      }
+
+      // credit succeeded — remove locally and attempt server-side removal of gear record
+      removeGearById(id);
+      if (window && typeof window.removeGearFromUser === 'function') {
+        try { await window.removeGearFromUser(uid, id); } catch (e) {}
+      }
+      // return the awarded amount (credited may be new total; prefer returning val awarded)
+      return val;
+    } catch (e) { console.error('salvage failed', e); return -1; }
+  }
+
 
   function uid() { return 'g_' + Math.random().toString(36).slice(2,10); }
 
@@ -1211,6 +1328,11 @@
     prettyName
     ,
     removeGearByIdAndSync,
+  // salvage / currency helpers (server-backed)
+  getGold,
+  computeSalvageValue,
+  salvageGearByIdAndSync,
+  creditGoldOnServer,
     // export applyOnHit so external battle code and tests can invoke elemental on-hit logic
     applyOnHit
   };

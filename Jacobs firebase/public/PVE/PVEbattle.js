@@ -35,6 +35,47 @@ const ENEMY_STATS = {
     stranger:   { name: 'Stranger',   hp: 420, maxHp: 420, baseAtk: 32, defense: 9, attackBoost: 0, fainted: false, abilities: ['dragon_fire_breath','dragon_claw','dragon_roar'], speed: 7, critChance: 0.12, evasion: 0.04 }
 };
 
+// Determine PVE enemy scale from either an explicit campaign difficulty (story) or the simulator slider.
+// Supported percent range: 100..500 (100% = baseline, 500% = 5x).
+let ENEMY_SCALE = 1.5;
+try {
+    // Campaign-level difficulty (takes precedence for campaign battles)
+    const rawCampaign = localStorage.getItem && localStorage.getItem('storyCampaign');
+    const campaign = rawCampaign ? JSON.parse(rawCampaign) : null;
+    if (campaign && typeof campaign.difficulty === 'number') {
+        ENEMY_SCALE = Math.min(5, Math.max(1, campaign.difficulty / 100));
+    } else {
+        // Simulator slider persistence (percent stored as integer 100..500)
+        const raw = localStorage.getItem && localStorage.getItem('pveEnemyScale');
+        const pct = raw ? Number(raw) : NaN;
+        if (!Number.isFinite(pct)) {
+            ENEMY_SCALE = 1.5; // default
+        } else {
+            ENEMY_SCALE = Math.min(5, Math.max(1, pct / 100));
+        }
+    }
+} catch (err) { ENEMY_SCALE = 1.5; }
+
+// Apply the computed scale (only if >1)
+try { if (typeof console !== 'undefined' && console.debug) console.debug('[PVE] computed ENEMY_SCALE =', ENEMY_SCALE); } catch(e){}
+if (typeof ENEMY_SCALE === 'number' && ENEMY_SCALE > 1) {
+    for (const k in ENEMY_STATS) {
+        try {
+            const e = ENEMY_STATS[k];
+            if (!e) continue;
+            // Scale numeric combat stats conservatively
+            if (typeof e.hp === 'number') e.hp = Math.max(1, Math.floor(e.hp * ENEMY_SCALE));
+            if (typeof e.maxHp === 'number') e.maxHp = Math.max(1, Math.floor(e.maxHp * ENEMY_SCALE));
+            if (typeof e.baseAtk === 'number') e.baseAtk = Math.max(1, Math.floor(e.baseAtk * ENEMY_SCALE));
+            if (typeof e.defense === 'number') e.defense = Math.max(0, Math.round(e.defense * ENEMY_SCALE));
+            // Slightly scale speed/crit/evasion so tougher enemies are more threatening
+            if (typeof e.speed === 'number') e.speed = Math.max(1, Math.round(e.speed * (1 + (ENEMY_SCALE - 1) * 0.4)));
+            if (typeof e.critChance === 'number') e.critChance = Math.min(0.95, Number((e.critChance * (1 + (ENEMY_SCALE - 1) * 0.2)).toFixed(3)));
+            if (typeof e.evasion === 'number') e.evasion = Math.min(0.9, Number((e.evasion * (1 + (ENEMY_SCALE - 1) * 0.25)).toFixed(3)));
+        } catch (e) { /* best-effort: don't break initialization */ }
+    }
+}
+
 const ABILITIES = {
     mage_fireball: { id: 'mage_fireball', name: 'Fireball', cost: 10, cooldown: 3, desc: 'Deal strong magic damage and apply burn (DOT for 3 turns).' },
     warrior_rend: { id: 'warrior_rend', name: 'Rend', cost: 0, cooldown: 3, desc: 'Powerful physical strike that ignores some defense.' },
@@ -481,8 +522,15 @@ const abilityHandlers = {
         const base = getEffectiveBaseAtk(user, 6);
         const dmg = Math.floor(Math.random() * 6) + base;
     const dealt = applyDamage(target, dmg, { attacker: user });
-        target.status = target.status || {};
-        target.status.slimed = { turns: 3, effect: 'reduce-heal' };
+        // friendly evade message
+        if (dealt === 0 && target && target._lastReceivedDodged) {
+            try { delete target._lastReceivedDodged; } catch(e){}
+            return `${user.name}'s Splatter was evaded by ${target.name}!`;
+        }
+        if (dealt > 0) {
+            target.status = target.status || {};
+            target.status.slimed = { turns: 3, effect: 'reduce-heal' };
+        }
         return `Slime splatters for ${dealt} and leaves a sticky slime!`;
     },
 
@@ -490,7 +538,8 @@ const abilityHandlers = {
         const base = getEffectiveBaseAtk(user, 11);
         const dmg = Math.floor(Math.random() * 12) + base + 4;
     const dealt = applyDamage(target, dmg, { attacker: user });
-        if (Math.random() < 0.3) {
+        if (dealt === 0 && target && target._lastReceivedDodged) { try { delete target._lastReceivedDodged; } catch(e){} return `${user.name}'s charge was evaded by ${target.name}!`; }
+        if (dealt > 0 && Math.random() < 0.3) {
             target.status = target.status || {};
             target.status.stun = { turns: 1 };
             return `${user.name} charges with a heavy blow for ${dealt} — ${target.name} is stunned!`;
@@ -502,8 +551,11 @@ const abilityHandlers = {
         const base = getEffectiveBaseAtk(user, 18);
         const dmg = Math.floor(Math.random() * 18) + base + 8;
     const dealt = applyDamage(target, dmg, { attacker: user });
-        target.status = target.status || {};
-        target.status.stun = { turns: 1 };
+        if (dealt === 0 && target && target._lastReceivedDodged) { try { delete target._lastReceivedDodged; } catch(e){} return `${user.name}'s Earthquake missed — ${target.name} evaded!`; }
+        if (dealt > 0) {
+            target.status = target.status || {};
+            target.status.stun = { turns: 1 };
+        }
         return `${user.name} slams the ground for ${dealt} — ${target.name} is stunned!`;
     },
     mage_iceblast(user, target) {
@@ -1021,7 +1073,8 @@ const abilityHandlers = {
     const base = getEffectiveBaseAtk(user, 14);
         const raw = Math.floor(Math.random() * 12) + base + 8;
         const dealt = applyDamage(target, raw, { attacker: user });
-        if (Math.random() < 0.18) { target.status = target.status || {}; target.status.stun = { turns: 1 }; }
+        if (dealt === 0 && target && target._lastReceivedDodged) { try { delete target._lastReceivedDodged; } catch(e){} return `${user.name}'s smash was evaded by ${target.name}!`; }
+        if (dealt > 0 && Math.random() < 0.18) { target.status = target.status || {}; target.status.stun = { turns: 1 }; }
         return `${user.name} smashes the enemy for ${dealt} damage!`;
     },
     ogre_roar(user, target) {
@@ -1036,7 +1089,8 @@ const abilityHandlers = {
     const base = getEffectiveBaseAtk(user, 14);
         const raw = Math.floor(Math.random() * 10) + Math.floor(base * 0.8);
         const dealt = applyDamage(target, raw, { attacker: user });
-        if (Math.random() < 0.2) {
+        if (dealt === 0 && target && target._lastReceivedDodged) { try { delete target._lastReceivedDodged; } catch(e){} return `${user.name}'s ground stomp missed — ${target.name} evaded!`; }
+        if (dealt > 0 && Math.random() < 0.2) {
             target.status = target.status || {};
             target.status.stun = { turns: 1 };
         }
@@ -1049,15 +1103,19 @@ const abilityHandlers = {
         const raw = Math.floor(Math.random() * 14) + base + 6;
         const crit = Math.random() < 0.18;
         const dealt = applyDamage(target, raw + (crit ? Math.floor(raw * 0.5) : 0), { attacker: user });
+        if (dealt === 0 && target && target._lastReceivedDodged) { try { delete target._lastReceivedDodged; } catch(e){} return `${user.name}'s dive was evaded by ${target.name}!`; }
         return `${user.name} dives from above for ${dealt} damage${crit ? ' (critical strike)!' : '!'} `;
     },
     griffin_talon_rake(user, target) {
     const base = getEffectiveBaseAtk(user, 15);
         const raw = Math.floor(Math.random() * 10) + Math.floor(base / 2);
         const dealt = applyDamage(target, raw, { attacker: user });
-        target.status = target.status || {};
-        const incoming = { turns: 4, pct: 0.04 };
-        if (!target.status.bleed) target.status.bleed = incoming; else { target.status.bleed.pct = Math.max(target.status.bleed.pct || 0, incoming.pct); target.status.bleed.turns = Math.max(target.status.bleed.turns || 0, incoming.turns); }
+        if (dealt === 0 && target && target._lastReceivedDodged) { try { delete target._lastReceivedDodged; } catch(e){} return `${user.name}'s talon strike was evaded by ${target.name}!`; }
+        if (dealt > 0) {
+            target.status = target.status || {};
+            const incoming = { turns: 4, pct: 0.04 };
+            if (!target.status.bleed) target.status.bleed = incoming; else { target.status.bleed.pct = Math.max(target.status.bleed.pct || 0, incoming.pct); target.status.bleed.turns = Math.max(target.status.bleed.turns || 0, incoming.turns); }
+        }
         return `${user.name} tears with talons for ${dealt} damage and causes bleeding.`;
     },
     griffin_wing_gust(user, target) {
@@ -1242,8 +1300,11 @@ const abilityHandlers = {
     const base = getEffectiveBaseAtk(user, 30);
         const raw = Math.floor(Math.random() * 40) + base + 12;
         const dealt = applyDamage(target, raw, { attacker: user });
-        target.status = target.status || {};
-        target.status.burn = { turns: 4, dmg: Math.max(5, Math.floor(base / 4)) };
+        if (dealt === 0 && target && target._lastReceivedDodged) { try { delete target._lastReceivedDodged; } catch(e){} return `${user.name}'s breath was evaded by ${target.name}!`; }
+        if (dealt > 0) {
+            target.status = target.status || {};
+            target.status.burn = { turns: 4, dmg: Math.max(5, Math.floor(base / 4)) };
+        }
         return `${user.name} breathes fire for ${dealt} damage and scorches the target.`;
     },
     dragon_claw(user, target) {
@@ -1769,6 +1830,14 @@ function spawnEnemy(enemyId) {
     } catch (e) { /* ignore */ }
     const eNameEl = document.getElementById('enemy-name');
     if (eNameEl) eNameEl.textContent = enemy.name;
+    try {
+        const scaleEl = document.getElementById('enemy-scale');
+        if (scaleEl) {
+            const pct = (typeof ENEMY_SCALE === 'number') ? Math.round(ENEMY_SCALE * 100) : Math.round(150);
+            const mult = (typeof ENEMY_SCALE === 'number') ? Number(ENEMY_SCALE.toFixed(2)) : 1.5;
+            scaleEl.textContent = `Difficulty: ${pct}% (x${mult.toFixed(2)})`;
+        }
+    } catch (e) { /* best-effort UI update - ignore errors */ }
     updateUI();
 }
 
@@ -1804,9 +1873,25 @@ function handleEnemyDefeat() {
                 if (typeof Gear !== 'undefined') {
                     let g = null;
                     try {
-                        if (typeof Gear.addGearToArmoryAndSync === 'function') {
-                            g = Gear.generateGear(null, 'uncommon');
+                        // pick rarity based on campaign difficulty (higher difficulty -> better rarity)
+                        let rarity = 'uncommon';
+                        try {
+                            const rawC = localStorage.getItem && localStorage.getItem('storyCampaign');
+                            const campaign = rawC ? JSON.parse(rawC) : null;
+                            const diff = campaign && typeof campaign.difficulty === 'number' ? campaign.difficulty : null;
+                            if (typeof diff === 'number') {
+                                if (diff >= 300) rarity = 'rare';
+                                else if (diff >= 200) rarity = 'uncommon';
+                                else rarity = 'common';
+                            }
+                        } catch(e) { /* ignore */ }
+
+                        if (typeof Gear.addGearToArmoryAndSync === 'function' && typeof Gear.generateGear === 'function') {
+                            g = Gear.generateGear(null, rarity);
                             Gear.addGearToArmoryAndSync(g).catch(()=>{});
+                        } else if (typeof Gear.generateGear === 'function') {
+                            g = Gear.generateGear(null, rarity);
+                            try { Gear.awardGearToPlayer(g); } catch(e) {}
                         } else {
                             g = Gear.awardGearToPlayer({ slot: null, guaranteed: true });
                         }
@@ -1820,7 +1905,7 @@ function handleEnemyDefeat() {
     // Reduce per-enemy drop contributions so runs don't accumulate guaranteed drops too quickly.
     // Previously slime=5, gladiator=10, boss=25 (felt too generous) — scale down roughly 50%.
     const DROP_CHANCES = { slime: 2, gladiator: 5, boss: 12 };
-    try { pveRunDropChance = Math.min(100, pveRunDropChance + (DROP_CHANCES[currentEnemyId] || 0)); } catch (e) { }
+    try { pveRunDropChance = Math.min(100, pveRunDropChance + Math.round((DROP_CHANCES[currentEnemyId] || 0) * (typeof ENEMY_SCALE === 'number' ? ENEMY_SCALE : 1))); } catch (e) { }
 
     // Story campaign handling: if a campaign is active, present spare/kill choice for campaign monsters
     try {
@@ -2576,9 +2661,45 @@ function enemyTurn() {
         return;
     }
 
+    // Use specials aggressively: prefer offensive abilities first so enemies
+    // act decisively. Heals/defensive moves are deprioritized and only used when
+    // the enemy is critically low on HP.
     const available = (enemy.abilities || []).filter(id => canUseAbility(enemy, id));
-    if (available.length && Math.random() < 0.4) {
-        const pick = available[Math.floor(Math.random() * available.length)];
+    if (available.length) {
+        const hpPct = ((enemy.hp || 0) / Math.max(1, (enemy.maxHp || enemy.hp || 1)));
+
+        // classify candidates
+        const healCandidates = available.filter(id => /\b(heal|regrowth|repair|elixir|rebirth|revive|restore)\b/i.test(id));
+        const defenseCandidates = available.filter(id => /\b(defend|guard|bastion|shield|withdraw|shell)\b/i.test(id));
+        const ccCandidates = available.filter(id => /\b(stun|roar|shackle|shout|silence|weaken|bind|coil|shock)\b/i.test(id));
+        const offenseCandidates = available.filter(id => /\b(attack|smash|slash|claw|breath|strike|burst|blast|charge|volley|slice|nuke|arcanum|rend|claw|talon|slash|spear|backstab|bite|slam)\b/i.test(id));
+
+        let pick = null;
+
+        // 1) Prefer offensive specials whenever present
+        if (offenseCandidates.length) {
+            pick = offenseCandidates[Math.floor(Math.random() * offenseCandidates.length)];
+        }
+
+        // 2) If no clear offensive special, and enemy is critically low, allow healing
+        // Use a tighter threshold so heals happen rarely (very low HP)
+        if (!pick && hpPct < 0.25 && healCandidates.length) {
+            pick = healCandidates[Math.floor(Math.random() * healCandidates.length)];
+        }
+
+        // 3) Try crowd-control if player isn't already stunned
+        if (!pick && ccCandidates.length && !(player && player.status && player.status.stun)) {
+            pick = ccCandidates[Math.floor(Math.random() * ccCandidates.length)];
+        }
+
+        // 4) avoid pure defensive moves unless we have no other choices and hp is very low
+        if (!pick && defenseCandidates.length) {
+            if (hpPct < 0.15) pick = defenseCandidates[Math.floor(Math.random() * defenseCandidates.length)];
+        }
+
+        // 5) final fallback: pick any available special
+        if (!pick) pick = available[Math.floor(Math.random() * available.length)];
+
         let result;
         try {
             result = (abilityHandlers[pick] && abilityHandlers[pick](enemy, player)) || `${enemy.name} used ${pick}`;
@@ -2586,6 +2707,7 @@ function enemyTurn() {
             console.error('enemy ability handler threw', pick, err);
             result = `${enemy.name} tried ${pick} but it failed.`;
         }
+
         startAbilityCooldown(enemy, pick);
         logMessage(result);
         tickCooldowns(enemy);
@@ -2680,15 +2802,24 @@ function applyDamage(target, rawDamage, opts = {}) {
     const attacker = opts.attacker || null;
     const considerHit = (typeof opts.considerHit === 'boolean') ? opts.considerHit : !!attacker;
 
+    // clear transient hit flags from prior calls
+    try { if (target && typeof target === 'object') { delete target._lastReceivedDodged; delete target._lastReceivedCrit; } } catch(e){}
+    try { if (attacker && typeof attacker === 'object') { delete attacker._lastHitWasCrit; delete attacker._lastHitDodged; } } catch(e){}
+
     // Evasion check — respect attacker's accuracy which reduces effective evasion
     const targetEvasion = Number(target.evasion || 0) || 0;
     const attackerAccuracy = attacker ? Number(attacker.accuracy || (attacker._equipEnchants && attacker._equipEnchants.accuracy) || (attacker._equipMods && attacker._equipMods.accuracy) || 0) : 0;
     const effectiveEvasion = Math.max(0, targetEvasion - attackerAccuracy);
+    let dodged = false;
     if (considerHit && effectiveEvasion > 0) {
         try {
             if (Math.random() < effectiveEvasion) {
                 // Dodge: no damage applied
+                dodged = true;
+                try { if (target && typeof target === 'object') target._lastReceivedDodged = true; } catch(e){}
+                try { if (attacker && typeof attacker === 'object') attacker._lastHitDodged = true; } catch(e){}
                 try { console.debug('[PVE] attack dodged by target', { target: target.name || target.classId, evasion: targetEvasion, attackerAccuracy, effectiveEvasion }); } catch(e){}
+                try { if (window.DamageLog && typeof window.DamageLog.log === 'function') window.DamageLog.log(`EVADE! ${(attacker && (attacker.name || attacker.id)) || 'Attacker'}'s attack was dodged by ${(target && (target.name || target.id)) || 'Target'}`, 'info'); } catch(e){}
                 return 0;
             }
         } catch (e) { /* ignore RNG errors */ }
@@ -2699,17 +2830,22 @@ function applyDamage(target, rawDamage, opts = {}) {
 
     // Crit check — account for target crit resist and attacker crit-damage bonuses
     const critChance = attacker ? Number(attacker.critChance || 0) : 0;
+    let isCrit = false;
     if (considerHit && critChance > 0) {
         try {
             const targetCritResist = Number((target && ((target._equipEnchants && target._equipEnchants.critResist) || target.critResist)) || 0) || 0;
             const effectiveCritChance = Math.max(0, critChance - targetCritResist);
             if (Math.random() < effectiveCritChance) {
+                isCrit = true;
                 // Allow gear to increase crit damage via _critDamageBonus (stored as percent points)
                 const critBonusPct = Number((attacker && (attacker._critDamageBonus || (attacker._equipEnchants && attacker._equipEnchants.critDamageBonus))) || 0) || 0;
                 const baseMultiplier = 1.5; // default crit = +50%
                 const multiplier = baseMultiplier + (critBonusPct / 100);
                 final = Math.max(1, Math.round(final * multiplier));
-                try { console.debug('[PVE] critical hit', { attacker: attacker.name || attacker.classId, critChance: critChance, targetCritResist, critBonusPct }); } catch(e){}
+                try { console.debug('[PVE] critical hit', { attacker: attacker ? (attacker.name || attacker.classId) : 'Attacker', critChance: critChance, targetCritResist, critBonusPct }); } catch(e){}
+                try { if (attacker && typeof attacker === 'object') attacker._lastHitWasCrit = true; } catch(e){}
+                try { if (target && typeof target === 'object') target._lastReceivedCrit = true; } catch(e){}
+                try { if (window.DamageLog && typeof window.DamageLog.log === 'function') window.DamageLog.log(`CRIT! ${(attacker && (attacker.name || attacker.id)) || 'Attacker'} crits ${(target && (target.name || target.id)) || 'Target'} for ${final}`, 'info'); } catch(e){}
             }
         } catch (e) { /* ignore RNG errors */ }
     }
@@ -2738,9 +2874,9 @@ function applyDamage(target, rawDamage, opts = {}) {
             if (res && res.targetStatus && Object.keys(res.targetStatus).length) {
                 target.status = Object.assign({}, target.status || {}, res.targetStatus || {});
             }
-            // apply attacker updates (e.g., temporary defense) to attacker object
+            // apply attacker updates (e.g., temporary defense) to attacker object (guard if attacker exists)
             if (res && res.attackerUpdates && Object.keys(res.attackerUpdates).length) {
-                try { Object.assign(attacker, res.attackerUpdates); } catch(e){}
+                try { if (attacker) Object.assign(attacker, res.attackerUpdates); } catch(e){}
             }
             // Log elemental proc details for PVE
             try {
@@ -2783,8 +2919,8 @@ function applyDamage(target, rawDamage, opts = {}) {
         }
     }
 
-    // attacker enchants: execute / vampirism
-    const aEnchants = (attacker._equipEnchants) ? attacker._equipEnchants : {};
+    // attacker enchants: execute / vampirism (guard attacker may be null)
+    const aEnchants = (attacker && attacker._equipEnchants) ? attacker._equipEnchants : {};
     // apply defender mitigation to extra flat enchants as well
     const mitigationPct = Number((target._equipEnchants && target._equipEnchants.mitigationPercent) || 0) || 0;
     const mitigationFactor = Math.max(0, 1 - (mitigationPct / 100));
@@ -2801,32 +2937,37 @@ function applyDamage(target, rawDamage, opts = {}) {
     }
 
     target.hp = Math.max(0, (target.hp || 0) - damageToApply);
-    try { DamageLog.log(`${(attacker && (attacker.name || attacker.id))||'Attacker'} -> ${(target && (target.name || target.id))||'Target'}: applied ${damageToApply} damage (PVE)`, 'info'); } catch(e) {}
+    try {
+        const atkName = (attacker && (attacker.name || attacker.id)) ? (attacker.name || attacker.id) : 'Attacker';
+        const tgtName = (target && (target.name || target.id)) ? (target.name || target.id) : 'Target';
+        const lvl = isCrit ? 'warn' : 'info';
+        try { if (window.DamageLog && typeof window.DamageLog.log === 'function') window.DamageLog.log(`${atkName} -> ${tgtName}: applied ${damageToApply} damage (raw=${Number(rawDamage||0)}, def=${defense||0}, crit=${!!isCrit}, dodged=${!!dodged})`, lvl); } catch(e){}
+    } catch(e) {}
 
     // reflect: defender reflects a percentage of damage back to attacker
     if (oEnchants.reflectPercent && Number(oEnchants.reflectPercent) > 0) {
         const refPct = Number(oEnchants.reflectPercent || 0);
         const reflectD = Math.max(0, Math.round(damageToApply * refPct));
-        attacker.hp = Math.max(0, (attacker.hp || 0) - reflectD);
+        if (attacker) attacker.hp = Math.max(0, (attacker.hp || 0) - reflectD);
         try { DamageLog.log(`${(target && (target.name || target.id))||'Target'} reflected ${reflectD} damage to ${(attacker && (attacker.name || attacker.id))||'Attacker'} (new HP ${attacker.hp})`, 'warn'); } catch(e) {}
     }
 
     // thorns: defender deals flat damage back to attacker when hit
     if (oEnchants.thorns && Number(oEnchants.thorns) > 0) {
         const thornD = Math.max(0, Math.round(Number(oEnchants.thorns || 0)));
-        if (thornD > 0) attacker.hp = Math.max(0, (attacker.hp || 0) - thornD);
-        try { DamageLog.log(`${(target && (target.name || target.id))||'Target'} thorns dealt ${thornD} to ${(attacker && (attacker.name || attacker.id))||'Attacker'} (new HP ${attacker.hp})`, 'warn'); } catch(e) {}
+        if (thornD > 0 && attacker) attacker.hp = Math.max(0, (attacker.hp || 0) - thornD);
+        try { DamageLog.log(`${(target && (target.name || target.id))||'Target'} thorns dealt ${thornD} to ${(attacker && (attacker.name || attacker.id))||'Attacker'} (new HP ${attacker ? attacker.hp : 'N/A'})`, 'warn'); } catch(e) {}
     }
 
     // counter: defender may deal flat counter damage back
     if (oEnchants.counterChance && Math.random() < Number(oEnchants.counterChance)) {
         const counterD = Number(oEnchants.counterDamage || 0) || 0;
-        if (counterD > 0) attacker.hp = Math.max(0, (attacker.hp || 0) - counterD);
-        try { DamageLog.log(`${(target && (target.name || target.id))||'Target'} countered for ${counterD} damage to ${(attacker && (attacker.name || attacker.id))||'Attacker'} (new HP ${attacker.hp})`, 'warn'); } catch(e) {}
+        if (counterD > 0 && attacker) attacker.hp = Math.max(0, (attacker.hp || 0) - counterD);
+        try { DamageLog.log(`${(target && (target.name || target.id))||'Target'} countered for ${counterD} damage to ${(attacker && (attacker.name || attacker.id))||'Attacker'} (new HP ${attacker ? attacker.hp : 'N/A'})`, 'warn'); } catch(e) {}
     }
 
     // lifesteal/vamp heal for attacker
-    if (attacker._lifestealPercent) {
+    if (attacker && attacker._lifestealPercent) {
         try {
             const percent = Number(attacker._lifestealPercent || 0);
             if (percent > 0 && damageToApply > 0) {
@@ -2838,8 +2979,8 @@ function applyDamage(target, rawDamage, opts = {}) {
     }
     if (vampTriggered) {
         const vampHeal = Number(aEnchants.vampirismDamage || 0) || 0;
-        if (vampHeal > 0) attacker.hp = Math.min(Number(attacker.maxHp || attacker.maxHP || 100), (attacker.hp || 0) + vampHeal);
-        try { if (vampHeal > 0) DamageLog.log(`${(attacker && (attacker.name || attacker.id))||'Attacker'} vampirism healed ${vampHeal} HP (now ${attacker.hp})`, 'info'); } catch(e) {}
+        if (vampHeal > 0 && attacker) attacker.hp = Math.min(Number(attacker.maxHp || attacker.maxHP || 100), (attacker.hp || 0) + vampHeal);
+        try { if (vampHeal > 0) DamageLog.log(`${(attacker && (attacker.name || attacker.id))||'Attacker'} vampirism healed ${vampHeal} HP (now ${attacker ? attacker.hp : 'N/A'})`, 'info'); } catch(e) {}
     }
 
     return damageToApply;

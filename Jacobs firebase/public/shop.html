@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Arena Battlegrounds — Shop</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <style>
+    .shop-grid { display:flex; gap:16px; flex-wrap:wrap; }
+    .shop-card { width:240px; background:#111; color:#fff; border:1px solid #333; padding:10px; border-radius:8px; }
+    .shop-card h3 { margin:0 0 8px 0 }
+    .shop-price { color:#ffd; font-weight:700; margin-top:8px }
+    .shop-actions { margin-top:10px }
+  </style>
+</head>
+<body>
+  <nav style="display:flex;gap:12px;align-items:center;margin:12px 0;">
+    <a href="TitleScreen.html">Home</a>
+    <a href="battle.html">Battle</a>
+    <a href="armory.html">Armory</a>
+    <a href="index.html">Login</a>
+    <span style="margin-left:auto;color:#999;font-size:0.9rem">Shop</span>
+  </nav>
+  <h1>Shop — Extremely Overpriced</h1>
+  <p style="color:#cfc;">Welcome to the shop. Everything is extremely expensive. Log in to buy items.</p>
+  <div style="display:flex;gap:24px;align-items:flex-start">
+    <div style="flex:1">
+      <h2>Consumables</h2>
+      <div id="shop-items" class="shop-grid">(loading...)</div>
+    </div>
+    <div style="flex:1">
+      <h2>Gear (also overpriced)</h2>
+      <div id="shop-gear" class="shop-grid">(loading...)</div>
+    </div>
+  </div>
+
+  <script type="module">
+    // Bootstrap firebase globals for the standalone shop page so Gear can access DB helpers
+    try {
+      import('./js/firebase.js').then(({ auth, db }) => {
+        // import DB helpers from CDN and expose small set of globals used by gear.js
+        Promise.all([
+          import('https://www.gstatic.com/firebasejs/12.5.0/firebase-database.js'),
+          import('https://www.gstatic.com/firebasejs/12.5.0/firebase-auth.js')
+        ]).then(([dbMod, authMod]) => {
+          try {
+            const { ref, get, update } = dbMod;
+            const { onAuthStateChanged } = authMod;
+            window.db = db;
+            window.ref = ref;
+            window.get = get;
+            window.update = update;
+            window.auth = auth;
+            onAuthStateChanged(auth, (user) => { window.currentUserUid = user ? user.uid : null; });
+            console.debug('[shop] firebase bootstrap complete');
+          } catch (e) { console.warn('[shop] firebase bootstrap failed', e); }
+        }).catch(e => console.warn('[shop] import error', e));
+      }).catch(e => console.warn('[shop] could not import firebase module', e));
+    } catch (e) { console.warn('[shop] bootstrap error', e); }
+  </script>
+
+  <script src="js/gear.js"></script>
+  <script src="js/shop.js"></script>
+</body>
+</html>

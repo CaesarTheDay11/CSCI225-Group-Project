@@ -316,6 +316,12 @@ const CLASS_STATS = {
   barbarian: { name: 'Barbarian', hp: 210, maxHp: 210, baseAtk: 22, defense: 4, speed: 6, critChance: 0.05, evasion: 0.02, attackBoost: 0, fainted: false, abilities: ['barbarian_berserk_slam','barbarian_war_cry','barbarian_reckless_strike'], mana: 0 }
 };
 
+// Scale factor applied to AI / non-player opponents seeded locally.
+// When an AI opponent is detected (heuristic: uid starts with 'ai_' or the
+// user record contains `isAi: true`), the seed used for that opponent will
+// be multiplied by this factor for hp/atk/def/etc to make the AI more competitive.
+const AI_ENEMY_SCALE = 1.5;
+
 // --- Refresh lock: prevent refresh/navigation during reward selection/write ---
 // This is a client-local guard that prompts the user if they try to refresh while
 // rewards are being chosen/persisted. It is set when a match finishes and cleared
@@ -2219,6 +2225,22 @@ window.initializeBattle = async function(mId, userId) {
                 }
               }
             } catch (e) { /* ignore gear fetch/apply errors */ }
+            // If this seed represents an AI opponent, scale key stats so the
+            // simulated opponent is stronger and more comparable to a geared player.
+            try {
+              const uidStr = String(uid || '');
+              const isAi = (userVal && userVal.isAi) || uidStr.startsWith('ai_') || (!!existingNode && !!existingNode.isAi);
+              if (isAi && typeof AI_ENEMY_SCALE === 'number' && AI_ENEMY_SCALE > 1) {
+                const mult = AI_ENEMY_SCALE;
+                if (typeof seedLocal.hp === 'number') seedLocal.hp = Math.max(1, Math.floor(seedLocal.hp * mult));
+                if (typeof seedLocal.maxHp === 'number') seedLocal.maxHp = Math.max(1, Math.floor(seedLocal.maxHp * mult));
+                if (typeof seedLocal.baseAtk === 'number') seedLocal.baseAtk = Math.max(1, Math.floor(seedLocal.baseAtk * mult));
+                if (typeof seedLocal.defense === 'number') seedLocal.defense = Math.max(0, Math.round(seedLocal.defense * mult));
+                if (typeof seedLocal.speed === 'number') seedLocal.speed = Math.max(1, Math.round(seedLocal.speed * (1 + (mult - 1) * 0.4)));
+                if (typeof seedLocal.critChance === 'number') seedLocal.critChance = Math.min(0.95, Number((seedLocal.critChance * (1 + (mult - 1) * 0.2)).toFixed(3)));
+                if (typeof seedLocal.evasion === 'number') seedLocal.evasion = Math.min(0.9, Number((seedLocal.evasion * (1 + (mult - 1) * 0.25)).toFixed(3)));
+              }
+            } catch (e) { /* non-fatal */ }
             return seedLocal;
           } catch (e) { return null; }
         };

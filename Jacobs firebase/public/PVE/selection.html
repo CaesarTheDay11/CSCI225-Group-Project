@@ -139,6 +139,13 @@
 
 
     <div class="actions">
+      <div style="margin-bottom:8px; text-align:center;">
+        <label for="sim-difficulty" style="display:block; font-weight:700; color:#ddd; margin-bottom:6px">Simulator difficulty: <span id="sim-difficulty-label">150%</span></label>
+        <input id="sim-difficulty" type="range" min="100" max="500" step="10" value="150" style="width:55%;" />
+        <div id="sim-drop-info" style="margin-top:8px; font-size:13px; color:#ccc;">
+          Per-enemy drop contributions: <span id="drop-slime">Slime: 2%</span> — <span id="drop-gladiator">Gladiator: 5%</span> — <span id="drop-boss">Boss: 12%</span>
+        </div>
+      </div>
       <button id="startBtn" class="class-btn">Start Battle</button>
       <button id="backBtn" class="class-btn" onclick="location.href='../TitleScreen.html'">Back</button>
     </div>
@@ -336,6 +343,33 @@
         const ewrap = eb.closest('.class-card'); if (ewrap) ewrap.classList.add('selected');
       }
     })();
+
+  // Simulator difficulty slider: persist percent in localStorage as 'pveEnemyScale'
+  (function initDifficultySlider(){
+    try {
+      const slider = document.getElementById('sim-difficulty');
+      const label = document.getElementById('sim-difficulty-label');
+      const dropSlime = document.getElementById('drop-slime');
+      const dropGladiator = document.getElementById('drop-gladiator');
+      const dropBoss = document.getElementById('drop-boss');
+      if (!slider || !label) return;
+      const stored = Number(localStorage.getItem('pveEnemyScale')) || 150;
+      slider.value = String(Math.min(500, Math.max(100, stored)));
+      label.textContent = `${slider.value}%`;
+      function updateDropInfo() {
+        try {
+          const pct = Number(slider.value) / 100;
+          if (dropSlime) dropSlime.textContent = `Slime: ${Math.round(2 * pct)}%`;
+          if (dropGladiator) dropGladiator.textContent = `Gladiator: ${Math.round(5 * pct)}%`;
+          if (dropBoss) dropBoss.textContent = `Boss: ${Math.round(12 * pct)}%`;
+        } catch(e){}
+      }
+      updateDropInfo();
+      slider.addEventListener('input', () => { label.textContent = `${slider.value}%`; try { localStorage.setItem('pveEnemyScale', String(slider.value)); } catch(e){}; updateDropInfo(); });
+      // ensure persistence on final change as well
+      slider.addEventListener('change', () => { try { localStorage.setItem('pveEnemyScale', String(slider.value)); } catch(e){}; updateDropInfo(); });
+    } catch (e) { /* ignore slider init errors */ }
+  })();
   </script>
 </body>
 </html>

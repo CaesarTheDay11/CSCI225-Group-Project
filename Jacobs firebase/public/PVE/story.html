@@ -93,6 +93,10 @@
               <button id="startCampaignBtn" class="primary-btn">Start "The tale of eight monsters"</button>
               <button id="continueCampaignBtn" class="secondary-btn" style="display:none;">Continue Campaign</button>
             </div>
+            <div style="margin-top:10px; text-align:center; color:#ddd">
+              <label for="campaignDifficulty" style="display:block; font-weight:700; margin-bottom:6px">Campaign difficulty: <span id="campaignDifficultyLabel">150%</span></label>
+              <input id="campaignDifficulty" type="range" min="100" max="500" step="10" value="150" style="width:70%;" />
+            </div>
             <div style="margin-top:8px">
               <a class="btn btn-link" href="../TitleScreen.html">Back</a>
             </div>
@@ -313,7 +317,8 @@
         localStorage.setItem('selectedClass', selClass);
         localStorage.setItem('allyQueue', JSON.stringify(allyQueue || []));
         // initialize campaign state
-        const c = { active: true, progress: 0, choices: [], enemies: defaultEnemies.slice(), bossId: 'stranger' };
+  const chosenDifficulty = Number(document.getElementById('campaignDifficulty') ? document.getElementById('campaignDifficulty').value : 150) || 150;
+  const c = { active: true, progress: 0, choices: [], enemies: defaultEnemies.slice(), bossId: 'stranger', difficulty: chosenDifficulty };
         saveCampaign(c);
         // set selectedEnemy to first
         localStorage.setItem('selectedEnemy', c.enemies[0]);
@@ -343,6 +348,19 @@
       // render initial
       // wire reset button safely after DOM is parsed (the button element sits after this script)
       document.addEventListener('DOMContentLoaded', ()=>{
+        // init campaign difficulty slider from saved campaign if present
+        try {
+          const slider = document.getElementById('campaignDifficulty');
+          const lbl = document.getElementById('campaignDifficultyLabel');
+          const raw = localStorage.getItem(campaignKey);
+          const campaign = raw ? JSON.parse(raw) : null;
+          const val = (campaign && typeof campaign.difficulty === 'number') ? campaign.difficulty : 150;
+          if (slider) { slider.value = String(Math.min(500, Math.max(100, val))); }
+          if (lbl) lbl.textContent = `${slider ? slider.value : val}%`;
+          if (slider) {
+            slider.addEventListener('input', () => { try { document.getElementById('campaignDifficultyLabel').textContent = `${slider.value}%`; } catch(e){} });
+          }
+        } catch(e){}
         const resetBtn = document.getElementById('resetCampaignBtn');
         if (resetBtn) {
           resetBtn.addEventListener('click', ()=>{

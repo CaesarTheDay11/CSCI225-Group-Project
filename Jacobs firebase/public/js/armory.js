@@ -411,10 +411,60 @@
         }
       } catch (e) {}
 
-      // Append content (drag-to-trash handles deletion). No explicit delete button to keep UI minimal.
-      card.appendChild(top); card.appendChild(slot); card.appendChild(stats); card.appendChild(enchantsDiv);
+      // Append content (drag-to-trash handles deletion). Add salvage button to let players destroy gear for gold.
+      // gear actions container
+      const actions = document.createElement('div'); actions.className = 'gear-actions';
+      try {
+        const salvageBtn = document.createElement('button'); salvageBtn.type = 'button'; salvageBtn.textContent = 'Salvage';
+        salvageBtn.addEventListener('click', async (ev)=>{
+          ev.preventDefault();
+          if (isInMatch()) { alert('Cannot salvage items during an active match.'); return; }
+          if (!confirm('Salvage this item for gold? This will permanently remove the item.')) return;
+          try {
+            let awarded = 0;
+            if (window.Gear && typeof window.Gear.salvageGearByIdAndSync === 'function') {
+              awarded = await window.Gear.salvageGearByIdAndSync(g.id);
+            } else {
+              // No server-backed salvage available; do not remove items offline to avoid exploits.
+              alert('Salvage unavailable: server support required.');
+              return;
+            }
+            if (awarded > 0) {
+              try { alert('Salvaged item for ' + awarded + ' gold'); } catch(e){}
+            } else if (awarded === 0) {
+              alert('Salvage failed: server not available or credit rejected. Item kept.');
+            } else {
+              alert('Salvage encountered an error.');
+            }
+          } catch (err) { console.error('salvage error', err); alert('Could not salvage item'); }
+          try { render(); } catch(e){}
+        });
+        actions.appendChild(salvageBtn);
+      } catch (e) {}
+
+      card.appendChild(top); card.appendChild(slot); card.appendChild(stats); card.appendChild(enchantsDiv); card.appendChild(actions);
       el.appendChild(card);
     }
+  }
+
+  // Update displayed player gold on the armory page
+  function updateGoldDisplay() {
+    try {
+      const el = document.getElementById('player-gold'); if (!el) return;
+      if (window.Gear && typeof window.Gear.getGold === 'function') {
+        try {
+          const p = window.Gear.getGold();
+          if (p && typeof p.then === 'function') {
+            p.then((v)=>{ el.textContent = 'Gold: ' + (Number(v||0)); }).catch(()=>{ el.textContent='Gold: 0'; });
+          } else {
+            el.textContent = 'Gold: ' + (Number(p||0));
+          }
+        } catch(e) { el.textContent='Gold: 0'; }
+      } else {
+        // no server-backed gold API; show 0 (we avoid client-settable gold)
+        el.textContent = 'Gold: 0';
+      }
+    } catch (e) {}
   }
 
   // Render an aggregate element-power panel for currently equipped items (shows proc chance %)
@@ -472,7 +522,8 @@
     } catch (e) { /* ignore setup errors */ }
   }
 
-  function render() { renderSlots(); renderList(); renderAggregate(); setupGlobalDrops(); }
+  function render() { renderSlots(); renderList(); renderAggregate(); setupGlobalDrops(); updateGoldDisplay(); }
+
 
 
   window.addEventListener('DOMContentLoaded', async ()=>{
